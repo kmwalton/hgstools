@@ -16,4 +16,9 @@ USAGE:
   2. add `hgstools/bin` to your system's `$PATH`, `$env:PATH`, or `%PATH%` to use scripts/executables
   3. add `hgstools` to your system's `$PYTHONPATH` for use as a python module
 
+WHAT'S HERE:
+
+Scripts in `bin/`
+  1. `hgs-copy-inputs.py` - Copy inputs to a different directory - run with `--help`
+
 Used/tested with Python3.8 and on Mac and Windows computers.
