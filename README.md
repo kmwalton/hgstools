@@ -12,6 +12,8 @@ matrix, sub-surface domain, flow and contaminant transport simulator; other aspe
 of HGS' functionality are not specifically considered or tested for these tools.
 
 USAGE:
-  1. clone the repository to a directory of your choosing, <hgstools>
-  2. add <hgstools>/bin to your system's $PATH, $env:PATH, or %PATH% to use scripts/executables
-  3. add <hgstools> to your system's $PYTHONPATH for use as a python module
+  1. clone the repository to a directory of your choosing, `hgstools`
+  2. add `hgstools/bin` to your system's `$PATH`, `$env:PATH`, or `%PATH%` to use scripts/executables
+  3. add `hgstools` to your system's `$PYTHONPATH` for use as a python module
+
+Used/tested with Python3.8 and on Mac and Windows computers.
