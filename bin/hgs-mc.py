@@ -16,10 +16,14 @@ import sys
 import os
 import argparse
 import shutil
+import shlex
 
 from multiprocessing import Pool
 
 import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 
 # Useful:
 #https://wiseodd.github.io/techblog/2016/06/13/parallel-monte-carlo/
@@ -29,11 +33,11 @@ class HGS_MCRunner():
     def genInputs(self, n):
         for i in range(n):
             s=f'mc{i:0>3d}'
-            logging.info(f'making {s}')
+            logger.info(f'making {s}')
             yield s
 
     def runSingle(self, d):
-        logging.info(f'running {d}')
+        logger.debug(f'running {d}')
         return 0
 
 
@@ -70,11 +74,11 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     if args.verbose < 1:
-        logging.basicConfig(level='WARN')
+        logger.setLevel(logging.WARN)
     elif args.verbose == 1:
-        logging.basicConfig(level='INFO')
+        logger.setLevel(logging.INFO)
     else:
-        logging.basicConfig(level='DEBUG')
+        logger.setLevel(logging.DEBUG)
 
     # check for base dir
     if not os.path.isdir(args.base_sim):
@@ -87,9 +91,11 @@ if __name__ == '__main__':
             file=sys.stderr)
         sys.exit(-1)
 
-    # check if some other files exist
-    for f in [ args.copy_command.strip().split()[0],
-        args.run_command.strip().split()[0], ]:
+    # Check if other executable files exist
+    # May need posix=False here, if retaining quotes in individual
+    # parameters is important
+    for f in [ args.copy_command, args.run_command ]:
+        f = shlex.split(f.strip())[0]
         if not shutil.which(f):
             print('Could not find {f}.', file=sys.stderr)
             sys.exit(-1)
