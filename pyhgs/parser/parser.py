@@ -7,6 +7,7 @@ import sys
 import re
 import argparse
 import pprint
+import logging
 from itertools import count
 from bisect import bisect_left,bisect
 from decimal import Decimal as D
@@ -42,11 +43,26 @@ class ParserHGSEcoFile:
 if __name__ == '__main__':
 
     argp = argparse.ArgumentParser()
+    argp.add_argument('-v','--verbose',
+        action='count',
+        default=0,
+        help='Increase verbosity.',
+        )
     argp.add_argument('FILE_NAME',
         help='The name of the file to parse')
     # TODO add output filename
     # TODO add pickle vs text spew option
     args = argp.parse_args()
+
+    plogger = logging.getLogger('pyhgs.parser')
+    plogger.addHandler(logging.StreamHandler())
+    if args.verbose > 2:
+        plogger.setLevel(logging.DEBUG)
+    elif args.verbose > 1:
+        plogger.setLevel(logging.INFO-2)
+    elif args.verbose > 0:
+        plogger.setLevel(logging.INFO)
+        
 
     fdata = None
     try:
