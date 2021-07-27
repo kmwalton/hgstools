@@ -24,9 +24,11 @@ Specification of binary file structure provided by Killian Miller
 """
 import os
 import tempfile
+import logging
+from collections import OrderedDict
+
 import numpy as np
 from scipy.io import FortranFile
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -70,18 +72,19 @@ def parse_coordinates_pm(fn):
 
     coords.resize(nn,3)
 
-    return {'nn':nn,
-		'ncoords':coords,
-		'nx':nx,
-		'ny':ny,
-		'nz':nz,
-		'nsptot':nsptot,
-		'ne2d':ne2d,
-		'tetramesh':tetramesh,
-		'gal_mode':gal_mode,
-		'write_face_seg':write_face_seg,
-        'nb2d':nb2d,
-    }
+    return OrderedDict( [
+            ('nn',nn),
+            ('ncoords',coords),
+            ('nx',nx),
+            ('ny',ny),
+            ('nz',nz),
+            ('nsptot',nsptot),
+            ('ne2d',ne2d),
+            ('tetramesh',tetramesh),
+            ('gal_mode',gal_mode),
+            ('write_face_seg',write_face_seg),
+            ('nb2d',nb2d),
+        ] )
 
 def parse_elements_pm(fn):
     """Parse o.elements_pm file and return a dict.
@@ -114,11 +117,12 @@ def parse_elements_pm(fn):
     inc.resize(ne,nln)
     inc = np.add(inc,-1)
 
-    return {'nln':nln,
-		'ne':ne,
-		'inc':inc,
-		'zone':zone,
-    }
+    return OrderedDict( [
+            ('nln',nln),
+            ('ne',ne),
+            ('inc',inc),
+            ('zone',zone),
+        ] )
 
 def parse_coordinates_frac(fn):
     """Parse the o.coordinates_frac file and return a `dict`.
@@ -141,12 +145,12 @@ def parse_coordinates_frac(fn):
         link_frac2pm = fin.read_ints()
         link_pm2frac = fin.read_ints()
 
-    return {
-        'nnfrac':nnfrac,
-        'frac_scheme':frac_scheme,
-        'link_frac2pm':link_frac2pm,
-        'link_pm2frac':link_pm2frac,
-    }
+    return OrderedDict( [
+            ('nnfrac',nnfrac),
+            ('frac_scheme',frac_scheme),
+            ('link_frac2pm',link_frac2pm),
+            ('link_pm2frac',link_pm2frac),
+        ] )
 
 def parse_elements_frac(fn):
     """Parse o.elements_frac file and return a `dict`.
@@ -179,13 +183,14 @@ def parse_elements_frac(fn):
 
     face_map.resize(2,nln)
 
-    return {'nln':nln,
-		'nfe':nfe,
-		'inc':inc,
-		'zone':zone,
-        'face_map':face_map,
-        'ap':ap,
-    }
+    return OrderedDict( [
+            ('nln',nln),
+            ('nfe',nfe),
+            ('inc',inc),
+            ('zone',zone),
+            ('face_map',face_map),
+            ('ap',ap),
+        ] )
 
 
 def _parse(fn, dtype, shape=None):
@@ -208,7 +213,10 @@ def _parse(fn, dtype, shape=None):
     if shape:
         d = d.resize(shape)
 
-    return { 'ts':ts.tobytes().decode('UTF-8').strip(), 'data':d, }
+    return OrderedDict( [
+            ('ts',ts.tobytes().decode('UTF-8').strip()),
+            ('data',d),
+        ] )
 
 def parse_1D_real8(fn):
     """(a) 1D real8 fields
