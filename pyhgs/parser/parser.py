@@ -48,6 +48,11 @@ if __name__ == '__main__':
         default=0,
         help='Increase verbosity.',
         )
+    argp.add_argument('-u','--unabridged',
+        default=False,
+        action='store_true',
+        help='Print full arrays of values. Default: print truncated arrays.'
+        )
     # TODO add output filename
     # TODO add pickle vs text spew option
     argp.add_argument('FILE_NAME',
@@ -71,11 +76,18 @@ if __name__ == '__main__':
         print(e,file=sys.stderr)
         sys.exit(1)
 
-    # TODO print unabridged arrays
     for k in fdata:
+
+        # header line
         ss=f''
         if hasattr(fdata[k],'shape') and len(str(fdata[k].shape))>2:
             ss = f' shape={fdata[k].shape}'
+
+        # options
+        if args.unabridged:
+            np.set_printoptions(threshold=np.inf)
+
+        # data
         print(f'{k}{ss}:\n{fdata[k]}')
 
     sys.exit(0)
