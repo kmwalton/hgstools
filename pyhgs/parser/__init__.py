@@ -58,7 +58,7 @@ def parse_coordinates_pm(fn):
     """
 
     if not os.path.exists(fn):
-        fn = f'{pfx}o.coordinates_pm'
+        fn = f'{fn}o.coordinates_pm'
 
     with FortranFile(fn,'r') as fin:
         nn = fin.read_ints()[0]
@@ -115,7 +115,7 @@ def parse_elements_pm(fn):
         zone = fin.read_ints()
 
     inc.resize(ne,nln)
-    inc = np.add(inc,-1)
+    np.add(inc,-1,out=inc)
 
     return OrderedDict( [
             ('nln',nln),
@@ -132,7 +132,9 @@ def parse_coordinates_frac(fn):
         1. nnfrac: Total number of fracture nodes (int4)
         2. frac_scheme: 0 for common node or 1 for dual node (int4)
         3. link_frac2pm(i), i=1,nnfrac: Fracture node to PM node mapping (int4)
+            *0-based indices returned.*
         4. link_pm2frac(i), i=1,nn: PM node to fracture node mapping (int4)
+            *0-based indices returned.*
     """
 
     if not os.path.exists(fn):
@@ -144,6 +146,9 @@ def parse_coordinates_frac(fn):
         frac_scheme = fin.read_ints()[0] 
         link_frac2pm = fin.read_ints()
         link_pm2frac = fin.read_ints()
+
+    np.add(link_frac2pm,-1,out=link_frac2pm)
+    np.add(link_pm2frac,-1,out=link_pm2frac)
 
     return OrderedDict( [
             ('nnfrac',nnfrac),
@@ -168,7 +173,7 @@ def parse_elements_frac(fn):
     """
 
     if not os.path.exists(fn):
-        fn = f'{pfx}o.elements_frac'
+        fn = f'{fn}o.elements_frac'
 
     with FortranFile(fn,'r') as fin:
         nln = fin.read_ints()[0]
@@ -179,9 +184,9 @@ def parse_elements_frac(fn):
         ap = fin.read_reals()
 
     inc.resize(nfe,nln)
-    inc = np.add(inc,-1)
+    np.add(inc,-1,out=inc)
 
-    face_map.resize(2,nln)
+    face_map.resize(nfe,2)
 
     return OrderedDict( [
             ('nln',nln),
@@ -204,7 +209,7 @@ def _parse(fn, dtype, shape=None):
                 interperet the data as this type
 
             shape : tuple
-                reshape the data to a numpy.ndarray of this size, if provided
+                resize the data to a numpy.ndarray of this size, if provided
     """
     with FortranFile(fn,'r') as fin:
         ts = fin.read_ints(dtype=np.byte)
