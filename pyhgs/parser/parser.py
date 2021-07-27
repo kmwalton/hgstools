@@ -48,10 +48,10 @@ if __name__ == '__main__':
         default=0,
         help='Increase verbosity.',
         )
-    argp.add_argument('FILE_NAME',
-        help='The name of the file to parse')
     # TODO add output filename
     # TODO add pickle vs text spew option
+    argp.add_argument('FILE_NAME',
+        help='The name of the file to parse')
     args = argp.parse_args()
 
     plogger = logging.getLogger('pyhgs.parser')
@@ -67,10 +67,16 @@ if __name__ == '__main__':
     fdata = None
     try:
         fdata = parse(args.FILE_NAME)
-    else:
+    except Exception as e:
+        print(e,file=sys.stderr)
         sys.exit(1)
 
     # TODO print unabridged arrays
-    pprint.pprint(fdata)
+    for k in fdata:
+        ss=f''
+        if hasattr(fdata[k],'shape') and len(str(fdata[k].shape))>2:
+            ss = f' shape={fdata[k].shape}'
+        print(f'{k}{ss}:\n{fdata[k]}')
+
     sys.exit(0)
 
