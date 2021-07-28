@@ -19,7 +19,7 @@ args = argp.parse_args()
 
 with open(args.FILE_OUT, 'wb') as fout:
     with open(args.FILE_IN, 'rb') as fin:
-        fin.seek(89)
+        fin.seek(88)
         fout.write(fin.read())
 
 sys.exit(0)
