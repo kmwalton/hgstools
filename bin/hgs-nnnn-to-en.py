@@ -19,7 +19,10 @@ args = argp.parse_args()
 
 with open(args.FILE_OUT, 'wb') as fout:
     with open(args.FILE_IN, 'rb') as fin:
+        fin.seek(4)
+        time = bytes(fin.read(80)).decode('UTF-8').strip()
         fin.seek(88)
         fout.write(fin.read())
 
+print(f'{args.FILE_IN} at t={time} converted successfully.')
 sys.exit(0)
