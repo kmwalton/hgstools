@@ -183,7 +183,8 @@ def parse_elements_frac(fn):
         face_map = fin.read_ints()
         ap = fin.read_reals()
 
-    inc.resize(nfe,nln)
+    inc = np.reshape(inc,(nln,nfe),order='F').T
+    #inc = np.reshape(inc, (nfe,nln)) # equivalent?
     np.add(inc,-1,out=inc)
 
     face_map.resize(nfe,2)
@@ -315,7 +316,6 @@ def _is_fs_case_sensitive():
     return(_is_fs_case_sensitive.case_sensitive)
 
 _file_to_parser_dict = {
-
     'o.coordinates_pm':parse_coordinates_pm,
     'o.elements_pm':parse_elements_pm,
     'o.coordinates_frac':parse_coordinates_frac,
