@@ -4,6 +4,7 @@ main method herein will dump a binary file to console output.
 """
 
 import sys
+import os
 import re
 import argparse
 import pprint
@@ -39,6 +40,50 @@ class ParserHGSEcoFile:
             )
 
 
+class GrokParser():
+
+    def __init__(self,prefix=''):
+        """
+            Arguments:
+                prefix : str
+                    A prefix, or path\prefix, combined.
+                    Or the empty string will look for the prefix in batch.pfx
+        """
+        if not prefix:
+            with open('batch.pfx','r') as batchfin:
+                self.dir = '.'
+                self.pfx = batchfin.readline().strip()
+        else:
+            self.dir = os.path.dirname(prefix)
+            self.pfx = os.path.basename(prefix)
+            if self.pfx.lower().endswith('.grok'):
+                self.pfx = self.pfx[:-5]
+
+        self.grokfn = os.path.join(self.dir,f'{self.pfx}.grok')
+
+        # TODO
+        #   make a line number+file index for keeping track of includes
+        with open(self.grokfn,'r') as fin:
+            self._groktxt = fin.read()
+
+        inc_fn = list( re.findall(r'include\s+(\S+)',self._groktxt,
+                    flags=re.I|re.MULTILINE) )
+
+        self._includes = dict((m,'',) for m in inc_fn)
+
+        #for fn in self._includes:
+        #    with open(fn,'r') as fin:
+        #        self._includes[fn] = fin.read()
+        
+    def __str__(self):
+        s = f'{self.grokfn}'
+        if self._includes:
+            s += ' with includes: '+', '.join(self._includes.keys())
+        return s
+
+    def get(self, what):
+        return None
+
 def _parse_print_binary(fn):
 
     fdata = parse(fn)
@@ -56,6 +101,10 @@ def _parse_print_binary(fn):
         # data
         print(f'{k}{ss}:\n{fdata[k]}')
   
+def _parse_print_grok(fn):
+    gp = GrokParser(fn)
+    print(gp)
+
 if __name__ == '__main__':
 
     argp = argparse.ArgumentParser()
@@ -91,7 +140,12 @@ if __name__ == '__main__':
     except RuntimeError as e:
         errmsg = str(e)
 
-    for k in fdata:
+    if errmsg:
+        try:
+            _parse_print_grok(args.FILE_NAME)
+            errmsg = '' # success flag
+        except Exception as e:
+            errmsg += '\n\n' + str(e)
 
     if errmsg:
         print(errmsg, file=sys.stderr)
