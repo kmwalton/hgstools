@@ -39,6 +39,22 @@ class ParserHGSEcoFile:
             )
 
 
+def _parse_print_binary(fn):
+
+    fdata = parse(fn)
+
+    for k in fdata:
+        # header line
+        ss=f''
+        if hasattr(fdata[k],'shape') and len(str(fdata[k].shape))>2:
+            ss = f' shape={fdata[k].shape}'
+
+        # options
+        if args.unabridged:
+            np.set_printoptions(threshold=np.inf)
+
+        # data
+        print(f'{k}{ss}:\n{fdata[k]}')
   
 if __name__ == '__main__':
 
@@ -69,26 +85,18 @@ if __name__ == '__main__':
         plogger.setLevel(logging.INFO)
         
 
-    fdata = None
+    errmsg = ''
     try:
-        fdata = parse(args.FILE_NAME)
-    except Exception as e:
-        print(e,file=sys.stderr)
-        sys.exit(1)
+        _parse_print_binary(args.FILE_NAME)
+    except RuntimeError as e:
+        errmsg = str(e)
 
     for k in fdata:
 
-        # header line
-        ss=f''
-        if hasattr(fdata[k],'shape') and len(str(fdata[k].shape))>2:
-            ss = f' shape={fdata[k].shape}'
+    if errmsg:
+        print(errmsg, file=sys.stderr)
+        sys.exit(1)
 
-        # options
-        if args.unabridged:
-            np.set_printoptions(threshold=np.inf)
-
-        # data
-        print(f'{k}{ss}:\n{fdata[k]}')
 
     sys.exit(0)
 
