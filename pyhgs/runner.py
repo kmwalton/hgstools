@@ -84,6 +84,9 @@ class HGSToolChainRun():
 
         os.chdir(owd)
 
+        self._t_start = 0
+        self._t_end = len(self._tool_chain)
+
     def check_tools(self):
         """Check file and directory read/write/execute status.
 
@@ -125,11 +128,85 @@ class HGSToolChainRun():
             return (0, msgs)
         return (1, msgs)
 
+    def set_start(self,val):
+        """Sets the starting tool in the chain
+
+        Arguments:
+            val : str or int
+                if int, interpret this as the index
+                if str, search for a tool that matches
+        """
+        if not val:
+            return
+
+        istart = 0
+        try:
+            istart=int(val)
+        except ValueError:
+            # try string search
+            istart = -1
+            for i,t in enumerate(self._tool_chain):
+                tstr = ' '.join(t)
+                if val in tstr:
+                    istart = i
+                    break
+        else:
+            if istart < 0:
+                raise RuntimeError('Cannot have negative start index')
+
+        if istart < 0:
+            raise RuntimeError(f'Tool {val} not found in the chain.')
+
+        if istart > self._t_end-1:
+            raise RuntimeError('Cannot have starting tool > ending tool')
+
+        self._t_start = istart
+
+
+    def set_end(self,val):
+        """Sets the ending tool in the chain
+
+        Arguments:
+            val : str or int
+                if int, interpret this as the index
+                if str, search for a tool that matches
+        """
+        if not val:
+            return
+
+        iend = 0
+        try:
+            iend=int(val)
+        except ValueError:
+            # try string search
+            iend = -1
+            for i,t in reversed(list(enumerate(self._tool_chain))):
+                tstr = ' '.join(t)
+                if val in tstr:
+                    iend = i
+                    break
+        else:
+            if iend < 0:
+                raise RuntimeError('Cannot have negative end index')
+            if iend >= len(self._tool_chain)-1:
+                raise RuntimeError('Cannot have end index > number of tools')
+
+        if iend < 0:
+            raise RuntimeError(f'Tool {val} not found in the chain.')
+
+        if self._t_start > iend:
+            raise RuntimeError('Cannot have ending tool < starting tool')
+
+        # adopt end+1 convention
+        self._t_end = iend+1
 
     def __str__(self):
         toolstrs = []
         for i,t in enumerate(self._tool_chain):
-            toolstrs.append( f'{i}) '+' '.join(t) )
+            skipstr = 'SKIPPED '
+            if self._t_start <= i < self._t_end:
+                skipstr = ''
+            toolstrs.append( f'{i}) {skipstr}'+' '.join(t) )
 
         return 'Hydrogeosphere tool chain will run simulation ' +\
             f'{self.prefix} in directory {self.sim_dir}:\n' +\
