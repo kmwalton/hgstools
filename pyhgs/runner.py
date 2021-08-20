@@ -26,21 +26,43 @@ class _Tee(object):
 
 
 
-def _find_pprocessing(dpfx='.',fpfx='pre'):
-    """Return a sorted list of executable files matching the name convention"""
-    if fpfx not in ['pre','post']:
+def _list_pprocessing(fpfx='pre',dpfx='.',add_python=True):
+    """Return a list of executables matching the name convention.
+
+        Executables are sorted alphanumerically by file name.
+
+        The executable is actually a list of of command line parameters that are
+        useful in calls to os.subprocess
+    """
+    if fpfx not in ('pre','post'):
         raise ValueError('fpfx must be "pre" or "post"')
 
-    return list( os.path.basename(f)
+    names = sorted( ( os.path.basename(f)
             for f in glob.glob(os.path.join(dpfx,f'{fpfx}process*'))
             if os.access(f,os.X_OK)
-        ).sort()
+        ) )
+
+    ret = []
+
+    if add_python:
+        pyexe = shutil.which('python')
+        for n in names:
+            if n.lower().endswith('.py'):
+                ret.append( [ pyexe, n, ] )
+            else:
+                ret.append( [ n, ] )
+
+        return ret
+
+    ret = [ [n,] for n in names ]
+
+    return ret
 
 class HGSToolChainRun():
     """Run the Hydrogeosphere tool chain"""
 
     def __init__(self, sim_dir):
-    
+
         owd = os.getcwd()
         os.chdir(sim_dir)
 
@@ -49,11 +71,11 @@ class HGSToolChainRun():
             self.prefix = fin.read().strip().split()[0:]
 
         # put pre- and postprocessing commands into TOOL_CHAIN
-        self.tool_chain = _find_pprocessing('','pre') \
-            + [ shutil.which('grok'),
-                shutil.which('phgs'),
-                shutil.which('hsplot'), ] \
-            + _find_pprocessing('','post')
+        self._tool_chain = _list_pprocessing('pre') \
+            + list(
+                ( [shutil.which(exe),]
+                  for exe in ('grok','phgs','hsplot')) ) \
+            + _list_pprocessing('post')
 
 
         os.chdir(owd)
@@ -67,7 +89,7 @@ class HGSToolChainRun():
 
         """
         owd = os.getcwd()
-        os.chdir(sim_dir)
+        os.chdir(self.sim_dir)
 
         msgs = []
         allOk = True
@@ -80,11 +102,18 @@ class HGSToolChainRun():
             msgs.append(f'False. Cannot write files in {self.sim_dir}.')
             allOk &= False
 
-        for n,p in enumerate(self.tool_chain):
-            ok = os.access(p, os.X_OK)
-            allOk &= ok
+        for n,p in enumerate(self._tool_chain):
+            tmsg = 'SKIPPED'
+
+            if self._t_start <= n < self._t_end:
+                ok = os.access(p[0], os.X_OK)
+                allOk &= ok
+                tmsg = f'{"OK" if ok else "NOT OK"}'
+
             itemstr = f'{n})'
-            msgs.append( f'{itemstr:<4} {ok:5} {p}'
+            clstr = ' '.join(p)
+            msgs.append(
+                f'{itemstr:<4} {tmsg:7} {clstr}' )
 
         os.chdir(owd)
 
@@ -94,7 +123,11 @@ class HGSToolChainRun():
 
 
     def __str__(self):
-        return 'Hydrogeosphere tool chain will run simulation '\
-            f'{self.prefix} in directory {self.sim_dir}:'
-            '\n'.join( f'{n}) {p}' for n,p in enumerate(self.tool_chain) )
+        toolstrs = []
+        for i,t in enumerate(self._tool_chain):
+            toolstrs.append( f'{i}) '+' '.join(t) )
+
+        return 'Hydrogeosphere tool chain will run simulation ' +\
+            f'{self.prefix} in directory {self.sim_dir}:\n' +\
+            '\n'.join(toolstrs)
 
