@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Launches the extended Hydrogeosphere toolchain.
 
 Basic Toolchain:
@@ -19,7 +19,6 @@ import sys
 import os
 import glob
 import argparse
-import subprocess
 
 from pyhgs.runner import HGSToolChainRun
 
