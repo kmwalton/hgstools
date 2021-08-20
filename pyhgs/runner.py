@@ -4,6 +4,8 @@
 import os
 import glob
 import shutil
+import subprocess
+import datetime
 
 class _Tee(object):
     """https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
@@ -22,8 +24,6 @@ class _Tee(object):
         self.stdout.write(data)
     def flush(self):
         self.file.flush()
-
-
 
 
 def _list_pprocessing(fpfx='pre',dpfx='.',add_python=True):
@@ -67,6 +67,7 @@ class HGSToolChainRun():
         os.chdir(sim_dir)
 
         self.sim_dir = sim_dir
+        self.invoke_time = datetime.datetime.now()
 
         try:
             self.prefix = open('batch.pfx','r').read().strip()
@@ -200,6 +201,54 @@ class HGSToolChainRun():
         # adopt end+1 convention
         self._t_end = iend+1
 
+    def run(self):
+        """Run the toolchain
+
+        All console output is passed through.
+        """
+
+        consolefn = 'console.txt'
+        returncode = 0
+        errmsgs = ''
+
+        with open(consolefn,'wa') as fout:
+            print('\n'+80*'='+f'\n{self!s}\n',file=fout)
+
+        for tool_args in self._tool_chain:
+
+            outputtee = _Tee(consolefn,'wa')
+
+            try:
+                subprocess.run(
+                    tool_args,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    check=True,
+                )
+            except CalledProcessError as e:
+                returncode = e.returncode
+            except Exception as e:
+                errmsgs = str(e)
+                returncode = 1 # signal fail
+            
+            del outputtee
+
+            if returncode != 0:
+                break
+
+            with open(consolefn,'r') as console:
+                pass
+                # look for other ways that this may have failed. Sometimes
+                # HGS has exit status of 0 (successs) but a failure message
+                # in the console's text
+                
+        if returncode != 0:
+            print( f'\nFAILED: HGS tool chain for {self.prefix} '\
+                f'in {self.sim_dir}.\n{errmsgs}', file=sys.stderr)
+                
+        return returncode
+
     def __str__(self):
         toolstrs = []
         for i,t in enumerate(self._tool_chain):
@@ -208,7 +257,9 @@ class HGSToolChainRun():
                 skipstr = ''
             toolstrs.append( f'{i}) {skipstr}'+' '.join(t) )
 
-        return 'Hydrogeosphere tool chain will run simulation ' +\
-            f'{self.prefix} in directory {self.sim_dir}:\n' +\
-            '\n'.join(toolstrs)
+        return 'Hydrogeosphere tool chain will run simulation ' \
+            + f'{self.prefix} ({self.invoke_time!s} ' \
+            + f'in directory {self.sim_dir}:\n' \
+            + '\n'.join(toolstrs)
+
 

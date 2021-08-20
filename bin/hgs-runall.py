@@ -69,10 +69,12 @@ if __name__ == '__main__':
 
     if args.dry_run:
         print(tc)
-        (retval,msgs) = tc.check_tools()
-        if retval != 0:
+        (returncode,msgs) = tc.check_tools()
+        if returncode != 0:
             print( 'Error with one or more executables in the toolchain:\n' \
                 + '\n'.join(msgs), file=sys.stderr )
         sys.exit(retval)
 
-    
+    returncode = tc.run()
+
+    sys.exit(returncode)
