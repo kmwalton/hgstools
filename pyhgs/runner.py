@@ -1,6 +1,7 @@
 """Classes to support executing portions of the Hydrogeosphere toolchain
 """
 
+import sys
 import os
 import glob
 import shutil
@@ -25,8 +26,20 @@ class _Tee(object):
     def flush(self):
         self.file.flush()
 
+EXTENSION_RUNNER_HINTS = {
+    '.ps1': [shutil.which('powershell'),'-NonInteractive','-File',],
+    '.py': [shutil.which('python'),],
+}
+"""Dictionary of file extensions with some runners and extra arguments needed by
+subprocess.run to invoke these correctly.
+"""
 
-def _list_pprocessing(fpfx='pre',dpfx='.',add_python=True):
+
+def _list_pprocessing(
+            fpfx='pre',
+            dpfx='.',
+            use_extension_hints=True,
+        ):
     """Return a list of executables matching the name convention.
 
         Executables are sorted alphanumerically by file name.
@@ -44,17 +57,15 @@ def _list_pprocessing(fpfx='pre',dpfx='.',add_python=True):
 
     ret = []
 
-    if add_python:
-        pyexe = shutil.which('python')
+    if use_extension_hints:
         for n in names:
-            if n.lower().endswith('.py'):
-                ret.append( [ pyexe, n, ] )
+            ext = os.path.splitext(n)[1].lower()
+            if ext in EXTENSION_RUNNER_HINTS:
+                ret.append( EXTENSION_RUNNER_HINTS[ext] + [n,] )
             else:
                 ret.append( [ n, ] )
-
-        return ret
-
-    ret = [ [n,] for n in names ]
+    else:
+        ret = [ [n,] for n in names ]
 
     return ret
 
@@ -211,26 +222,28 @@ class HGSToolChainRun():
         returncode = 0
         errmsgs = ''
 
-        with open(consolefn,'wa') as fout:
+        with open(consolefn,'a') as fout:
             print('\n'+80*'='+f'\n{self!s}\n',file=fout)
 
-        for tool_args in self._tool_chain:
+        for tool_args in self._tool_chain[self._t_start:self._t_end]:
 
-            outputtee = _Tee(consolefn,'wa')
+            outputtee = _Tee(consolefn,'a')
 
             try:
-                subprocess.run(
-                    tool_args,
+                cp = subprocess.run(
+                    args=tool_args,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     check=True,
                 )
-            except CalledProcessError as e:
-                returncode = e.returncode
+            #except CalledProcessError as e:
+            #    returncode = e.returncode
             except Exception as e:
                 errmsgs = str(e)
                 returncode = 1 # signal fail
+            else:
+                returncode = cp.returncode
             
             del outputtee
 
@@ -244,10 +257,13 @@ class HGSToolChainRun():
                 # in the console's text
                 
         if returncode != 0:
-            print( f'\nFAILED: HGS tool chain for {self.prefix} '\
-                f'in {self.sim_dir}.\n{errmsgs}', file=sys.stderr)
+            print( f'FAILED: HGS tool chain for {self.getIdStr()} '\
+                + errmsgs, file=sys.stderr)
                 
         return returncode
+
+    def getIdStr(self):
+        return f'{self.prefix} in {self.sim_dir} @ {self.invoke_time!s}'
 
     def __str__(self):
         toolstrs = []
@@ -258,8 +274,7 @@ class HGSToolChainRun():
             toolstrs.append( f'{i}) {skipstr}'+' '.join(t) )
 
         return 'Hydrogeosphere tool chain will run simulation ' \
-            + f'{self.prefix} ({self.invoke_time!s} ' \
-            + f'in directory {self.sim_dir}:\n' \
+            + f'{self.getIdStr()}\n' \
             + '\n'.join(toolstrs)
 
 
