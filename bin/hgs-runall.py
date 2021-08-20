@@ -40,9 +40,32 @@ if __name__ == '__main__':
          'directory'
         )
 
+    argp.add_argument('-sw', '--start-with',
+        type=str,
+        default=None,
+        help="""Start the toolchain with tool N. See --dry-run for integer
+        index values for each tool, or specify a word matching a tool name, like
+        'grok' or 'postprocess'. The chain will begin with the matching tool with
+        the lowest number.
+        """
+        )
+
+    argp.add_argument('-ew', '--end-with',
+        type=str,
+        default=None,
+        help="""End the toolchain after tool N finishes. See --dry-run for
+        index values for each tool, or specify a word matching a tool name, like
+        'hsplot' or 'preprocess'. The chain will end after the matching tool with
+        the highest number.
+        """
+        )
+
     args = argp.parse_args()
 
     tc = HGSToolChainRun(args.sim_dir)
+
+    tc.set_start(args.start_with)
+    tc.set_end(args.end_with)
 
     if args.dry_run:
         print(tc)
