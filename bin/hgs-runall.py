@@ -73,7 +73,7 @@ if __name__ == '__main__':
         if returncode != 0:
             print( 'Error with one or more executables in the toolchain:\n' \
                 + '\n'.join(msgs), file=sys.stderr )
-        sys.exit(retval)
+        sys.exit(returncode)
 
     returncode = tc.run()
 
