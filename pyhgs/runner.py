@@ -67,8 +67,12 @@ class HGSToolChainRun():
         os.chdir(sim_dir)
 
         self.sim_dir = sim_dir
-        with open('batch.pfx','r') as fin:
-            self.prefix = fin.read().strip().split()[0:]
+
+        try:
+            self.prefix = open('batch.pfx','r').read().strip()
+        except:
+            os.chdir(owd)
+            raise
 
         # put pre- and postprocessing commands into TOOL_CHAIN
         self._tool_chain = _list_pprocessing('pre') \
