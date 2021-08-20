@@ -35,8 +35,10 @@ if __name__ == '__main__':
 
     argp.add_argument('--dry-run',
         action='store_true',
-        help='List the steps in the toolchain. Verify executability of each '\
-         'step, check file read/write permissions, etc.'
+        help='List the steps in the toolchain and verify executability of each '\
+         'tool; check file read and write permissions in the simulation ' \
+         'directory'
+        )
 
     args = argp.parse_args()
 
@@ -46,6 +48,8 @@ if __name__ == '__main__':
         print(tc)
         (retval,msgs) = tc.check_tools()
         if retval != 0:
-            print( '\n'.join(msgs), file=sys.stderr )
+            print( 'Error with one or more executables in the toolchain:\n' \
+                + '\n'.join(msgs), file=sys.stderr )
         sys.exit(retval)
+
     
