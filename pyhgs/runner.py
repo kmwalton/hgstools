@@ -5,7 +5,8 @@ import sys
 import os
 import glob
 import shutil
-import subprocess
+#import subprocess
+import asyncio
 import datetime
 
 class _Tee(object):
@@ -25,6 +26,7 @@ class _Tee(object):
         self.stdout.write(data)
     def flush(self):
         self.file.flush()
+        self.stdout.flush()
 
 EXTENSION_RUNNER_HINTS = {
     '.ps1': [shutil.which('powershell'),'-NonInteractive','-File',],
@@ -213,6 +215,11 @@ class HGSToolChainRun():
         self._t_end = iend+1
 
     def run(self):
+        """Run the toolchain and return the exit code"""
+
+        return asyncio.run(self._run())
+
+    async def _run(self):
         """Run the toolchain
 
         All console output is passed through.
@@ -223,27 +230,53 @@ class HGSToolChainRun():
         errmsgs = ''
 
         with open(consolefn,'a') as fout:
-            print('\n'+80*'='+f'\n{self!s}\n',file=fout)
+            msg = '\n'+80*'='+f'\n{self!s}\n'
+            print(msg,file=fout)
+            print(msg)
 
-        for tool_args in self._tool_chain[self._t_start:self._t_end]:
+        for i,tool_args in enumerate(
+                self._tool_chain[self._t_start:self._t_end],
+                start=self._t_start):
 
             outputtee = _Tee(consolefn,'a')
 
+            # tool starting message
+            outputtee.write(
+                  80*'='+f'\n{i}) {" ".join(tool_args)}\n'
+                  + f'at {datetime.datetime.now()}\n\n'
+                  )
+
             try:
-                cp = subprocess.run(
-                    args=tool_args,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    check=True,
+                proc = await asyncio.subprocess.create_subprocess_exec(
+                    *tool_args,
+                    #stdin=subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    limit=256,
+                    #check=True,
                 )
-            #except CalledProcessError as e:
-            #    returncode = e.returncode
+
             except Exception as e:
                 errmsgs = str(e)
                 returncode = 1 # signal fail
+
             else:
-                returncode = cp.returncode
+                # poll the output streams and return code
+                while True:
+                    (pstdout, pstderr) = await proc.communicate()
+                    # pstderr shoulde be '' from PIPE above
+                    outputtee.write(pstdout.decode('ascii'))
+
+                    if proc.returncode is not None:
+                        break
+
+                # handle any final output
+                (pstdout, pstderr) = await proc.communicate()
+                outputtee.write(pstdout.decode('ascii'))
+
+                await proc.wait()
+
+                returncode = proc.returncode
             
             del outputtee
 
@@ -257,8 +290,10 @@ class HGSToolChainRun():
                 # in the console's text
                 
         if returncode != 0:
-            print( f'FAILED: HGS tool chain for {self.getIdStr()} '\
-                + errmsgs, file=sys.stderr)
+            msg =  f'FAILED: HGS tool chain for {self.getIdStr()}'
+            if errmsgs:
+                msg += ' '+errmsgs
+            print(msg, file=sys.stderr)
                 
         return returncode
 
