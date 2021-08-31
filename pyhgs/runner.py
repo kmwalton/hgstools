@@ -297,7 +297,7 @@ class HGSToolChainRun():
                 # in the console's text
                 
         if returncode != 0:
-            msg =  f'FAILED: HGS tool chain for {self.getIdStr()}'
+            msg =  f'FAILED: HGS tool chain for {self.getIdStr()}\n'
             if errmsgs:
                 msg += ' '+errmsgs
             print(msg, file=sys.stderr)
