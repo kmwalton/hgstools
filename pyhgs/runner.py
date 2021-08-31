@@ -8,6 +8,13 @@ import shutil
 import subprocess
 import datetime
 
+from pyhgs._py_powershell_runner import PyPowerShellRunner
+
+__all__ = [
+    'PyPowerShellRunner',
+    'HGSToolChainRun',
+]
+
 class _Tee(object):
     """https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
         http://mail.python.org/pipermail/python-list/2007-May/438106.html
