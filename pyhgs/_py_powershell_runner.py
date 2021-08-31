@@ -3,6 +3,8 @@ import os
 import subprocess
 from tempfile import SpooledTemporaryFile
 
+__VERBOSE__=0
+
 class PyPowerShellRunner:                                              #{{{
     """Run HydroGeoSphere toolchain --- special case for 
         
