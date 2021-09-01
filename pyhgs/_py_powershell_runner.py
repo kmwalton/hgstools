@@ -18,14 +18,21 @@ class PyPowerShellRunner:                                              #{{{
         self.preexistingfiles = set(os.listdir(simdir))
 
 
-    def eraseRunOutputs(self):
-        """Erase any new files in the simulation directory
+    def eraseRunOutputs(self, keep=[]):
+        """Erase simulation output files.
 
-        'New' means any file that did not exist when this object was created.
+        This erases any files in the simulation directory that did not exist
+        prior to the creation of this object.
+
+        Arguments:
+            keep : list-like
+                A list of file names to keep; these will not be deleted, even if
+                they did not exist when this object was instantiated.
+
         """
         methodInvocationDir = os.getcwd()
         os.chdir(self.simdir)
-        for f in set(os.listdir()) - self.preexistingfiles:
+        for f in set(os.listdir()) - self.preexistingfiles - set(keep):
             os.remove(f)
         os.chdir(methodInvocationDir)
     
