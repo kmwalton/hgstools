@@ -27,6 +27,7 @@ import os
 import re
 import argparse
 import shutil
+from os.path import basename,join
 from glob import glob
 from itertools import chain
 from math import log10
@@ -84,6 +85,7 @@ p.add_argument('globs',
         default=[],
         help='File names or glob-style strings specifying extra files to copy',
         )
+p.add_argument('src', type=str, help='The source directory')
 p.add_argument('dest', type=str, help='The destination directory')
 
 args = p.parse_args()
@@ -113,15 +115,18 @@ includePatterns = list(
     ) )
 del include_regex
 
-includeFiles = list( chain(*map(glob, args.globs)))
+includeFiles = set(
+    basename(f) for f in
+    chain(*map(glob, (join(args.src,g) for g in
+        args.globs))))
 
 # make list of files to be copied
-fileList = list(
+fileList = set( os.path.join(args.src,fn) for fn in
     filter(
         lambda f:
             matchesAny(f,includePatterns,includeFiles)
             and not matchesAny(f, excludePatterns, []),
-        os.listdir('.') ) )
+        os.listdir(args.src) ) )
 
 
 #
