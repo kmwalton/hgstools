@@ -20,8 +20,8 @@ import shlex
 import time
 import glob
 import subprocess
+import datetime
 from itertools import chain
-from datetime import datetime
 from multiprocessing import Pool
 from math import ceil,log10
 
@@ -43,7 +43,7 @@ class HGS_MCRunner():
 
     def __init__(self, copy_command, tc_command, base_dir):
 
-        self.RUN_START = datetime.now()
+        self.RUN_START = datetime.datetime.now()
         """Time of object creation. Assuming that one HGS_MCRunner object is
         made per monte carlo run, this timestamp can be a unique identifier for
         this run."""
@@ -136,7 +136,11 @@ if __name__ == '__main__':
 
     ap = argparse.ArgumentParser()
 
-    ap.add_argument( 'nRuns', type=int )
+    ap.add_argument( 'n_inst',
+        metavar='N_INSTANCES',
+        type=int,
+        help='The number of MC instances to produce',
+        )
 
     ap.add_argument( 'base_sim', type=str,
         help="Directory containing the base simulation inputs."
@@ -148,6 +152,7 @@ if __name__ == '__main__':
         )
 
     ap.add_argument( '--num-processes', default=1, type=int,
+        metavar='N',
         help="The maximum number of concurrent processes to use."
         )
 
@@ -214,3 +219,5 @@ if __name__ == '__main__':
     else:
         for r in mc.gen_mc_instances(args.nRuns):
             mc.run_instance(r)
+
+    sys.exit(0)
