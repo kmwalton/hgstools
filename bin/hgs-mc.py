@@ -215,9 +215,9 @@ if __name__ == '__main__':
     # run
     if args.num_processes > 1:
         with Pool(args.num_processes) as p:
-            p.map(mc.run_instance, mc.gen_mc_instances(args.nRuns))
+            p.map(mc.run_instance, mc.gen_mc_instances(args.n_inst))
     else:
-        for r in mc.gen_mc_instances(args.nRuns):
+        for r in mc.gen_mc_instances(args.n_inst):
             mc.run_instance(r)
 
     sys.exit(0)
