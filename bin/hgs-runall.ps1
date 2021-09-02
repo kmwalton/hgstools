@@ -25,7 +25,8 @@ function Run-Processing($pattern) {
    foreach ( $sc in $ssc ) {
       # check executable status
       if( get-command $sc -ErrorAction SilentlyContinue ) {
-         echo "--- Running $((get-item $sc).Name) ---"
+         $short_sc="$((get-item $sc).Name)"
+         echo "--- Running $short_sc ---"
 
          if ( $sc -match '.py$' ) {
             # prepend 'python' so the correct interpreter is launched
@@ -37,10 +38,10 @@ function Run-Processing($pattern) {
          }
 
          if( $LastExitCode -eq 0 ) {
-            echo "--- normal exit, $sc ---"
+            echo "--- Normal exit: $short_sc ---"
          }
          else {
-            echo "--- Failed: $((get-item $sc).Name) ---"
+            echo "--- Failed: $short_sc ---"
             if ( $ssc.length -gt 1 ) {
                echo "--- stopping $($pattern) script sequence ==="
             }
