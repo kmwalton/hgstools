@@ -242,7 +242,7 @@ else {
 # Clean up annoying files
 # move all <prefix>o.*.NNNN files
 # remove scratch_ files
-echo "`n--- Starting output file re-organization $(date) ---`n"
-mkdir -Force "$($prob)o.NNNN" | Out-Null
-mv -Force "$($prob)o.*.[0-9][0-9][0-9][0-9]" "$($prob)o.NNNN"
+#echo "`n--- Starting output file re-organization $(date) ---`n"
+#mkdir -Force "$($prob)o.NNNN" | Out-Null
+#mv -Force "$($prob)o.*.[0-9][0-9][0-9][0-9]" "$($prob)o.NNNN"
 del scratch_*
