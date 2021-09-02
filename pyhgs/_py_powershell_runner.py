@@ -66,8 +66,8 @@ class PyPowerShellRunner:                                              #{{{
             cp = subprocess.run(
                 [ 'powershell.exe', self.exe, ] + self.args,
                 encoding=sys.stdout.encoding,
-                stdout=outObj,
-                stderr=errObj,
+                #stdout=outObj,
+                #stderr=errObj,
                 timeout=self.timeout,
                 check=True
                 )
