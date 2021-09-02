@@ -1,6 +1,12 @@
 """Classes to support executing portions of the Hydrogeosphere toolchain
 """
 
+
+"""TODO:
+Try this for asynchronous pipe reading
+https://stackoverflow.com/questions/375427/a-non-blocking-read-on-a-subprocess-pipe-in-python
+"""
+
 import sys
 import os
 import glob
