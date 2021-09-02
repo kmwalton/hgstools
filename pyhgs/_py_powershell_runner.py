@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import shutil
 from tempfile import SpooledTemporaryFile
 
 __VERBOSE__=0
@@ -33,7 +34,11 @@ class PyPowerShellRunner:                                              #{{{
         methodInvocationDir = os.getcwd()
         os.chdir(self.simdir)
         for f in set(os.listdir()) - self.preexistingfiles - set(keep):
-            os.remove(f)
+            if os.path.isdir(f):
+                shutil.rmtree(f)
+            else:
+                os.remove(f)
+
         os.chdir(methodInvocationDir)
     
 
