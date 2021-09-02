@@ -20,6 +20,7 @@ import shlex
 import time
 import glob
 import subprocess
+import time
 import datetime
 from itertools import chain
 from multiprocessing import Pool
@@ -214,8 +215,20 @@ if __name__ == '__main__':
 
     # run
     if args.num_processes > 1:
-        with Pool(args.num_processes) as p:
-            p.map(mc.run_instance, mc.gen_mc_instances(args.n_inst))
+        results_objs = []
+        with Pool(args.num_processes) as pool:
+            for ii,inst in enumerate(mc.gen_mc_instances(args.n_inst)):
+                results_objs.append(pool.apply_async(mc.run_instance,(inst,)))
+
+                # There is some unknown issue that occurs (in powershell 'batch
+                # file cannot be found') when many (>=4) processes are launced
+                # at the same time. Insert a delay in the first batch of
+                # processes to try to avoid the issue.
+                if ii < args.num_processes:
+                    time.sleep(2)
+
+            results = [r.get() for r in results_objs]
+
     else:
         for r in mc.gen_mc_instances(args.n_inst):
             mc.run_instance(r)
