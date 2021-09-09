@@ -49,11 +49,19 @@ class PyPowerShellRunner:                                              #{{{
         if keep_file and os.path.isfile(keep_file):
             with open(keep_file,'r') as fin:
                 for l in fin.readlines():
+
                     l = l.strip()
+
+                    # ignore blank lines
+                    if not l:
+                        continue
+
                     # check if the filename actually looks like a glob
-                    if re.search(r'[*[?]',l):
+                    elif re.search(r'[*[?]',l):
                         keep.update( fn[len(self.simdir):]
                                 for fn in glob.iglob(os.path.join(simdir,l)))
+
+                    # assume its a regular file name
                     else:
                         keep.update(l)
 
