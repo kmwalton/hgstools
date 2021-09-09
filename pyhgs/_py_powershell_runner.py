@@ -68,7 +68,8 @@ class PyPowerShellRunner:                                              #{{{
         keep.update(self.preexistingfiles)
 
         # scan for items in the keep list that have a directory component.
-        keep.update( d.split(os.sep)[0] for d in keep if os.path.dirname(d) )
+        keep.update( os.path.normpath(d).split(os.sep)[0]
+                for d in keep if os.path.dirname(d) )
 
         fullsimdir = os.path.abspath(simdir)
 
