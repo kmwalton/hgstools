@@ -22,6 +22,7 @@ import glob
 import subprocess
 import time
 import datetime
+import tempfile
 from itertools import chain
 from multiprocessing import Pool
 from math import ceil,log10
@@ -66,14 +67,32 @@ class HGS_MCRunner():
         self.tc_command = tc_command
         """Program and arguments needed to run the tool chain."""
 
-        self.base_sim_dir = base_dir
+        self.base_sim_dirn = base_dir
         """Directory containing base simulation that will be copied to MC
         directories"""
 
         self.keep_file = keep_file
         """Name of a file relative to base_dir that contains a list of files to
         retain in each instance directory."""
-    
+
+        self._bd_tmp = tempfile.TemporaryDirectory(prefix=self.getIdStr,
+                dir=os.path.dirname(os.path.abspath(self.base_sim_dirn)))
+        """tempfile.TemporaryDirectory, adjacent to base_dir, that is a copy of
+        base_dir"""
+
+        self.base_temp_dirn = self._bd_tmp.name
+        """alias to temporary dir name"""
+
+        shutil.copytree(self.base_sim_dirn,self.base_temp_dirn,
+                dirs_exist_ok=True)
+
+
+    def __del__(self):
+        if self._bd_tmp:
+            del self._bd_tmp
+
+
+
     def gen_mc_instances(self, n):
         """
         """
@@ -92,7 +111,7 @@ class HGS_MCRunner():
         # assume last two arguments in the copy command will be the source and
         # target directories
         #import pdb ; pdb.set_trace()
-        cp = subprocess.run(self.copy_command+[self.base_sim_dir,d,])
+        cp = subprocess.run(self.copy_command+[self.base_temp_dirn,d,])
 
         self._instance[d] = cp.returncode == 0
 
