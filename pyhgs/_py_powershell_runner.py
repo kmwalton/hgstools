@@ -6,6 +6,7 @@ import sys
 import os
 import re
 import glob
+import shlex
 import subprocess
 import shutil
 from tempfile import SpooledTemporaryFile
@@ -50,7 +51,7 @@ class PyPowerShellRunner:                                              #{{{
             with open(keep_file,'r') as fin:
                 for l in fin.readlines():
 
-                    l = l.strip()
+                    l = shlex.split(l,comments=True)[0]
 
                     # ignore blank lines
                     if not l:
