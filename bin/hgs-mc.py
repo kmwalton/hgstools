@@ -2,14 +2,13 @@
 """Run Monte Carlo-style realization of a Hydrogeosphere problem
 
 Examples:
-    Run 5 variants on ../base_sim/. Creates ./mc1, ..., ./mc5. 
+    Run 5 variants on ../base_sim/. Creates ./mc1, ..., ./mc5.
     $ python hgs-mc.py 5 ../base_sim
 
 Dependencies:
     - hgs-copy-inputs.py (for copying base_sim)
+    - hgs-runall.ps1 (for running an instance)
     - pre- and post-processing scripts in base_sim to set up a new realization
-
-    - pycf.ancillary.TextManip
 
 """
 import sys
@@ -18,12 +17,9 @@ import argparse
 import shutil
 import shlex
 import time
-import glob
 import subprocess
-import time
 import datetime
 import tempfile
-from itertools import chain
 from multiprocessing import Pool
 from math import ceil,log10
 
@@ -42,8 +38,14 @@ logger.verbose3 = lambda msg : logger.log(logging.INFO-3,msg)
 
 
 class HGS_MCRunner():
+    """Manage and run a batch of HGS instances, Monte Carlo-style."""
 
     def __init__(self, copy_command, tc_command, base_dir, keep_file):
+        """Initialize the runner and make a temporary copy of base_dir.
+
+        This run operates out of a copy of base_dir to avoid errors caused by
+        the user "changing something" during the MC run.
+        """
 
         self.RUN_START = datetime.datetime.now()
         """Time of object creation. Assuming that one HGS_MCRunner object is
@@ -117,9 +119,10 @@ class HGS_MCRunner():
 
         if not self._instance[d]:
             raise RuntimeError(f'Problem setting up {d}')
-        
+
 
     def run_instance(self, d):
+        """Launch an HGS Run instance."""
         self.setup_instance(d)
 
         logger.verbose2(f'Running {d}')
@@ -163,7 +166,7 @@ if __name__ == '__main__':
         )
 
     ap.add_argument( 'base_sim', type=str,
-        help="Directory containing the base simulation inputs."
+        help='Directory containing the base simulation inputs.'
         )
 
     ap.add_argument( '-v', '--verbose', default=1, action='count',
@@ -173,7 +176,7 @@ if __name__ == '__main__':
 
     ap.add_argument( '--num-processes', default=1, type=int,
         metavar='N',
-        help="The maximum number of concurrent processes to use."
+        help='The maximum number of concurrent processes to use.'
         )
 
     ap.add_argument( '--keep-file',
