@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import shutil
 from tempfile import SpooledTemporaryFile
+from itertools import chain
 
 __VERBOSE__=0
 
@@ -28,6 +29,44 @@ class PyPowerShellRunner:                                              #{{{
     def captureRunPreexisting(self):
         self.preexistingfiles = set(os.listdir(self.simdir))
 
+    @staticmethod
+    def read_keep_file(keep_file):
+        """Return a list (string or unexpanded glob filenames) from keep_file.
+
+        Arguments:
+
+            keep_file : str
+                Name of a file that lists filenames or glob-style expressions
+                (on separate lines; one per line) of additional files to keep.
+                Lines may be blank. Python-style comments are allowed.
+                File names or expressions with spaces must be quoted; file names
+                with a '#' character must be escaped by '\#', else the balance
+                of the line will be treated as a comment.
+
+                If no keep files are to be specified in this manner, pass None
+                (default) or a string representing a non-existant or non-readable
+                filename.
+        """
+        exprs = []
+        with open(keep_file,'r') as fin:
+            for l in fin.readlines():
+
+                # split off comments
+                l = shlex.split(l,comments=True)
+
+                if not l:
+                    # ignore blank lines or comment-only lines
+                    continue
+                else:
+                    # grab just the first argument of the line --- users
+                    # bewrare that if you need a space in the expression
+                    # then it will need to be quoted.
+                    l = l[0]
+
+                exprs.append(l)
+
+        return exprs
+
     def eraseRunOutputs(self, keep=[], keep_file=None):
         """Erase simulation output files.
 
@@ -41,48 +80,43 @@ class PyPowerShellRunner:                                              #{{{
                 they did not exist when this object was instantiated.
 
             keep_file : str
-                Name of a file that lists filenames or glob-style expressions
-                (on separate lines) of additional files to keep, or None (or a
-                non-readable filename) if no keep files are to be
-                specified in this manner. 
+                See `PyPowerShellRunner.read_keep_file`.
         """
-        keep = set(keep)
+
+        keep_set = set()
+
+        def deglob(g):
+            # check if the filename actually looks like a glob
+            if re.search(r'[*[?]',g):
+                return list( fn[len(self.simdir)+len(os.sep):]
+                    for fn in glob.iglob(os.path.join(self.simdir,g)))
+            else:
+                return [g,]
+
+        keep_set.update( chain.from_iterable(deglob(x) for x in keep) )
+
         if keep_file and os.path.isfile(keep_file):
-            with open(keep_file,'r') as fin:
-                for l in fin.readlines():
+            keep_set.update( chain.from_iterable(deglob(x)
+                for x in PyPowerShellRunner.read_keep_file(keep_file)) )
 
-                    l = shlex.split(l,comments=True)[0]
-
-                    # ignore blank lines
-                    if not l:
-                        continue
-
-                    # check if the filename actually looks like a glob
-                    elif re.search(r'[*[?]',l):
-                        keep.update( fn[len(self.simdir):]
-                                for fn in glob.iglob(os.path.join(simdir,l)))
-
-                    # assume its a regular file name
-                    else:
-                        keep.update(l)
-
-        keep.update(self.preexistingfiles)
+        keep_set.update(self.preexistingfiles)
 
         # scan for items in the keep list that have a directory component.
-        keep.update( os.path.normpath(d).split(os.sep)[0]
-                for d in keep if os.path.dirname(d) )
+        keep_dirs = list(os.path.normpath(d).split(os.sep)[0]
+                for d in keep if os.path.dirname(d))
+        keep_set.update( keep_dirs )
 
-        fullsimdir = os.path.abspath(simdir)
+        fullsimdir = os.path.abspath(self.simdir)
 
-        for f in sorted(set(os.listdir(simdir)) - keep):
+        for f in sorted(set(os.listdir(self.simdir)) - keep_set):
             fullf = os.path.abspath(os.path.join(self.simdir,f))
-            if os.path.commonprefix(fullf,fullsimdir) != fullsimdir:
+            if os.path.commonprefix([fullf,fullsimdir,]) != fullsimdir:
                 # file/directory not rooted below fsimdir
                 pass
-            elif os.path.isdir(ff):
-                shutil.rmtree(ff)
-            elif os.path.isfile(ff):
-                os.remove(ff)
+            elif os.path.isdir(fullf):
+                shutil.rmtree(fullf)
+            elif os.path.isfile(fullf):
+                os.remove(fullf)
     
 
     def runSim(self):
