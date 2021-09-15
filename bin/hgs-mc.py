@@ -376,6 +376,13 @@ if __name__ == '__main__':
             'file extensions',
         )
 
+    ap.add_argument( '-st' '--start-at',
+        dest='start_at',
+        metavar='I_INSTANCE',
+        default=0,
+        type=int,
+        help='Start at the given instance index number. Default 0.')
+
     args = ap.parse_args()
 
     if args.verbose < 1:
@@ -411,7 +418,7 @@ if __name__ == '__main__':
             sys.exit(-1)
 
     mc = HGS_MCRunner(args.copy_command, args.run_command, args.base_sim,
-            args.keep_file,args.n_inst)
+            args.keep_file, args.n_inst, args.start_at)
 
     mc.run(args.num_processes)
 
