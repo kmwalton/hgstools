@@ -179,33 +179,33 @@ if( test-path *o.dual.dat ) {
 
 ########################################
 # merge the two output files
-if( ($scriptForMerge) -and (test-path *o.frac.dat) ) {
-
-   if( get-command $scriptForMerge -ErrorAction SilentlyContinue ) {
-
-      echo "`n--- Starting $scriptForMerge $(date) ---`n"
-         
-      $tmpf = [System.IO.Path]::GetTempFileName()
-      & $scriptForMerge --of $tmpf
-      $preplotInList = @( $prob+'o.dat' )
-
-      if( $LastExitCode -eq 0 ) {
-         echo "" "--- normal exit, $scriptForMerge ---" ""
-         if( test-path $preplotInList[0] ) { rm $preplotInList[0] }
-         mv $tmpf $preplotInList[0]
-      }
-      else {
-         echo "" "--- failed, $scriptForMerge ---" ""
-         rm $tmpf
-         if( test-path $preplotInList[0] ) { echo "Warning: keeping old $preplotInList[0]" }
-      }
-   }
-   else {
-      $preplotInList += $prob+"o.frac.dat"
-   }
-}
-
-date
+#if( ($scriptForMerge) -and (test-path *o.frac.dat) ) {
+#
+#   if( get-command $scriptForMerge -ErrorAction SilentlyContinue ) {
+#
+#      echo "`n--- Starting $scriptForMerge $(date) ---`n"
+#         
+#      $tmpf = [System.IO.Path]::GetTempFileName()
+#      & $scriptForMerge --of $tmpf
+#      $preplotInList = @( $prob+'o.dat' )
+#
+#      if( $LastExitCode -eq 0 ) {
+#         echo "" "--- normal exit, $scriptForMerge ---" ""
+#         if( test-path $preplotInList[0] ) { rm $preplotInList[0] }
+#         mv $tmpf $preplotInList[0]
+#      }
+#      else {
+#         echo "" "--- failed, $scriptForMerge ---" ""
+#         rm $tmpf
+#         if( test-path $preplotInList[0] ) { echo "Warning: keeping old $preplotInList[0]" }
+#      }
+#   }
+#   else {
+#      $preplotInList += $prob+"o.frac.dat"
+#   }
+#}
+#
+#date
 
 ########################################
 # run scripts or run preplot
@@ -220,23 +220,23 @@ if( Test-Path $postprocessFilePattern ) {
    Run-Processing $postprocessFilePattern
    echo "`n--- postprocessing done $(date) ---`n"
 }
-else {
-   echo "`n--- Starting preplot $(date) ---`n"
-
-   foreach ( $plotin in $preplotInList ) {
-      $plotout = $plotin.substring(0,$plotin.length-3)+"plt"
-      # run preplot to prepare tecplot binary files
-      echo "--- running preplot $plotin $plotout >> $console ---"
-      & preplot $plotin $plotout >> $console
-
-      if( $LastExitCode -eq 0 ) {
-         echo "" "--- preplot: normal exit. Tecplot binary data is in $plotout. ---" ""
-      }
-      else {
-         echo "--- preplot failed. See $console. ---"
-      }
-   }
-}
+#else {
+#   echo "`n--- Starting preplot $(date) ---`n"
+#
+#   foreach ( $plotin in $preplotInList ) {
+#      $plotout = $plotin.substring(0,$plotin.length-3)+"plt"
+#      # run preplot to prepare tecplot binary files
+#      echo "--- running preplot $plotin $plotout >> $console ---"
+#      & preplot $plotin $plotout >> $console
+#
+#      if( $LastExitCode -eq 0 ) {
+#         echo "" "--- preplot: normal exit. Tecplot binary data is in $plotout. ---" ""
+#      }
+#      else {
+#         echo "--- preplot failed. See $console. ---"
+#      }
+#   }
+#}
 
 
 ########################################
