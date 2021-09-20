@@ -330,7 +330,7 @@ class HGS_MCRunner():
         """Return a string with the count of instances in each status category
         """
 
-        s = f'N={self._stop-self._start); ' \
+        s = f'N={self._stop-self._start}; ' \
             f'start..stop={self._start}..{self._stop-1}\n'
 
         counts = dict( (k.value,0) for k in InstanceStatusEnum )
@@ -397,7 +397,7 @@ if __name__ == '__main__':
             'file extensions',
         )
 
-    ap.add_argument( '-st' '--start-at',
+    ap.add_argument( '-st', '--start-at',
         dest='start_at',
         metavar='I_INSTANCE',
         default=0,
