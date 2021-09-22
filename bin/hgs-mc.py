@@ -302,7 +302,7 @@ class HGS_MCRunner():
         else:
             for inst in mc.gen_mc_instances():
                 results.append(
-                        HGS_MCRunner._run_instance, (inst,
+                        HGS_MCRunner._run_instance(inst,
                             self.copy_command, self.base_temp_dirn,
                             self.tc_command,
                             self.keep_file_list,
@@ -333,10 +333,11 @@ class HGS_MCRunner():
         s = f'N={self._stop-self._start}; ' \
             f'start..stop={self._start}..{self._stop-1}\n'
 
-        counts = dict( (k.value,0) for k in InstanceStatusEnum )
+        count = dict( (k.value,0) for k in InstanceStatusEnum )
 
-        for st in self._inst_status[self._start:]:
-            counts[st] += 1
+        for ist in range(self._start,self._stop):
+            st = self._inst_status[ist]
+            count[st] += 1
 
         for k in InstanceStatusEnum:
             if count[k.value]:
