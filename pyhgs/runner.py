@@ -260,13 +260,16 @@ class HGSToolChainRun():
                   )
 
             try:
+                print(f'HELLOOOOOO: {os.environ["PYTHONPATH"]}')
+                import pdb ; pdb.set_trace()
                 proc = await asyncio.subprocess.create_subprocess_exec(
                     *tool_args,
                     #stdin=subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
+                    #stdout=asyncio.subprocess.PIPE,
+                    #stderr=asyncio.subprocess.STDOUT,
                     limit=256,
                     #check=True,
+                    env=os.environ.__dict__,
                 )
 
             except Exception as e:

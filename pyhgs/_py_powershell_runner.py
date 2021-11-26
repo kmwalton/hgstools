@@ -139,14 +139,14 @@ class PyPowerShellRunner:                                              #{{{
             errObj = SpooledTemporaryFile(max_size=2048,mode='w+')
 
         try:
-            #import pdb ; pdb.set_trace()
             cp = subprocess.run(
-                [ 'powershell.exe', self.exe, ] + self.args,
+                [ 'powershell.exe', '-noprofile', self.exe, ] + self.args,
                 encoding=sys.stdout.encoding,
                 #stdout=outObj,
                 #stderr=errObj,
                 timeout=self.timeout,
-                check=True
+                check=True,
+                env=os.environ,
                 )
 
         except subprocess.TimeoutExpired as e:
