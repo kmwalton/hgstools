@@ -318,3 +318,69 @@ class HGSGrid():
 
         (ix,iy,iz) = self.find_grid_index(x,y,z)
         return ix + self.shape[0]*(iy + self.shape[1]*iz)
+
+def supersample_distance(dx, maxd):
+    """Return indices of unique, overlapping chunks of combined size <= maxd.
+
+    This function will define sets of indices, "supersamples," for the purpose of
+    creating a new spatial regions that are greater in size than each original
+    cell by combining neigboring cells.
+
+    Arguments:
+        dx : list
+            List of distances that represent "cell" widths, or increments
+            between grid lines.
+
+    Returns:
+        The list [ (istart,iend], ... ] where no istart,end chunk is contained
+        in any other. Each of the original increments is represented one or more
+        times. In cases where an increment, idx, exceeds maxd, it will be
+        represented in a zero-length chunk (idx,idx).
+    """
+    ssbl = [] # super sample blocks
+    accd = 0
+
+    # find initial entries that are > maxd
+    for istart,d in enumerate(dx[:-1]):
+        if d > maxd:
+            ssbl.append([istart,istart,])
+        else:
+            ssbl.append([istart,None,])
+            accd = d
+            break
+
+    # build up supersample blocks
+    istart = ssbl[-1][0]+1
+
+    for iend,d in enumerate(dx[istart:],start=istart):
+
+        if accd <= 0 and d > maxd:
+            ssbl[-1][1] = iend
+            ssbl.append([iend+1,None,])
+            accd = 0
+            continue
+
+        accd = accd + d
+
+        if accd > maxd:
+            # end has been found; finish-up ssbl's last entry
+            ssbl[-1][1] = iend
+
+            # begin a new entry
+            istart = ssbl[-1][0]
+            ssbl.append([istart, None,])
+
+            # increment the new entry's start value to accommodate this block
+            while accd > maxd:
+                accd = accd - dx[istart]
+                istart += 1
+                ssbl[-1][0] = istart
+
+            if istart > iend:
+                ssbl[-1] = [iend,iend,]
+                ssbl.append([iend+1,None,])
+                
+
+    ssbl[-1][1] = len(dx)
+
+    return ssbl
