@@ -337,11 +337,19 @@ def supersample_distance(dx, maxd):
         times. In cases where an increment, idx, exceeds maxd, it will be
         represented in a zero-length chunk (idx,idx).
     """
+
+    # deal with edge cases
+    if len(dx) == 0:
+        return []
+    if len(dx) == 1:
+        return [ [0, int(dx[0]<=maxd),], ]
+
+
     ssbl = [] # super sample blocks
     accd = 0
 
     # find initial entries that are > maxd
-    for istart,d in enumerate(dx[:-1]):
+    for istart,d in enumerate(dx):
         if d > maxd:
             ssbl.append([istart,istart,])
         else:
@@ -378,9 +386,10 @@ def supersample_distance(dx, maxd):
 
             if istart > iend:
                 ssbl[-1] = [iend,iend,]
-                ssbl.append([iend+1,None,])
+                if iend < len(dx)-1:
+                    ssbl.append([iend+1,None,])
                 
-
-    ssbl[-1][1] = len(dx)
+    if ssbl[-1][1] is None:
+        ssbl[-1][1] = len(dx)
 
     return ssbl
