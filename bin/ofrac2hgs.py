@@ -28,8 +28,8 @@ import numpy as np
 
 
 from ofracs import (D_AP, OFrac)
-from gridgen_tools import *
-from parser_rfgen import *
+from pyhgs.gridgen_tools import *
+from pyhgs.parser.rfgen import *
 from parser_fractran import *
 from parser_hgs_rfgeneco import *
 
