@@ -3,7 +3,7 @@
 
 Ken Walton
 Feb 20, 2015
-G360 Centre for Applied Groundwater Research 
+G360 Centre for Applied Groundwater Research
 
 Upd: 14 Dec 2018, KW, output pickled data.
 Upd: 18 Nov 2020, KW, new OFracGrid.merge interface.
@@ -62,7 +62,7 @@ def apQuantize(v,n_sig):
 
 class RFG:
     """Parses, stores, manipulates, produces HGS-style grids and fracture definitions
-        
+
     TODO: refactor and use more code from 'ofracs' module
     """
 
@@ -288,7 +288,7 @@ class RFG:
                 # bin and write later
                 apq = apQuantize(pack[-1],quantizeApertures)
                 apQuant[apq].append(i)
-                
+
             else:
                 apAssign += '\nclear chosen zones\n'
                 apAssign += self._strChooseZone(i)
@@ -302,7 +302,7 @@ class RFG:
                     s += f'{apStr}\n'
             print(s, file=fout)
 
-        
+
         # print property assignments
         if quantizeApertures:
             for iq,(apq,fzonelist) in enumerate(apQuant.items()):
@@ -321,8 +321,8 @@ class RFG:
                 print(s,file=fout)
         else:
             print('\n\n'+apAssign,file=fout)
-            
-            
+
+
         more ='! end explicit fractures\n\n'
         more += '!choose zones all\n!read properties\n!CommonFractureProperties'
         print( more, file=fout )
@@ -416,8 +416,9 @@ class RFG:
                     warnings.simplefilter("ignore")
                     (nn,(mi,ma),amean,vari,skew,kurt) = describe(spac[1:]-spac[:-1])
 
-                facts.append( 
-                    (f'mesh spacing: {a} min, max, mean, stddev', f'{mi:.3f}, {ma:.3f}, {amean:.3f}, {sqrt(vari):.3f}'))
+                facts.append(
+                    (f'mesh spacing: {a} min, max, mean, stddev',
+                     f'{mi:.3f}, {ma:.3f}, {amean:.3f}, {sqrt(vari):.3f}'))
 
         except ImportError:
             pass
@@ -496,7 +497,7 @@ class OneLayerRFG(RFG):
 
         il += 1
         fw(f'\n{il*ind}generate layers interactive\n')
-        
+
         # base
         il += 1
         fw(f'{il*ind}base elevation\n')
