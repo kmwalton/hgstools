@@ -560,18 +560,18 @@ class _Triple_List(argparse.Action):
     def _parse(v,ell):
         """Add v to the triple_list ell"""
 
-        def _as_Decimal(val):
+        def _as_Decimal(val, ell=ell):
             d = Decimal(val)
             if any(ell):
-                raise argparse.ArgumentError('Some values already assigned')
+                raise RuntimeError('Some values already assigned')
             ell = 3*[d,]
 
-        def _as_ax_eq_val(s):
+        def _as_ax_eq_val(s, ell=ell):
             m=re.match(r'([xyz])\s*=\s*('+_numberREStr+')',s)
             ax, val = (m.group(1),Decimal(m.group(2)),)
             iax = 'xyz'.index(ax.lower())
             if ell[iax] is not None:
-                raise argparse.ArgumentError(f'{ax} value already assigned')
+                raise RuntimeError(f'{ax} value already assigned')
             ell[iax] = val
 
         pl = [ _as_Decimal, _as_ax_eq_val, ]
@@ -586,7 +586,7 @@ class _Triple_List(argparse.Action):
                 break
 
         if len(errret) == len(pl):
-            raise ArgumentError('\n'.join(*errret))
+            raise RuntimeError('\n'.join(errret))
 
         return ell
 
