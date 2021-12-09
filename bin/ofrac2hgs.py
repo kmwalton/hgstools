@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Read RFGen or Fractran output data and write HGS code for a discrete fracture grid.
+"""Read DFN data and write HGS code for a discrete fracture grid.
 
 Ken Walton
 Feb 20, 2015
@@ -45,7 +45,9 @@ Have RFG inherit from the OFracGrid object (or don't have an RFG class at all)
 # handy REs
 _numberREStr = r'[+-]?(?:\d*\.)?\d+(?:[dDeE][+-]?\d+)?'
 _numRE = re.compile(_numberREStr)
-_gl_val_RE = re.compile(r';?\s*(?:(?P<axis>[xyzXYZ])\s*=\s*)?(?P<vals>(?:,?\s*'+_numberREStr+'){1,})')
+_gl_val_RE = re.compile(
+    r';?\s*(?:(?P<axis>[xyzXYZ])\s*=\s*)?(?P<vals>(?:,?\s*'
+            +_numberREStr+'){1,})')
 
 def apQuantize(v,n_sig):
     """Determine the aperture to n_sig significant figures."""
@@ -61,7 +63,7 @@ def apQuantize(v,n_sig):
     return Decimal(v).quantize(Decimal(f'{least_sig:.6f}'.strip('0')))
 
 class RFG:
-    """Parses, stores, manipulates, produces HGS-style grids and fracture definitions
+    """Parse/store/manipulate/produce HGS-style grids and fracture definitions
 
     TODO: refactor and use more code from 'ofracs' module
     """
@@ -97,13 +99,15 @@ class RFG:
             self.fxnet.setDomainSize( '(0,0,0)', domainSize )
 
             if __VERBOSITY__ > 1:
-                print( '\n...with forced domain size: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with forced domain size: {self.fxnet!s}',
+                        file=sys.stderr)
 
         self.nudgeTo=nudgeTo
         if nudgeTo > 0.0:
             self.fxnet.nudgeAll(nudgeTo)
             if __VERBOSITY__ > 1:
-                print( '\n...with fracture nudging: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with fracture nudging: {self.fxnet!s}',
+                        file=sys.stderr )
 
         if forcedGridLines and sum(map(len,forcedGridLines))>0:
             # assume we have a triple of list-like things with numeric values
@@ -112,26 +116,30 @@ class RFG:
                     self.fxnet.addGridline(ia,gl)
 
             if __VERBOSITY__ > 1:
-                print( '\n...with forced grid lines: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with forced grid lines: {self.fxnet!s}',
+                        file=sys.stderr )
 
         if regGlSpacing and any(regGlSpacing):
             self.fxnet.addRegularGlSpacing(regGlSpacing)
             if __VERBOSITY__ > 1:
-                print( '\n...with regular gridline spacing: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with regular gridline spacing: {self.fxnet!s}',
+                        file=sys.stderr )
 
         self.pmRefs = pmRefNearFx
         if pmRefNearFx:
             self.fxnet.refineNearFx(pmRefNearFx)
             if __VERBOSITY__ > 1:
-                print( '\n...with PM refinement: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with PM refinement: {self.fxnet!s}',
+                        file=sys.stderr )
 
         if maxGlSpacing and any(maxGlSpacing):
             self.fxnet.setMaxGlSpacing(maxGlSpacing)
             if __VERBOSITY__ > 1:
-                print( '\n...with max gridline spacing: ' + str(self.fxnet), file=sys.stderr )
+                print(f'\n...with max gridline spacing: {self.fxnet!s}',
+                        file=sys.stderr )
 
         if __VERBOSITY__:
-            print( '\nTransformed domain ' + str(self.fxnet), file=sys.stderr )
+            print('\nTransformed domain ' + str(self.fxnet), file=sys.stderr)
 
     @staticmethod
     def _findParser(fn):
