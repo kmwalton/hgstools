@@ -319,7 +319,7 @@ class HGSGrid():
         (ix,iy,iz) = self.find_grid_index(x,y,z)
         return ix + self.shape[0]*(iy + self.shape[1]*iz)
 
-def supersample_distance(dx, maxd):
+def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.
 
     This function will define sets of indices, "supersamples," for the purpose of
