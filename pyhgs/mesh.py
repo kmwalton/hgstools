@@ -393,3 +393,127 @@ def make_supersample_distance_groups(dx, maxd):
         ssbl[-1][1] = len(dx)
 
     return ssbl
+
+def supersample( d, groups, weights=None ):
+    """Return supersampled version of d
+
+    Supersampling is done according to the supersample groups provided in
+    groups, where it assumed that the dimension and size of d is in accord with
+    the number of groupings in groups.
+
+    Arguments:
+        d : numpy.ndarray
+            The data to be supersampled.
+
+        groups : list_like
+            Length of list must be equal to the number of axes in d; entries in
+            the list must be list-likes of cell start and end indices that
+            constitute supersample groups.
+
+        weights : array_like
+            Either None (default) for equal weighting of all cells, or an
+            array_like of the same dimensions of d with weighting values for
+            each cell in d.
+
+    """
+
+    if len(d.shape) != len(groups):
+        raise ValueError(f"d's shape must match number of groupings lists")
+
+    if weights is not None:
+        if weights.shape != d.shape:
+            raise ValueError('d and weights must have same shape')
+
+    def _r1d(dd,gg,ww):
+        """This problem, reduced to 1d
+        Returns a ndarray( [ sum(data*weight), sum(weight) ], ... )
+        of size (len(gg), 2)
+        """
+        _r = np.ndarray( (2, len(gg)) )
+
+        wd = dd
+        if ww is not None:
+            np.multiply(ww, dd, out=wd)
+
+        sumlo, sumhi = gg[0]
+        wdsum = np.sum(wd[sumlo:sumhi])
+        wsum = sumhi-sumlo
+        if ww is not None:
+            wsum = np.sum(ww[sumlo:sumhi])
+
+        _r[:,0] = [wdsum, wsum]
+
+        if ww is not None:
+            for i,(lo,hi) in enumerate(gg[1:],start=1):
+                wsum = wsum - np.sum(ww[sumlo:lo]) + np.sum(ww[sumhi:hi])
+                wdsum = wdsum - np.sum(wd[sumlo:lo]) + np.sum(wd[sumhi:hi])
+                _r[:,i] = [wdsum, wsum]
+                sumlo = lo
+                sumhi = hi
+
+        else:
+            for i,(lo,hi) in enumerate(gg[1:],start=1):
+                wsum = hi-lo
+                wdsum = wdsum - np.sum(wd[sumlo:lo]) + np.sum(wd[sumhi:hi])
+                _r[:,i] = [wdsum, wsum]
+                sumlo = lo
+                sumhi = hi
+
+        return _r
+
+    # Note: case with zero-length group, (istart==iend)
+    # Currently, nan will be returned in taht cell
+
+    # set output array dimensions
+    rshape = tuple(len(ax) for ax in groups)
+    r = np.zeros(rshape)
+
+    # TODO write a more generic calculation. What's the reduction?!
+
+    # perform different calculation depending on number of input dimensions
+    if len(groups) == 1:
+
+# Hard implementation
+#        wd = _r1d(d, groups[0], weights)
+#        np.divide( wd[0], wd[1], out=r)
+
+# Easy implementation:
+        if weights is not None:
+            for i,(lo,hi) in enumerate(groups[0]):
+                w = weights[lo:hi]
+                r[i] = np.average(d[lo:hi],weights=w)
+        else:
+            for i,(lo,hi) in enumerate(groups[0]):
+                r[i] = np.average(d[lo:hi])
+
+    elif len(groups) == 2:
+
+# Easy implementation:
+        if weights is not None:
+          for i,(lo,hi) in enumerate(groups[0]):
+            for j,(jlo,jhi) in enumerate(groups[1]):
+              w = weights[lo:hi,jlo:jhi]
+              r[i,j] = np.average(d[lo:hi,jlo:jhi], weights=w)
+        else:
+          for i,(lo,hi) in enumerate(groups[0]):
+            for j,(jlo,jhi) in enumerate(groups[1]):
+              r[i,j] = np.average(d[lo:hi,jlo:jhi])
+
+    elif len(groups) == 3:
+
+# Easy implementation:
+        if weights is not None:
+          for i,(lo,hi) in enumerate(groups[0]):
+            for j,(jlo,jhi) in enumerate(groups[1]):
+              for k,(klo,khi) in enumerate(groups[2]):
+                w = weights[lo:hi,jlo:jhi,klo:khi]
+                r[i,j,k] = np.average(d[lo:hi,jlo:jhi,klo:khi], weights=w)
+        else:
+          for i,(lo,hi) in enumerate(groups[0]):
+            for j,(jlo,jhi) in enumerate(groups[1]):
+              for k,(klo,khi) in enumerate(groups[2]):
+                r[i,j,k] = np.average(d[lo:hi,jlo:jhi,klo:khi])
+    else:
+        raise NotImplementedError(f'Not implemented for # axes > 3.')
+
+    return r
