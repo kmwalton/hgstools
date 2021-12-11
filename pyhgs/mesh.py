@@ -302,12 +302,35 @@ class HGSGrid():
         return ret
 
 
+    def find_grid_index(self, *args):
+        """Get a grid index (ix,iy,iz) given coordinate or node number
 
-    def find_grid_index(self, x,y,z):
-        """Returns the grid index (ix,iy,iz) closest to coordinate (x,y,z)"""
+        Arguments:
+            x, y, z : float
+                The (x,y,z) coordinate to find, or
+            inode : int
+                The node index number (0-based).
+
+        Returns:
+            (ix,iy,iz) the grid-line triple (0-based).
+        """
         i = [-1,-1,-1,]
-        for ii,gl,v in zip(count(),self.gl,(x,y,z,)):
-            i[ii] = bisect_left(gl,v)
+        gl = self.get_grid_lines()
+        
+        if len(args) == 3:
+            x,y,z = map(float,args)
+            for ii,gl,v in zip(count(),gl,(x,y,z,)):
+                i[ii] = bisect_left(gl,v)
+        elif len(args) == 1:
+            inode = int(args[0])
+            i[0] = inode % self.shape[0]
+            i[1] = int((inode - i[0])/self.shape[0]) % self.shape[1]
+            i[2] = int((inode - i[0] - self.shape[0]*i[1])
+                        /(self.shape[0]*self.shape[1])
+                       )
+        else:
+            raise ValueError('Unexpected argument types or count passed')
+
         return tuple(i)
 
     def find_node_index(self, x,y,z, dom=Domain.PM):
