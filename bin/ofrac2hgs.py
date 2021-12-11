@@ -707,10 +707,11 @@ if __name__ == "__main__":
 
     parser.add_argument(
             'filename',
+            metavar='FILE',
             help='filename or prefix of orthogonal fracture network source files',
             nargs='+')
 
-    args = parser.parse_args(sys.argv)
+    args = parser.parse_args()
 
     #import pdb ; pdb.set_trace()
 
