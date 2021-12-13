@@ -1,6 +1,7 @@
 '''Inspect Hydrogeosphere meshes; interperet binary files'''
 
 from itertools import count,repeat
+from collections import defaultdict
 from bisect import bisect,bisect_left,bisect_right
 from enum import IntEnum,auto
 from multiprocessing import Pool
@@ -352,6 +353,7 @@ class HGSGrid():
 
         i = self.find_grid_index(x,y,z)
         return self.ng2ni(i)
+
     def ng2ni(self,i):
         """Node grid index (PM only, as list_like) to node sequence index"""
         return HGSGrid._to_index(i, self.shape)
@@ -360,6 +362,42 @@ class HGSGrid():
         """Element grid (PM only, as list_like) to element sequence index"""
         return HGSGrid._to_index(i, self.elshape)
 
+    def make_pm_to_fx_adjacency(self):
+        """Return a dict of pm element indices to adjacent fracture elements"""
+
+        class _KeyCheckDict(defaultdict):
+            def __init__(self, elszpm=self.hgs_pm_elems['ne']):
+                super().__init__(list)
+                self._imax = elszpm
+
+            def __getitem__(self,i):
+                if int(i) < 0 or i >= self._imax:
+                    raise ValueError(f'{i} out of bounds of PM element indices')
+                return super().__getitem__(i)
+
+        r = _KeyCheckDict()
+
+        # Note: the following is efficient in memory usage, but might be slow.
+        # Do computation of first node of each fracture in batch
+        # Do comutation of 2nd node or orientation in batch
+        # Then, compute the rows of the adjacency matrix
+        # TODO Vectorize computation of this function with numpy.ufunc.
+
+        one = np.eye(3,dtype='int32')
+
+        for i,(fnodes, zone, ap) in enumerate(self.iter_elements(Domain.FRAC)):
+            gi0 = self.find_grid_index(fnodes[0])
+            gi2 = self.find_grid_index(fnodes[2])
+
+            for a in range(3):
+                if gi0[a] == gi2[a]:
+                    if gi0[a] < self.elshape[a]:
+                        r[ self.elg2eli(gi0) ].append(i)
+                    if gi0[a]-1 >= 0:
+                        r[ self.elg2eli(gi0-one[a]) ].append(i)
+                    break
+
+        return r
 
 def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.
