@@ -124,13 +124,11 @@ class HGSGrid():
         """Iterate over element data.
 
             Yields tuples of
-            ( (node indices), zone, <other data> )
+            <code>( (node indices), zone, *<other data\>* )</code>
 
-            where <otherdata> is,
-            for dom == Domain.PM:
-                nothing
-            for dom == Domain.FRAC:
-                ap
+            where <code>*<otherdata\>*</code>is:
+                for <code>dom == Domain.PM</code>, nothing;
+                for <code>dom == Domain.FRAC</code>, ap.
         """
 
         if dom == Domain.PM:
@@ -178,7 +176,7 @@ class HGSGrid():
         """Return an array with nodal data values.
 
         Arguments:
-            data :
+            data : str or `numpy.ndarray`
                 1) Datafile name (str) that will be read by
                    `pyghs.parser.parse()`
                 2) Data in numpy.ndarray indexed by node.
