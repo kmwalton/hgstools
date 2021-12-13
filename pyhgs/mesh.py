@@ -208,16 +208,22 @@ class HGSGrid():
         return ret
 
     def get_zoned_element_vals(self, zonedata, dom=Domain.PM):
-        """Return an array with the zone data applied to each element
+        """Return an array with the zone data splayed out to each element
+
+        e.g. Suppose a domain has two zones with different porosities,
+        zonedata=[-1.0, 0.13, 0.10]. The result of this methos is a fully-filled
+        array (of the same shape as the elements in the requested domain)
+        with each entry being one of those three zonedata values.
 
         Arguments:
             zonedata : 1D array
                 Array, where index is equal to the zone number, of the datum for
                 each zone.
 
-                Note: zones typically start at index 1 (unless HGS' special zone
-                zero is applied), so the normal use case is to pad index zero of
-                the array with a junk data value.
+            .. Note::
+                Zone indices typically start at index 1 (unless HGS' special
+                "zone zero" is applied), so the normal use case is to pad
+                index zero of the input zonedata array with a junk data value.
         """
         ret = None
 
