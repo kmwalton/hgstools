@@ -4,12 +4,16 @@
 
 import unittest
 import os
+from __init__ import skip_if_no_sim_output 
 
 from pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)+os.sep
 'Path to this testing directory'
+SIM_PREFIX = os.path.join(TESTP,'04b_Saturated_Fracture_Transport','module4b')
+'Simulation directory+prefix'
 
+@unittest.skipIf(skip_if_no_sim_output(SIM_PREFIX), 'HGS output missing')
 class Test_Module04b(unittest.TestCase):
 
     def setUp(self):
@@ -18,7 +22,7 @@ class Test_Module04b(unittest.TestCase):
         # treated as read-only as a balance between data loading overhead and
         # test independence; test cases that modify the HGSGrid object can
         # reload the data.
-        self.g = HGSGrid(f'{TESTP}04b_Saturated_Fracture_Transport/module4b')
+        self.g = HGSGrid(SIM_PREFIX)
 
     def test_grid_size(self):
         gl = self.g.get_grid_lines()
