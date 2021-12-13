@@ -4,8 +4,7 @@
 
 import unittest
 import os
-from __init__ import skip_if_no_sim_output 
-
+from pyhgs._test import skip_if_no_sim_output 
 from pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)+os.sep
