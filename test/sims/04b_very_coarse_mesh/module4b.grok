@@ -3,10 +3,14 @@ Very coarse discrete fractures and porous matrix mesh.
 Based on Module04b by S.Berg, July 21, 2014.
 end title
 !--------------------------  Grid generation
-generate uniform blocks
-    50  10         ! Domain length and number of blocks in X
-    1  1           ! Domain length and number of blocks in Y
-    25  5          ! Domain length and number of blocks in Z
+generate variable blocks
+! x,y,z- count of grid lines and grid line locations
+6
+   0.    10.   20.   25.   30.   50.
+2
+   0.    1.
+5
+   0.    6.    12.   20.   25.
 end grid generation
 
 !--------------------------  General simulation parameters
@@ -20,11 +24,33 @@ porous media
 properties file
 module4b.mprops
 
+clear chosen elements
+choose elements block
+   0.0   50.0
+   0.0    1.0
+   12.0  25.0
+new zone
+   1
+
 clear chosen zones
 choose zone number
 1
 read properties
 porous medium
+
+clear chosen elements
+choose elements block
+   0.0   50.0
+   0.0    1.0
+   0.0   12.0
+new zone
+   2
+
+clear chosen zones
+choose zone number
+2
+read properties
+porous medium 2
 
 !--------------------------  Fracture media properties
 use domain type

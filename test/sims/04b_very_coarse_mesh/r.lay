@@ -870,12 +870,39 @@ $!ContourLevels New
 0.95
 $!GlobalContour  2
   Var = 4
+  ColorMapName = 'Wild'
+  DefNumLevels = 3
   Legend
     {
+    Show = Yes
     XYPos
       {
-      X = 95
+      X = 93.759
+      Y = 76.03
       }
+    Header
+      {
+      TextShape
+        {
+        Height = 4.5
+        }
+      }
+    NumberTextShape
+      {
+      Height = 4.5
+      }
+    Box
+      {
+      BoxType = None
+      }
+    IncludeCutoffLevels = Yes
+    }
+  ColorCutoff
+    {
+    RangeMin = 0
+    RangeMax = 2
+    IncludeMin = Yes
+    IncludeMax = Yes
     }
   ColorMapFilter
     {
@@ -888,28 +915,13 @@ $!GlobalContour  2
 $!ContourLevels New
   ContourGroup = 2
   RawData
-19
-1.1
-1.2
-1.3
-1.4
-1.5
-1.6
-1.7
-1.8
-1.9
+3
+0
+1
 2
-2.1
-2.2
-2.3
-2.4
-2.5
-2.6
-2.7
-2.8
-2.9
 $!GlobalContour  3
   Var = 5
+  DefNumLevels = 19
   Legend
     {
     XYPos
@@ -950,6 +962,7 @@ $!ContourLevels New
 49.5
 $!GlobalContour  4
   Var = 6
+  DefNumLevels = 1
   Legend
     {
     XYPos
@@ -972,6 +985,7 @@ $!ContourLevels New
 0
 $!GlobalContour  5
   Var = 7
+  DefNumLevels = 11
   Legend
     {
     XYPos
@@ -1040,6 +1054,7 @@ $!ContourLevels New
 2.2E-13
 $!GlobalContour  7
   Var = 9
+  DefNumLevels = 10
   Legend
     {
     XYPos
@@ -1071,6 +1086,7 @@ $!ContourLevels New
 -0.0001
 $!GlobalContour  8
   Var = 11
+  DefNumLevels = 10
   Legend
     {
     XYPos
@@ -1122,7 +1138,8 @@ $!FieldMap  [1]
     }
   Contour
     {
-    ContourType = Flood
+    ContourType = PrimaryValue
+    FloodColoring = Group2
     Color = Black
     UseLightingEffect = Yes
     }
@@ -1618,6 +1635,7 @@ $!ThreeDView
     }
   ViewWidth = 71.4472
 $!FieldLayers 
+  ShowContour = Yes
   ShowEdge = No
   UseTranslucency = Yes
   UseLightingEffect = No
