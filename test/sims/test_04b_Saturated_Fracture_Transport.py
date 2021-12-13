@@ -31,11 +31,11 @@ class Test_Module04b(unittest.TestCase):
         self.assertEqual(self.g.find_node_index(0.,0.,20.), 8080,)
         self.assertEqual(self.g.find_node_index(0.,1.,20.), 8181,)
 
-        self.assertEqual(self.g.find_grid_index(8080), (0,0,40))
-        self.assertEqual(self.g.find_grid_index(0.,0.,20.), (0,0,40))
+        self.assertEqual(tuple(self.g.find_grid_index(8080)), (0,0,40))
+        self.assertEqual(tuple(self.g.find_grid_index(0.,0.,20.)), (0,0,40))
 
-        self.assertEqual(self.g.find_grid_index(8181), (0,1,40))
-        self.assertEqual(self.g.find_grid_index(0.,1.,20.), (0,1,40))
+        self.assertEqual(tuple(self.g.find_grid_index(8181)), (0,1,40))
+        self.assertEqual(tuple(self.g.find_grid_index(0.,1.,20.)), (0,1,40))
 
 if __name__ == '__main__':
     unittest.main()
