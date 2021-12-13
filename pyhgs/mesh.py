@@ -80,17 +80,24 @@ class HGSGrid():
         self.shape = tuple(self.hgs_pm_nodes[a] for a in ['nx','ny','nz'])
         self.elshape = tuple(self.hgs_pm_nodes[a]-1 for a in ['nx','ny','nz'])
 
-    def _to_index(self, t):
-        if any(t[i] >= self.shape[i]-1 for i in range (3)):
-            s = tuple( v-2 for v in self.shape )
+    @staticmethod
+    def _to_index_nocheck(t,shp):
+        return t[0] + shp[0]*t[1] + shp[0]*shp[1]*t[2]
+
+    @staticmethod
+    def _to_index(t,shp):
+        """Return 3D grid index as linear index"""
+        if any(t[i] >= shp[i] for i in range (3)):
+            s = tuple( v-1 for v in shp )
             raise ValueError(
-                f'Element index {t} out of element grid bounds, <={s}.')
+                f'Element index {t} out of 3D grid index bounds. Need <={s}.')
 
         if any(v<0 for v in t):
             raise ValueError(
-                f'Element index {t} out of element grid bounds, >={3*(0,)}.')
+                'Element index {t} out of 3D grid index bounds. '\
+                f'Need >={3*(0,)}.')
 
-        return t[0] + self.shape[0]*t[1] + self.shape[0]*self.shape[1]*t[2]
+        return HGSGrid._to_index_nocheck(t,shp)
 
     def get_grid_lines(self):
         """Return the ([x-],[y-],[z-grid lines]) in this rectilinear grid"""
@@ -160,7 +167,7 @@ class HGSGrid():
 
         if dom == Domain.PM:
             if type(iel) == tuple:
-                iel = self._to_index(iel)
+                iel = self._to_index_nocheck(iel,self.elshape)
             inc_nodes = self.hgs_pm_elems['inc'][iel]
             return tuple(self.hgs_pm_nodes['ncoords'][i] for i in inc_nodes)
 
@@ -343,8 +350,16 @@ class HGSGrid():
         if dom != Domain.PM:
             raise NotImplementedError(f'Not implemented for {dom}')
 
-        (ix,iy,iz) = self.find_grid_index(x,y,z)
-        return ix + self.shape[0]*(iy + self.shape[1]*iz)
+        i = self.find_grid_index(x,y,z)
+        return self.ng2ni(i)
+    def ng2ni(self,i):
+        """Node grid index (PM only, as list_like) to node sequence index"""
+        return HGSGrid._to_index(i, self.shape)
+
+    def elg2eli(self,i):
+        """Element grid (PM only, as list_like) to element sequence index"""
+        return HGSGrid._to_index(i, self.elshape)
+
 
 def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.
