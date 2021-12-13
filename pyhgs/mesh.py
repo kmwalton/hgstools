@@ -316,7 +316,7 @@ class HGSGrid():
                 The node index number (0-based).
 
         Returns:
-            (ix,iy,iz) the grid-line triple (0-based).
+            numpy.array([ix,iy,iz],int32), the grid-line triple (0-based).
         """
         i = [-1,-1,-1,]
         gl = self.get_grid_lines()
@@ -335,7 +335,7 @@ class HGSGrid():
         else:
             raise ValueError('Unexpected argument types or count passed')
 
-        return tuple(i)
+        return np.array(i,dtype='int32')
 
     def find_node_index(self, x,y,z, dom=Domain.PM):
         """Find the node index closest to coordinate (x,y,z)"""
