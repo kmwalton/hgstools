@@ -35,7 +35,7 @@ $!Page
       X1 = 0
       Y1 = 0
       X2 = 9
-      Y2 = 9
+      Y2 = 4.5
       }
     }
 ### Frame Number 1 ###
@@ -405,7 +405,7 @@ $!ThreeDAxis
     GRSpacing = 10
     AxisLine
       {
-      Edge = 2
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -417,7 +417,7 @@ $!ThreeDAxis
     GRSpacing = 0.5
     AxisLine
       {
-      Edge = 3
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -449,7 +449,7 @@ $!ThreeDAxis
       {
       Show = No
       ShowOppositeEdge = Yes
-      Edge = 2
+      Edge = 3
       }
     }
 $!IsoSurfaceAttributes  1
@@ -762,13 +762,14 @@ $!GlobalThreeD
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
 $!ThreeDView 
-  PSIAngle = 90
-  ThetaAngle = 0
+  PSIAngle = 61.4174
+  ThetaAngle = 12.0994
+  AlphaAngle = 1.15047E-36
   ViewerPosition
     {
-    X = 29.72612793693862
-    Y = -181.9759526419158
-    Z = 10.16376448454605
+    X = -35.99386537053132
+    Y = -157.3801937937207
+    Z = 185.3560630850276
     }
   ViewWidth = 71.4472
 $!FieldLayers 
@@ -779,6 +780,12 @@ $!FieldLayers
   UseLightingEffect = No
 $!StreamtraceLayers 
   Show = No
+$!Linking 
+  BetweenFrames
+    {
+    LinkSolutionTime = Yes
+    Link3DView = Yes
+    }
 ### Frame Number 2 ###
 $!CreateNewFrame 
 $!FrameLayout 
@@ -1131,10 +1138,22 @@ $!GlobalScatter
     Color = Red
     FillColor = Red
     }
+  DataLabels
+    {
+    ShowCellLabels = Yes
+    ColorByZoneMap = Yes
+    TextShape
+      {
+      IsBold = Yes
+      Height = 4
+      }
+    IncludeBox = No
+    }
 $!FieldMap  [1]
   Mesh
     {
     Color = Custom2
+    LinePattern = Dotted
     }
   Contour
     {
@@ -1149,7 +1168,7 @@ $!FieldMap  [1]
     }
   Scatter
     {
-    Color = Black
+    Color = Custom32
     }
   Shade
     {
@@ -1164,7 +1183,7 @@ $!FieldMap  [1]
     }
   Points
     {
-    PointsToPlot = SurfaceNodes
+    PointsToPlot = AllCellCenters
     }
   Surfaces
     {
@@ -1178,8 +1197,9 @@ $!FieldMap  [1]
 $!FieldMap  [2]
   Mesh
     {
-    Color = Black
-    LineThickness = 0.4
+    Color = Custom1
+    LinePattern = Dashed
+    LineThickness = 0.8
     }
   Contour
     {
@@ -1208,7 +1228,7 @@ $!FieldMap  [2]
     }
   Points
     {
-    PointsToPlot = SurfaceNodes
+    PointsToPlot = AllCellCenters
     }
   Surfaces
     {
@@ -1268,7 +1288,7 @@ $!ThreeDAxis
       }
     AxisLine
       {
-      Edge = 2
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -1280,7 +1300,7 @@ $!ThreeDAxis
     GRSpacing = 0.5
     AxisLine
       {
-      Edge = 3
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -1312,7 +1332,7 @@ $!ThreeDAxis
       {
       Show = No
       ShowOppositeEdge = Yes
-      Edge = 2
+      Edge = 3
       }
     }
 $!IsoSurfaceAttributes  1
@@ -1625,13 +1645,14 @@ $!GlobalThreeD
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
 $!ThreeDView 
-  PSIAngle = 90
-  ThetaAngle = 0
+  PSIAngle = 61.4174
+  ThetaAngle = 12.0994
+  AlphaAngle = 1.15047E-36
   ViewerPosition
     {
-    X = 29.72612793693862
-    Y = -181.9759526419158
-    Z = 10.16376448454605
+    X = -35.99386537053132
+    Y = -157.3801937937207
+    Z = 185.3560630850276
     }
   ViewWidth = 71.4472
 $!FieldLayers 
@@ -1641,6 +1662,46 @@ $!FieldLayers
   UseLightingEffect = No
 $!StreamtraceLayers 
   Show = No
+$!Linking 
+  BetweenFrames
+    {
+    LinkSolutionTime = Yes
+    Link3DView = Yes
+    }
+$!AttachText 
+  AnchorPos
+    {
+    X = 82.97872340425531
+    Y = 91.82978723404254
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Color = Custom32
+  Text = 'PM Element #'
+$!AttachText 
+  AnchorPos
+    {
+    X = 83.31914893617022
+    Y = 86.72340425531915
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Text = 'Fx Element #'
+$!AttachText 
+  AnchorPos
+    {
+    X = 84.68085106382979
+    Y = 80.93617021276594
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Text = '(1-based)'
 $!FrameControl ActivateByNumber
   Frame = 2
 $!SetStyleBase Config
