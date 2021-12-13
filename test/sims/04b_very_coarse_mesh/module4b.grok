@@ -1,0 +1,215 @@
+!--------------------------  Problem description
+Very coarse discrete fractures and porous matrix mesh.
+Based on Module04b by S.Berg, July 21, 2014.
+end title
+!--------------------------  Grid generation
+generate uniform blocks
+    50  10         ! Domain length and number of blocks in X
+    1  1           ! Domain length and number of blocks in Y
+    25  5          ! Domain length and number of blocks in Z
+end grid generation
+
+!--------------------------  General simulation parameters
+units: kilogram-metre-second
+finite difference mode
+control volume
+!-------------------------- Porous Media Properties
+use domain type
+porous media
+
+properties file
+module4b.mprops
+
+clear chosen zones
+choose zone number
+1
+read properties
+porous medium
+
+!--------------------------  Fracture media properties
+use domain type
+fracture
+
+properties file
+f_cd.fprops
+
+!--------------------------  fracture 1
+clear chosen faces
+choose faces block
+-0.01, 30.1
+-0.01, 1.01
+19.9, 20.1
+
+new zone
+1
+
+clear chosen zones
+choose zone number
+1
+
+read properties
+fracture1
+
+!--------------------------  fracture 2
+choose faces x plane
+25
+1.e-5
+
+new zone
+2
+
+clear chosen zones
+choose zone number
+2
+
+read properties
+fracture2
+
+
+!--------------------------  fracture 3
+clear chosen faces
+choose faces block
+19.9, 50.1
+-0.01, 1.01
+5.9, 6.1
+new zone
+3
+
+clear chosen zones
+choose zone number
+3
+
+read properties
+fracture3
+
+
+
+!--------------------------  Porous media flow
+use domain type
+porous media
+
+choose nodes all
+initial head
+45
+
+!--------------------------  h1 boundary condition assignment
+clear chosen nodes
+
+choose nodes x plane
+0.0
+1.e-5
+
+create node set
+h1
+
+boundary condition
+    type
+    head
+
+    node set
+    h1
+
+    time value table
+       0 50
+    end
+
+
+end ! new specified head
+
+
+!--------------------------  h2 boundary condition assignment
+clear chosen nodes
+
+choose nodes x plane
+50
+1.e-5
+
+create node set
+h2
+
+boundary condition
+    type
+    head
+
+    node set
+    h2
+
+    time value table
+       0 40
+    end
+
+end ! new specified head
+
+
+!--------------------------Module 4b Transport Details ----------------------------
+do transport
+
+solute
+name
+salt
+
+free-solution diffusion coefficient
+1e-9
+
+end solute
+
+
+!------------------------ Initial conditions
+use domain type
+porous media
+
+clear chosen nodes
+choose nodes all
+initial concentration
+0.0d0
+
+clear chosen nodes
+choose node
+2, 0.0, 20
+
+specified concentration
+1
+0.0, 315360000, 1 
+
+clear chosen nodes
+
+!----------------------- Time step control
+transport time weighting
+1.0
+
+concentration control
+1e-1
+
+upstream weighting of velocities
+1.0 1.0 1.0
+!----------------------- Transport properties
+use domain type
+porous media
+
+clear chosen zones
+choose zones all
+longitudinal dispersivity
+2
+transverse dispersivity
+0.5
+vertical transverse dispersivity
+0.5
+tortuosity
+1.0
+
+output times
+86400	!1
+432000	!5
+864000	!10
+1728000	!20
+2592000	!30
+4320000	!50
+5184000	!60
+6912000	!80
+8640000 !100 days
+31536000	!1year
+63072000	!2year
+157680000	!5year
+315360000	!10year
+
+end
