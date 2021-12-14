@@ -146,5 +146,17 @@ class Test_Module04bCoarse(unittest.TestCase):
                 Domain.FRAC)
 
 
+    @unittest.skipIf(skip_if_no_sim_output(SIM_PREFIX, ['o.q_pm.0001',
+                'o.v_pm.0001', 'o.v_frac.0001',]),
+        'No flux/velocity data present in {SIM_PREFIX}')
+    def test_read_flux(self):
+        """Read example PM and fracture-domain velocity and flux files"""
+
+        pmv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_pm.0001')
+        pmq = self.g.get_element_vals(f'{SIM_PREFIX}o.q_pm.0001')
+        fxv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',
+                Domain.FRAC)
+
+
 if __name__ == '__main__':
     unittest.main()

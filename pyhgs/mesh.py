@@ -285,56 +285,143 @@ class HGSGrid():
                 element.
         """
 
-        ret = None
-
         if method:
-            raise NotImplementedError('Cannot [yet] use method')
+            raise NotImplementedError('Cannot [yet] specify method')
 
+        # data, format unspecified
         d = data
         if type(data) == str:
             d = parse(data)['data']
 
+        # function to calculate elemental data
+        func = lambda i : i # identity method, for now
+
+        # data, reshaped for sole argument to func, or error flag if None
+        dd = None
+
         if dom == Domain.PM:
-            # hope we get a view instead of a copy
-            dd = d.reshape(self.shape,order='F')
-            # calculate an 8-point average
-            ret = ( dd[:-1,:-1,:-1]
-                    + dd[ 1:,:-1,:-1]
-                    + dd[:-1, 1:,:-1]
-                    + dd[ 1:, 1:,:-1]
-                    + dd[:-1,:-1, 1:]
-                    + dd[ 1:,:-1, 1:]
-                    + dd[:-1, 1:, 1:]
-                    + dd[ 1:, 1:, 1:] ) / 8.
+
+            def _grid_8pt_avg(a):
+                """Do a non-weighted 8 point average of 3D array a"""
+                return ( a[:-1,:-1,:-1]
+                    + a[ 1:,:-1,:-1]
+                    + a[:-1, 1:,:-1]
+                    + a[ 1:, 1:,:-1]
+                    + a[:-1,:-1, 1:]
+                    + a[ 1:,:-1, 1:]
+                    + a[:-1, 1:, 1:]
+                    + a[ 1:, 1:, 1:] ) / 8.
+
+
+            if len(d.shape) == 1:
+                # flat ordering
+
+                if d.size == self.nn:
+                    # 1D array of nodal values passed
+                    # Transform to 3D
+                    dd = d.reshape(self.shape,order='F')
+                    func = _grid_8pt_avg
+
+                elif d.size == self.ne:
+                    # 1D array of elemental values passed
+                    # Transform to 3D
+                    # set method to Identity
+                    dd = d.reshape(self.elshape,order='F')
+
+            elif len(d.shape) == 2:
+                # flat ordering of tuples
+
+                if d.size == d.shape[1]*self.nn:
+                    # Assume that a flat list of triples have been passed
+                    # Transform this to 4-dimensional data and perform 'method' for
+                    # each index in the 4th dimension
+                    dd = np.ndarray(self.shape+(3,))
+                    for idim in range(d.shape[1]):
+                        dd[:,:,:,idim] = d[:,idim].reshape(self.shape, order='F')
+                    func = _grid_8pt_avg
+
+                elif d.size == d.shape[1]*self.ne:
+                    # Transform this to 4-dimensional data and perform 'method' for
+                    # each index in the 4th dimension
+                    dd = np.ndarray(self.elshape+(3,),dtype=np.float32)
+                    for idim in range(d.shape[1]):
+                        dd[:,:,:,idim] = d[:,idim].reshape(self.elshape, order='F')
+
+            elif len(d.shape) == 3:
+                # 3D grid ordering
+
+                if d.shape == self.shape:
+                    # 3D array of nodal values passed in
+                    # Assume this is already in the correct shape
+                    dd = d
+                    func = _grid_8pt_avg
+
+                elif d.shape == self.elshape:
+                    # Assume already in elemental format
+                    # set method to Identity
+                    dd = d
 
         elif dom == Domain.FRAC:
-            ret = np.zeros((self.hgs_fx_elems['nfe'],))
 
-            dd = d.flatten(order='F')
+            # helper methods
+            def _fx_node_avg(a):
+                """a is flattened PM nodal data"""
+                ret = np.zeros(self.nfe)
 
-            # check that data is PM, nodal values ... assuming this check is
-            # sufficient
-            if dd.shape != self.nn:
-                raise ValueError(f'Expected data size to be {self.nn}')
+                for i,fx_inc in enumerate(self.hgs_fx_elems['inc']):
+                    ret[i] = np.sum(a[fx_inc])
 
-            inc = self.hgs_fx_elems['inc']
+                np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
+
+                return ret
+
+
+            if len(d.shape) == 1:
+                # flat array
+                if d.size == self.nn:
+                    # data seems to be PM nodal values
+                    dd = d
+                    func = _fx_node_avg
+
+            elif len(d.shape) == 2:
+                # seems to be flat array of tuples
+                if d.size == d.shape[1]*self.nn:
+                    # data seems to be tuples of PM nodal values
+                    raise NotImplementedError()
+                elif d.size == d.shape[1]*self.nfn:
+                    # data seems to be tuples of frac nodal values
+                    raise NotImplementedError()
+                if d.size == d.shape[1]*self.ne:
+                    # data seems to be tuples of PM element values
+                    raise NotImplementedError()
+                elif d.size == d.shape[1]*self.nfe:
+                    # data seems to be tuples of frac element values
+                    dd = d
+                    
+            elif len(d.shape) == 3:
+                # seems to be grid array of scalars
+                if d.shape == self.shape:
+                    # data seems to be PM nodal values, as grid
+                    dd = np.flatten(d, order='F')
+                    func = _fx_node_avg
+
+            elif len(d.shape) == 4:
+                # seems to be grid array of tuples
+                raise NotImplementedError()
 
             # TODO speed this up?
             # Determine the orientation of each element so that array
             # manipulations like above can be used(??)
 
-            # do 'i' loop first because fracture nodes will likely be neighbours
-            # in the nodal data
-            for i,fx_inc in enumerate(inc):
-                for j in fx_inc:
-                    ret[i] += dd[j]
-
-            np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
 
         else:
             raise NotImplementedError(f'Not implemented for {dom}')
 
-        return ret
+        if dd is None:
+            raise ValueError('Unexpected size/shape found in input data, '
+                f'{d.shape}, for {dom!s}.')
+
+        return func(dd)
 
 
     def find_grid_index(self, *args):
