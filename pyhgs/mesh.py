@@ -15,6 +15,8 @@ from pyhgs.parser import (
     parse_elements_frac,
     )
 
+__docformat__ = 'numpy'
+
 class Domain(IntEnum):
     """Types of domains in Hydrogeosphere"""
     PM = auto()
@@ -209,7 +211,7 @@ class HGSGrid():
             ret = d.reshape(self.shape,order='F')
 
         else:
-            raise NotImplementedError(f'Not implemented for {dom}')
+            raise NotImplementedError(f'Not implemented for {dom!s}')
 
         return ret
 
@@ -292,7 +294,7 @@ class HGSGrid():
             # check that data is PM, nodal values ... assuming this check is
             # sufficient
             if dd.shape != self.nn:
-                raise ValueError('Expected data size to be {self.nn}')
+                raise ValueError(f'Expected data size to be {self.nn}')
 
             inc = self.hgs_fx_elems['inc']
 
@@ -475,25 +477,26 @@ def make_supersample_distance_groups(dx, maxd):
     return ssbl
 
 def supersample( d, groups, weights=None ):
-    """Return supersampled version of d
+    """Return supersampled version of **d**
 
-    Supersampling is done according to the supersample groups provided in
-    groups, where it assumed that the dimension and size of d is in accord with
-    the number of groupings in groups.
+    Supersampling is done according to the groups of 3D domain indicies provided
+    in **groups**, where it assumed that the dimension and size of **d** is in
+    accord with the number of groupings in **groups**.
 
-    Arguments:
-        d : numpy.ndarray
-            The data to be supersampled.
+    Arguments
+    ---------
+    groups : list_like
+        Length of list must be equal to the number of axes in **d**; entries in
+        the list must be list-likes of 3D element-grid start and end indices that
+        constitute supersample groups.
 
-        groups : list_like
-            Length of list must be equal to the number of axes in d; entries in
-            the list must be list-likes of cell start and end indices that
-            constitute supersample groups.
+    d : numpy.ndarray
+        The data to be supersampled.
 
-        weights : array_like
-            Either None (default) for equal weighting of all cells, or an
-            array_like of the same dimensions of d with weighting values for
-            each cell in d.
+    weights : array_like, default None
+        Either None (default) for equal weighting of all cells, or an
+        array_like of the same dimensions of d with weighting values for
+        each cell in d.
 
     """
 
