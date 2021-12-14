@@ -494,7 +494,7 @@ def make_supersample_distance_groups(dx, maxd):
 
     return ssbl
 
-def supersample( d, groups, weights=None ):
+def supersample( groups, d, *more_d, weights=None ):
     """Return supersampled version of **d**
 
     Supersampling is done according to the groups of 3D domain indicies provided
@@ -517,6 +517,9 @@ def supersample( d, groups, weights=None ):
         each cell in d.
 
     """
+
+    if more_d:
+        raise NotImplementedError()
 
     if len(d.shape) != len(groups):
         raise ValueError(f"d's shape must match number of groupings lists")
