@@ -256,6 +256,43 @@ def _parse(fn, dtype, shape=None):
             ('data',d),
         ] )
 
+def _parse_nd(fn, dtype):
+    """Read an undetermined number of *n-tuple* data points from file
+
+e.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
+unknown-length sequence of nodal values.
+
+Arguments
+---------
+fn : str
+    The data file name.
+
+dtype : `numpy.dtype`
+    The numeric type of the data in the array.
+
+Returns
+-------
+    `numpy.ndarray` with shape (-1, len(*n-tuple*))
+    """
+
+    d = None
+
+    with FortranFile(fn,'r') as fin:
+        ts = fin.read_ints(dtype=np.byte)
+
+        d = fin.read_reals(dtype=dtype)
+        while True:
+            try:
+                rd = fin.read_reals(dtype=dtype)
+            except FortranEOFError as e:
+                break
+            else:
+                d = np.vstack((d,rd,))
+
+    return OrderedDict( [
+            ('ts',ts.tobytes().decode('UTF-8').strip()),
+            ('data',d), ] )
+
 def parse_1D_real8(fn):
     """(a) 1D real8 fields
 
@@ -372,7 +409,7 @@ Used for:
     o.v_pm.XXXX
     o.v_well.XXXX
     """
-    raise NotImplementedError()
+    return _parse_nd(fn,np.float32)
 
 def _is_fs_case_sensitive():
     """https://newbedev.com/check-if-file-system-is-case-insensitive-in-python
