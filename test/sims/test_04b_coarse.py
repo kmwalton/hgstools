@@ -27,6 +27,11 @@ class Test_Module04bCoarse(unittest.TestCase):
         self.assertEqual(self.g.shape,(6,2,5))
         self.assertEqual(self.g.elshape,(5,1,4))
 
+        self.assertEqual(self.g.nn, 60)
+        self.assertEqual(self.g.ne, 20)
+        self.assertEqual(self.g.nfn, 24)
+        self.assertEqual(self.g.nfe, 11)
+
     def test_adjacency(self):
 
         actual = self.g.make_pm_to_fx_adjacency()
@@ -48,9 +53,11 @@ class Test_Module04bCoarse(unittest.TestCase):
             with self.subTest(pm_element=ipm):
                 self.assertEqual([], actual[ipm])
 
-        # try invalid
+        # try invalid < 0 index
         with self.assertRaises(ValueError):
             actual[-1]
+
+        # try invalid > index
         with self.assertRaises(ValueError):
             actual[20]
 

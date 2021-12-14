@@ -28,10 +28,19 @@ class HGSGrid():
     def __init__(self, prefix):
 
         self.prefix = prefix
+        """Simulation path and prefix"""
         self.hgs_pm_nodes = None
+        """Simulation PM node data from `pyhgs.parser.parse_coordinates_pm`"""
         self.hgs_pm_elems = None
+        """Simulation PM node data from `pyhgs.parser.parse_elements_pm`"""
         self.hgs_fx_nodes = None
+        """Simulation fracture node data from
+        `pyhgs.parser.parse_coordinates_frac`
+        """
         self.hgs_fx_elems = None
+        """Simulation fracture node data from 
+        `pyhgs.parser.parse_elements_frac`
+        """
 
         def _my_call(*args,**kwargs):
             return args[0](*args[1:],**kwargs)
@@ -78,10 +87,19 @@ class HGSGrid():
             raise ValueError(
                 f'Simulation {prefix} does not have a rectilinear grid')
 
-        self.nn = self.hgs_pm_nodes['nn'] # alias
+        self.nn = self.hgs_pm_nodes['nn'] # aliases
+        """Number of PM nodes"""
+        self.ne = self.hgs_pm_elems['ne']
+        """Number of PM elements"""
+        self.nfn = self.hgs_fx_nodes['nnfrac']
+        """Number of fracture nodes"""
+        self.nfe = self.hgs_fx_elems['nfe']
+        """Number of fracture elements"""
 
         self.shape = tuple(self.hgs_pm_nodes[a] for a in ['nx','ny','nz'])
+        """Shape of the PM node grid"""
         self.elshape = tuple(self.hgs_pm_nodes[a]-1 for a in ['nx','ny','nz'])
+        """Shape of the PM element grid"""
 
     @staticmethod
     def _to_index_nocheck(t,shp):
