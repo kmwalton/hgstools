@@ -3,6 +3,9 @@
 
 import unittest
 import os
+import numpy as np
+import numpy.testing as nptest
+from pyhgs.parser import parse
 from pyhgs._test import skip_if_no_sim_output 
 from pyhgs.mesh import (HGSGrid, Domain)
 
@@ -60,6 +63,88 @@ class Test_Module04bCoarse(unittest.TestCase):
         # try invalid > index
         with self.assertRaises(ValueError):
             actual[20]
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
+        'No concentration data available in {SIM_PREFIX}')
+    def test_read_pm_conc(self):
+
+        desired_t = 31536000.
+        some_desired = {
+            0:7.07029379487522647e-10,
+            3:9.86041470696363831e-08,
+            9:9.86041470696363831e-08,
+            14:1.96902050220160163e-07,
+            19:2.25981438006783719e-07,
+            34:2.82556868569372455e-07,
+            46:1.07707273855339736e-05,
+            59:3.59244994863061606e-11,
+        }
+        some_more_desired = {
+           (3,0,3):0.00341675779782235622,
+           (3,0,2):0.000466027995571494102,
+           (2,0,2):3.52357856172602624e-05,
+           (2,0,3):0.0211286600679159164,
+           (2,1,2):3.43717256328091025e-05,
+           (2,1,3):0.0209547057747840881,
+           (3,1,3):0.00340801011770963669,
+           (3,1,2):0.000465662626083940268,
+        }
+
+        FN = f'{SIM_PREFIX}o.conc_pm.salt.0010'
+        d = parse(FN)
+
+        self.assertTrue(abs(float(d['ts'])-desired_t)<1e-6,
+                'Correct file/time')
+
+        with self.subTest(read='PM node concentration'):
+            cnpm = self.g.get_nodal_vals(FN)
+
+            act = cnpm.flatten(order='F')[list(some_desired.keys())]
+            des = list(some_desired.values())
+
+            nptest.assert_allclose(act, des, rtol=0.01,)
+
+            for ind,des in some_more_desired.items():
+                nptest.assert_allclose(cnpm[ind], des, rtol=0.01,)
+
+
+        with self.subTest(read='PM element concentration'):
+            cepm = self.g.get_element_vals(FN)
+
+            act = cepm[2,0,2]
+            des = sum(some_more_desired.values())/8.
+            nptest.assert_allclose(act, des, rtol=0.01)
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
+        'No concentration data available in {SIM_PREFIX}')
+    def test_read_frac_conc(self):
+        """Read an example PM and fracture-domain concentration file"""
+        with self.subTest(read='Frac node concentration'):
+            cnfx = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010',
+                Domain.FRAC)
+            self.assertEqual(cnfx.size,24)
+            
+            some_desired = {
+                3:9.86041470696363831e-08,
+                9:9.85499681860346755e-08,
+                14:1.96902050220160163e-07,
+                21:8.28335832920856774e-05,
+            }
+            
+            pmn2fxn = self.g.hgs_fx_nodes['link_pm2frac'] - self.g.nn
+            act = cnfx[list( pmn2fxn[k] for k in some_desired.keys())]
+            des = list(some_desired.values())
+            nptest.assert_allclose( act, des, rtol=0.01,)
+
+            with self.assertRaises(IndexError):
+                cnfx[ pmn2fxn[0] ] # test where there is no fracture
+
+        with self.subTest(read='Frac element concentration'):
+            cefx = self.g.get_element_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010',
+                Domain.FRAC)
+
 
 if __name__ == '__main__':
     unittest.main()

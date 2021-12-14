@@ -228,6 +228,9 @@ class HGSGrid():
             # hope we get a view instead of a copy
             ret = d.reshape(self.shape,order='F')
 
+        elif dom == Domain.FRAC:
+            ret = d.flatten(order='F')[self.hgs_fx_nodes['link_frac2pm']]
+
         else:
             raise NotImplementedError(f'Not implemented for {dom!s}')
 
