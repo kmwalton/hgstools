@@ -30,6 +30,8 @@ from collections import OrderedDict
 import numpy as np
 from scipy.io import FortranFile
 
+__docformat__ = 'numpy'
+
 logger = logging.getLogger(__name__)
 
 def parse_coordinates_pm(fn):
@@ -217,7 +219,7 @@ def _parse(fn, dtype, shape=None):
         d = fin.read_reals(dtype=dtype)
 
     if shape:
-        d = d.resize(shape)
+        d = d.reshape(shape)
 
     return OrderedDict( [
             ('ts',ts.tobytes().decode('UTF-8').strip()),
