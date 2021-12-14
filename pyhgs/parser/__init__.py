@@ -21,6 +21,14 @@ Example:
 Specification of binary file structure provided by Killian Miller
 <kmiller@aquanty.com> to Ken Walton <kmwalton@g360group.org> by email on Feb.
 24, 2021, and July 26, 2021.
+
+Notes
+-----
+The `1D`, `2D`, and `3D` in the function names below refer to the number of
+dimensions of each datum, **not** the spatial dimensions of the HGS domain.
+E.g. concentration files must be parsed with the `1D` reader, and velocity
+files must be parsed with the `3D` reader.
+
 """
 import os
 import tempfile
@@ -31,32 +39,40 @@ import numpy as np
 from scipy.io import FortranFile
 
 __docformat__ = 'numpy'
+# see https://numpydoc.readthedocs.io/en/latest/format.html
 
 logger = logging.getLogger(__name__)
 
 def parse_coordinates_pm(fn):
-    """Parse o.coordinates_pm file and return a dict.
+    """Parse `o.coordinates_pm` file and return a dict.
 
-    Arguments:
-        fn : str
-            A filename, or the simulation prefix, or a directory and prefix.
+Arguments
+---------
+fn : str
+    A filename, or the simulation prefix, or a directory and prefix.
 
-    Returns:
-        A dict with the following keywords
+Returns
+-------
+A `dict` with the following keywords
 
-        1. nn: Total number of nodes (int4).
-        2. ncoords: x(i), y(i), z(i), i=1,nn, Nodal xyz-coordinates for each
-           node (real8).
-        3. nx, ny, nz, nsptot: Number of grid lines in the x-, y-, and
-           z-coordinates and the number species for transport (int4).
-        4. ne2d: Number of triangles or rectangles in a 2-D node sheet (int4).
-        5. tetramesh: Logical flag that is true if the mesh consists of
-           tetrahedrons.
-        6. gal_mode: Logical flag that is true if Galerkin mode is used for
-           tetrahedral mesh.
-        7. write_face_seg: Logical flag.
-        8. nb2d: Maximum number of nodes connected to a node for a 2-D
-           triangular mesh (int4).
+nn: int
+    Total number of nodes (int4).
+ncoords: x(i), y(i), z(i), i=1,nn
+    Nodal xyz-coordinates for each node (real8).
+nx, ny, nz, nsptot: int
+    Number of grid lines in the x-, y-, and z-coordinates and the number species
+    for transport (int4).
+ne2d: int
+    Number of triangles or rectangles in a 2-D node sheet (int4).
+tetramesh: bool
+    Logical flag that is true if the mesh consists of tetrahedrons.
+gal_mode: bool
+    Logical flag that is true if Galerkin mode is used for tetrahedral mesh.
+write_face_seg: bool
+    Logical flag.
+nb2d: int
+    Maximum number of nodes connected to a node for a 2-D triangular mesh
+    (int4).
     """
 
     if not os.path.exists(fn):
@@ -91,20 +107,24 @@ def parse_coordinates_pm(fn):
 def parse_elements_pm(fn):
     """Parse o.elements_pm file and return a dict.
 
-    Arguments:
-        fn : str
-            A filename, or the simulation prefix, or a directory and prefix.
+Arguments
+---------
+fn : str
+    A filename, or the simulation prefix, or a directory and prefix.
 
-    Returns:
-        A dict with the following keywords:
+Returns
+-------
+A `dict` with the following keywords:
 
-        1. nln: Number of nodes per element (6: triangular prism, 8: hexahedron)
-           (int4).
-        2. ne: Total number of elements (int4).
-        3. inc(i, j) i=1,nln, j=1,ne: Node numbers of elemental incidences for
-           each element (int4).
-           *Node numbers are returned with 0-based indicies.*
-        4. zone(i), i=1,ne: Element ID (zone number) for each element (int4).
+nln: int
+    Number of nodes per element (6: triangular prism, 8: hexahedron) (int4).
+ne: int
+    Total number of elements (int4).
+inc(i, j) i=1,nln, j=1,ne: numpy.ndarray
+    Node numbers of elemental incidences for each element (int4). *Node numbers
+    are returned with 0-based indicies.*
+zone(i), i=1,ne: numpy.ndarray
+    Element ID (zone number) for each element (int4).
     """
 
     if not os.path.exists(fn):
@@ -129,14 +149,18 @@ def parse_elements_pm(fn):
 def parse_coordinates_frac(fn):
     """Parse the o.coordinates_frac file and return a `dict`.
 
-    Returns:
-        A `dict` with the following keys/values.
-        1. nnfrac: Total number of fracture nodes (int4)
-        2. frac_scheme: 0 for common node or 1 for dual node (int4)
-        3. link_frac2pm(i), i=1,nnfrac: Fracture node to PM node mapping (int4)
-            *0-based indices returned.*
-        4. link_pm2frac(i), i=1,nn: PM node to fracture node mapping (int4)
-            *0-based indices returned.*
+Returns
+-------
+A `dict` with the following keys/values.
+
+nnfrac : int
+    Total number of fracture nodes (int4)
+frac_scheme : int
+    0 for common node or 1 for dual node (int4)
+link_frac2pm(i), i=1,nnfrac : int
+    Fracture node to PM node mapping (int4) *0-based indices returned.*
+link_pm2frac(i), i=1,nn : int
+    PM node to fracture node mapping (int4) *0-based indices returned.*
     """
 
     if not os.path.exists(fn):
@@ -145,7 +169,7 @@ def parse_coordinates_frac(fn):
 
     with FortranFile(fn,'r') as fin:
         nnfrac = fin.read_ints()[0]
-        frac_scheme = fin.read_ints()[0] 
+        frac_scheme = fin.read_ints()[0]
         link_frac2pm = fin.read_ints()
         link_pm2frac = fin.read_ints()
 
@@ -162,16 +186,22 @@ def parse_coordinates_frac(fn):
 def parse_elements_frac(fn):
     """Parse o.elements_frac file and return a `dict`.
 
-    Returns:
-        A `dict` with the following values
-        1. nln: number of nodes per frac element (int4)
-        2. nfe: total number of fracture elements (int4)
-        3. inc(i,j), i=1,nln, j=1,nfe:
-            node numbers of fracture element incidences (int4)
-            *0-based indices returned.*
-        4. zone(i), i=1,nfe: zone number for each fracture element (int4)
-        5. face_map(i, j), i=1,nfe, j=1,2: fracture to element face mapping (int4)
-        6. ap(i), i=1,nfe: aperture values (real8)
+Returns
+-------
+A `dict` with the following values
+nln: int
+    number of nodes per frac element (int4)
+nfe: int
+    total number of fracture elements (int4)
+inc(i,j), i=1,nln, j=1,nfe: numpy.ndarray
+    node numbers of fracture element incidences (int4) *0-based indices
+    returned.*
+zone(i), i=1,nfe: numpy.ndarray
+    zone number for each fracture element (int4)
+face_map(i, j), i=1,nfe, j=1,2: numpy.ndarray
+    fracture to element face mapping (int4)
+ap(i), i=1,nfe: numpy.ndarray
+    aperture values (real8)
     """
 
     if not os.path.exists(fn):
@@ -204,15 +234,15 @@ def parse_elements_frac(fn):
 def _parse(fn, dtype, shape=None):
     """Return the timestamp and [possibly rehsaped] data in a dict.
 
-        Arguments:
-            fn : str
-                filename to open
+    Arguments:
+        fn : str
+            filename to open
 
-            dtype : numpy.datatype
-                interperet the data as this type
+        dtype : numpy.datatype
+            interperet the data as this type
 
-            shape : tuple
-                resize the data to a numpy.ndarray of this size, if provided
+        shape : tuple
+            resize the data to a numpy.ndarray of this size, if provided
     """
     with FortranFile(fn,'r') as fin:
         ts = fin.read_ints(dtype=np.byte)
@@ -229,62 +259,89 @@ def _parse(fn, dtype, shape=None):
 def parse_1D_real8(fn):
     """(a) 1D real8 fields
 
-File format: [int4][char80][int4][int4][real8]...[real8][int4]
+Notes
+-----
 
-o.ETEvap_olf.XXXX 
-o.ETPmEvap3D_pm.XXXX
-o.ETPmEvap_olf.XXXX
-o.ETPmTranspire3D_pm.XXXX
-o.ETPmTranspire_olf.XXXX
-o.ETTotal_olf.XXXX
-o.conc_dual.species.XXXX
-o.conc_frac.species.XXXX
-o.conc_olf.species.XXXX
-o.conc_pm.species.XXXX
-o.freeze_thaw_temp_pm.XXXX
-o.head_chan.XXXX
-o.head_dual.XXXX
-o.head_frac.XXXX
-o.head_olf.XXXX
-o.head_pm.XXXX
-o.head_well.XXXX
-o.iconc_pm.species.XXXX
-o.pet_olf.XXXX
-o.rain_olf.XXXX
+File format:
+
+    [int4][char80][int4]
+    [int4][real8]...[real8][int4]
+
+Used for:
+
+    o.ETEvap_olf.XXXX
+    o.ETPmEvap3D_pm.XXXX
+    o.ETPmEvap_olf.XXXX
+    o.ETPmTranspire3D_pm.XXXX
+    o.ETPmTranspire_olf.XXXX
+    o.ETTotal_olf.XXXX
+    o.conc_dual.species.XXXX
+    o.conc_frac.species.XXXX
+    o.conc_olf.species.XXXX
+    o.conc_pm.species.XXXX
+    o.freeze_thaw_temp_pm.XXXX
+    o.head_chan.XXXX
+    o.head_dual.XXXX
+    o.head_frac.XXXX
+    o.head_olf.XXXX
+    o.head_pm.XXXX
+    o.head_well.XXXX
+    o.iconc_pm.species.XXXX
+    o.pet_olf.XXXX
+    o.rain_olf.XXXX
     """
     return _parse(fn, np.double)
 
 def parse_1D_real4(fn):
     """(b) 1D real4 fields
 
-File format: [int4][char80][int4][int4][real4]...[real4][int4]
+Notes
+-----
 
-o.ExchFlux_chan.XXXX 
-o.ExchFlux_dual.XXXX
-o.ExchFlux_olf.XXXX
-o.ExchFlux_olf2_chan.XXXX
-o.ExchFlux_pm2_chan.XXXX
-o.ExchFlux_well.XXXX
-o.ExchSolAdv_olf.species.XXXX
-o.ExchSolDisp_olf.species.XXXX
-o.exchsol_dual.species.XXXX
-o.ice_sat_pm.XXXX
-o.kxx.XXXX
-o.kyy.XXXX
-o.kzz.XXXX
-o.por_pm.XXXX
-o.sat_dual.XXXX
-o.sat_frac.XXXX
-o.sat_pm.XXXX
+File format:
+
+    [int4][char80][int4]
+    [int4][real4]...[real4][int4]
+
+Used for:
+
+    o.ExchFlux_chan.XXXX
+    o.ExchFlux_dual.XXXX
+    o.ExchFlux_olf.XXXX
+    o.ExchFlux_olf2_chan.XXXX
+    o.ExchFlux_pm2_chan.XXXX
+    o.ExchFlux_well.XXXX
+    o.ExchSolAdv_olf.species.XXXX
+    o.ExchSolDisp_olf.species.XXXX
+    o.exchsol_dual.species.XXXX
+    o.ice_sat_pm.XXXX
+    o.kxx.XXXX
+    o.kyy.XXXX
+    o.kzz.XXXX
+    o.por_pm.XXXX
+    o.sat_dual.XXXX
+    o.sat_frac.XXXX
+    o.sat_pm.XXXX
     """
     return _parse(fn, np.float)
 
 def parse_2D_real8(fn):
     """(c) 2D real8 fields
 
-File format: [int4][char80][int4][int4][real8][real8][int4]...[int4][real8][real8][int4]
+Notes
+-----
 
-o.friction_olf.XXXX 
+File format:
+
+    [int4][char80][int4]
+    [int4][real8][real8]
+    [int4]...
+    [int4][real8][real8]
+    [int4]
+
+Used for:
+
+    o.friction_olf.XXXX
 
     """
     raise NotImplementedError()
@@ -292,17 +349,28 @@ o.friction_olf.XXXX
 def parse_3D_real4(fn):
     """(d) 3D real4 fields
 
-File format: [int4][char80][int4][int4][real4][real4][real4][int4]...[int4][real4][real4][real4][int4]
+Notes
+-----
 
-o.q_dual.XXXX 
-o.q_pm.XXXX
-o.tvk_pm.XXXX
-o.v_chan.XXXX
-o.v_dual.XXXX
-o.v_frac.XXXX
-o.v_olf.XXXX
-o.v_pm.XXXX
-o.v_well.XXXX
+File format:
+
+    [int4][char80][int4]
+    [int4][real4][real4][real4]
+    [int4]...  # entries unknown
+    [int4][real4][real4][real4]
+    [int4]
+
+Used for:
+
+    o.q_dual.XXXX
+    o.q_pm.XXXX
+    o.tvk_pm.XXXX
+    o.v_chan.XXXX
+    o.v_dual.XXXX
+    o.v_frac.XXXX
+    o.v_olf.XXXX
+    o.v_pm.XXXX
+    o.v_well.XXXX
     """
     raise NotImplementedError()
 
@@ -323,7 +391,7 @@ _file_to_parser_dict = {
     'o.coordinates_frac':parse_coordinates_frac,
     'o.elements_frac':parse_elements_frac,
 
-    'o.ETEvap_olf':parse_1D_real8, 
+    'o.ETEvap_olf':parse_1D_real8,
     'o.ETPmEvap3D_pm':parse_1D_real8,
     'o.ETPmEvap_olf':parse_1D_real8,
     'o.ETPmTranspire3D_pm':parse_1D_real8,
@@ -344,7 +412,7 @@ _file_to_parser_dict = {
     'o.pet_olf':parse_1D_real8,
     'o.rain_olf':parse_1D_real8,
 
-    'o.ExchFlux_chan':parse_1D_real4, 
+    'o.ExchFlux_chan':parse_1D_real4,
     'o.ExchFlux_dual':parse_1D_real4,
     'o.ExchFlux_olf':parse_1D_real4,
     'o.ExchFlux_olf2_chan':parse_1D_real4,
@@ -362,7 +430,7 @@ _file_to_parser_dict = {
     'o.sat_frac':parse_1D_real4,
     'o.sat_pm':parse_1D_real4,
 
-    'o.q_dual':parse_3D_real4, 
+    'o.q_dual':parse_3D_real4,
     'o.q_pm':parse_3D_real4,
     'o.tvk_pm':parse_3D_real4,
     'o.v_chan':parse_3D_real4,
