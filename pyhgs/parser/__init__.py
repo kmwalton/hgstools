@@ -36,7 +36,7 @@ import logging
 from collections import OrderedDict
 
 import numpy as np
-from scipy.io import FortranFile
+from scipy.io import FortranFile, FortranEOFError
 
 __docformat__ = 'numpy'
 # see https://numpydoc.readthedocs.io/en/latest/format.html
