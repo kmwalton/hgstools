@@ -64,9 +64,12 @@ class Test_Module04bCoarse(unittest.TestCase):
         with self.assertRaises(ValueError):
             actual[20]
 
+
+
     @unittest.skipIf(
         skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
-        'No concentration data available in {SIM_PREFIX}')
+        'No concentration data available in {SIM_PREFIX}'
+    )
     def test_read_pm_conc(self):
 
         desired_t = 31536000.
@@ -116,9 +119,12 @@ class Test_Module04bCoarse(unittest.TestCase):
             des = sum(some_more_desired.values())/8.
             nptest.assert_allclose(act, des, rtol=0.01)
 
+
+
     @unittest.skipIf(
         skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
-        'No concentration data available in {SIM_PREFIX}')
+        'No concentration data available in {SIM_PREFIX}'
+    )
     def test_read_frac_conc(self):
         """Read an example PM and fracture-domain concentration file"""
         with self.subTest(read='Frac node concentration'):
@@ -146,9 +152,12 @@ class Test_Module04bCoarse(unittest.TestCase):
                 Domain.FRAC)
 
 
-    @unittest.skipIf(skip_if_no_sim_output(SIM_PREFIX, ['o.q_pm.0001',
-                'o.v_pm.0001', 'o.v_frac.0001',]),
-        'No flux/velocity data present in {SIM_PREFIX}')
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(SIM_PREFIX,
+            ['o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',]),
+        'No flux/velocity data present in {SIM_PREFIX}'
+    )
     def test_read_flux(self):
         """Read example PM and fracture-domain velocity and flux files"""
 
@@ -157,6 +166,36 @@ class Test_Module04bCoarse(unittest.TestCase):
         fxv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',
                 Domain.FRAC)
 
+
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(SIM_PREFIX,
+            ['o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',]),
+        'No flux/velocity data present in {SIM_PREFIX}'
+    )
+    def test_calc_flux_mag(self):
+        """Read example PM and fracture-domain velocity and flux files"""
+
+        pmq = self.g.get_element_vals(f'{SIM_PREFIX}o.q_pm.0001')
+        fxv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',
+                Domain.FRAC)
+
+        pmqmag = np.sqrt(np.sum(pmq**2, axis=3))
+        fxvmag = np.sqrt(np.sum(fxv**2, axis=1))
+
+        pmqmag_des = np.array([
+          [[2.0518945e-10, 1.8794906e-10, 1.8819642e-10, 1.5892040e-10],],
+          [[2.6000405e-10, 2.6866750e-10, 2.2190369e-10, 1.5802624e-10],],
+          [[5.2409233e-11, 1.8065756e-10, 2.1618764e-10, 1.5657167e-10],],
+          [[1.2459916e-10, 1.7248690e-10, 1.8916432e-10, 3.8519826e-11],],
+          [[1.2648921e-10, 1.6842430e-10, 2.7908487e-10, 2.9564320e-10],]])
+        fxvmag_des = np.array([
+          1.1558607e-03, 1.1493608e-03, 1.1380099e-03, 5.1349805e-05,
+          1.3408824e-06, 1.0958962e-03, 1.0914268e-03, 2.5401107e-06,
+          3.7644098e-05, 1.1310030e-03, 1.1501204e-03])
+
+        nptest.assert_allclose(pmqmag, pmqmag_des, rtol=1e-5)
+        nptest.assert_allclose(fxvmag, fxvmag_des, rtol=1e-5)
 
 if __name__ == '__main__':
     unittest.main()
