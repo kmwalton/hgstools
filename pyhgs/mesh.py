@@ -103,20 +103,22 @@ class HGSGrid():
 
     @staticmethod
     def _to_index_nocheck(t,shp):
-        return t[0] + shp[0]*t[1] + shp[0]*shp[1]*t[2]
+        if len(t) == 1 : return t[0]
+        return t[0] + shp[0]*HGSGrid._to_index_nocheck(t[1:],shp[1:])
+        #return t[0] + shp[0]*t[1] + shp[0]*shp[1]*t[2]
 
     @staticmethod
     def _to_index(t,shp):
-        """Return 3D grid index as linear index"""
-        if any(t[i] >= shp[i] for i in range (3)):
+        """Return grid index as linear index"""
+        if any(t[i] >= shp[i] for i in range(len(shp))):
             s = tuple( v-1 for v in shp )
             raise ValueError(
                 f'Element index {t} out of 3D grid index bounds. Need <={s}.')
 
         if any(v<0 for v in t):
             raise ValueError(
-                'Element index {t} out of 3D grid index bounds. '\
-                f'Need >={3*(0,)}.')
+                'Element index {t} out of grid index bounds. '\
+                f'Need >={len(shp)*(0,)}.')
 
         return HGSGrid._to_index_nocheck(t,shp)
 
