@@ -1,6 +1,6 @@
 '''Inspect Hydrogeosphere meshes; interperet binary files'''
 
-from itertools import count,repeat
+from itertools import count,repeat,product
 from collections import defaultdict
 from bisect import bisect,bisect_left,bisect_right
 from enum import IntEnum,auto
@@ -510,6 +510,29 @@ class HGSGrid():
                     break
 
         return r
+
+    def _yield_fx_in_ssgrp(self, ss_ranges, pm2fxadj):
+        """Generates a list of incident fracture elements for each SS group
+
+        The order of the yielded sets is the same as `product(*ss_ranges)`
+        """
+        # TODO
+        # This might be improved by incrementally adding and deleting adjacent
+        # fractrure elements from each group. e.g., for one dimension
+        #
+        # adjfx(lo1,hi1) := grp1
+        # adjfx(lo2,hi2) = grp1 - adjfx(lo1,lo2) + adjfx(hi1,hi2) := grp2
+        # adjfx(lo3,hi3) = grp2 - adjfx(lo2,lo3) + adjfx(hi2,hi3)
+        # ...
+        #
+        # If there is a high degree of overlap between the ss regions, this
+        # might be a significant improvement.
+        for elindlohi in product(*ss_ranges):
+            r = set()
+            ranges = (range(*lohi) for lohi in elindlohi)
+            for elg in product(*ranges):
+                r.update(pm2fxadj[self.elg2eli(elg)])
+            yield r
 
 def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.

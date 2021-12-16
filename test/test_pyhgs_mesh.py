@@ -3,10 +3,11 @@
 
 import unittest
 
+from collections import defaultdict
 from decimal import Decimal
 import numpy as np
 
-from pyhgs.mesh import make_supersample_distance_groups
+from pyhgs.mesh import make_supersample_distance_groups, HGSGrid
 
 PLACES = Decimal('0.001')
 def D_CO(v, pl=PLACES):
@@ -54,6 +55,73 @@ class TestPYHGSMesh(unittest.TestCase):
             [[0,2], [1,5], [2,8], [5,9], [8,10], [9,11], [10,14],],
         )
 
+
+    def test_yield_fx_in_ssgrp(self):
+
+        g = object.__new__(HGSGrid)   # uninitialized object
+
+        g.elshape = (2,1,)
+        ssranges = (
+                [(0,1), (1,2), ],
+                [(0,1,), ],
+            )
+        adj = defaultdict(list, [(0,[0,]), (1,[0,]),] )
+
+        act = g._yield_fx_in_ssgrp(ssranges, adj)
+        des = 2*[set([0,]),]
+        self.assertEqual([*act], des)
+
+
+
+        g.elshape = (4,1)
+        ssranges = (
+                [(0,2), (2,3),],
+                [(0,1,),],
+            )
+
+        act = g._yield_fx_in_ssgrp(ssranges, adj)
+        des = [{0,}, set(),]
+        self.assertEqual([*act],des)
+
+
+        g.elshape = (4,1,1)
+        ssranges = (
+                [(0,2), (2,3),],
+                [(0,1,),],
+                [(0,1,),],
+            )
+
+        act = g._yield_fx_in_ssgrp(ssranges, adj)
+        self.assertEqual([*act],des)
+
+
+        g.elshape = (4,2,2)
+        ssranges = (
+                [(0,2), (2,4),],
+                [(0,2),],
+                [(0,2),],
+            )
+        adj = defaultdict(list, [
+            (0,[0,]),
+            (1,[0,6,]),
+            (2,[2,]),
+            (3,[3,]),
+            (4,[1,]),
+            (5,[1,7,]),
+            (6,[2,]),
+            (7,[3,]),
+            (9,[6,]),
+            (10,[4,]),
+            (11,[5,]),
+            (13,[7,]),
+            (14,[4,]),
+            (15,[5,]),
+        ] )
+
+        des = [ {0,1,6,7,}, {2,3,4,5,}, ]
+
+        act = g._yield_fx_in_ssgrp(ssranges, adj)
+        self.assertEqual([*act],des)
 
 if __name__ == '__main__':
     unittest.main()
