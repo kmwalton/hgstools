@@ -51,6 +51,10 @@ class Test_Module04bCoarse(unittest.TestCase):
             with self.subTest(pm_element=ipm):
                 self.assertEqual(desired, actual[ipm])
 
+            ipmgrid = self.g.eli2elg(ipm)
+            with self.subTest(pm_element=ipmgrid):
+                self.assertEqual(desired, actual[ipmgrid])
+
         # spot-check some nodes with no neighbours
         for ipm in [0, 1, 5, 6, 14, 19,]:
             with self.subTest(pm_element=ipm):

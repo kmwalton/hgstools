@@ -122,6 +122,14 @@ class HGSGrid():
 
         return HGSGrid._to_index_nocheck(t,shp)
 
+    @staticmethod
+    def _to_grid_index(iin,shp):
+        i = 3*[-1,]
+        i[0] = iin % shp[0]
+        i[1] = int((iin - i[0])/shp[0]) % shp[1]
+        i[2] = int((iin - i[0] - shp[0]*i[1]) /(shp[0]*shp[1]))
+        return i
+
     def get_grid_lines(self):
         """Return the ([x-],[y-],[z-grid lines]) in this rectilinear grid"""
         # store
@@ -471,18 +479,37 @@ class HGSGrid():
         return HGSGrid._to_index(i, self.shape)
 
     def elg2eli(self,i):
-        """Element grid (PM only, as list_like) to element sequence index"""
+        """Element grid (PM only, as *list_like*) to element sequence index"""
         return HGSGrid._to_index(i, self.elshape)
 
+    def eli2elg(self,i):
+        """Element index (PM only, as `int`) to element grid index"""
+        return HGSGrid._to_grid_index(i, self.elshape)
+
     def make_pm_to_fx_adjacency(self):
-        """Return a dict of pm element indices to adjacent fracture elements"""
+        """Return a mapping of PM elements to adjacent fracture elements.
+
+        Returns
+        -------
+        A `defaultdict`-like object, where keys are PM element indices and
+        values are `list`s of fracture element indices. The dictionary does not
+        hold entries for PM elements that have no neighbouring fractures; when
+        such an element is requested, an empty `list` is returned as the value.
+
+        PM element indices can be a 0-based integer index, or a `tuple` of
+        0-based element grid indices.
+        """
 
         class _KeyCheckDict(defaultdict):
-            def __init__(self, elszpm=self.hgs_pm_elems['ne']):
+            def __init__(self, owner_hgsgrid=self):
                 super().__init__(list)
-                self._imax = elszpm
+                self._grid = owner_hgsgrid
+                self._imax = owner_hgsgrid.hgs_pm_elems['ne']
 
             def __getitem__(self,i):
+                if hasattr(i,'__len__'):
+                    # assume grid index coordinates given
+                    i = self._grid.elg2eli(i)
                 if int(i) < 0 or i >= self._imax:
                     raise ValueError(f'{i} out of bounds of PM element indices')
                 return super().__getitem__(i)
