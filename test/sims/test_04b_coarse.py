@@ -15,7 +15,10 @@ TESTP = os.path.dirname(__file__)
 SIM_PREFIX = os.path.join(TESTP,'04b_very_coarse_mesh','module4b')
 'Simulation directory+prefix'
 
-@unittest.skipIf(skip_if_no_sim_output(SIM_PREFIX,['o.eco',]), 'HGS output missing')
+@unittest.skipIf(skip_if_no_sim_output(SIM_PREFIX,[
+        'o.eco', 'o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',
+        'o.conc_pm.salt.0010',],),
+        'HGS output missing')
 class Test_Module04bCoarse(unittest.TestCase):
 
     def setUp(self):
@@ -69,11 +72,6 @@ class Test_Module04bCoarse(unittest.TestCase):
             actual[20]
 
 
-
-    @unittest.skipIf(
-        skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
-        'No concentration data available in {SIM_PREFIX}'
-    )
     def test_read_pm_conc(self):
 
         desired_t = 31536000.
@@ -124,11 +122,6 @@ class Test_Module04bCoarse(unittest.TestCase):
             nptest.assert_allclose(act, des, rtol=0.01)
 
 
-
-    @unittest.skipIf(
-        skip_if_no_sim_output(SIM_PREFIX, ['o.conc_pm.salt.0010',],),
-        'No concentration data available in {SIM_PREFIX}'
-    )
     def test_read_frac_conc(self):
         """Read an example PM and fracture-domain concentration file"""
         with self.subTest(read='Frac node concentration'):
@@ -157,11 +150,6 @@ class Test_Module04bCoarse(unittest.TestCase):
 
 
 
-    @unittest.skipIf(
-        skip_if_no_sim_output(SIM_PREFIX,
-            ['o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',]),
-        'No flux/velocity data present in {SIM_PREFIX}'
-    )
     def test_read_flux(self):
         """Read example PM and fracture-domain velocity and flux files"""
 
@@ -171,12 +159,6 @@ class Test_Module04bCoarse(unittest.TestCase):
                 Domain.FRAC)
 
 
-
-    @unittest.skipIf(
-        skip_if_no_sim_output(SIM_PREFIX,
-            ['o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',]),
-        'No flux/velocity data present in {SIM_PREFIX}'
-    )
     def test_calc_flux_mag(self):
         """Read example PM and fracture-domain velocity and flux files"""
 
