@@ -538,6 +538,13 @@ class HGSGrid():
 
         return r
 
+    def _find_fx_in_single_ssgrp(self, ss_rng, pm2fxadj):
+            r = set()
+            ranges = (range(*lohi) for lohi in ss_rng)
+            for elg in product(*ranges):
+                r.update(pm2fxadj[self.elg2eli(elg)])
+            return list(sorted(r))
+
     def _yield_fx_in_ssgrp(self, ss_ranges, pm2fxadj):
         """Generates a list of incident fracture elements for each SS group
 
@@ -555,11 +562,7 @@ class HGSGrid():
         # If there is a high degree of overlap between the ss regions, this
         # might be a significant improvement.
         for elindlohi in product(*ss_ranges):
-            r = set()
-            ranges = (range(*lohi) for lohi in elindlohi)
-            for elg in product(*ranges):
-                r.update(pm2fxadj[self.elg2eli(elg)])
-            yield r
+            yield self._find_fx_in_single_ssgrp(elindlohi,pm2fxadj)
 
 def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.

@@ -68,7 +68,7 @@ class TestPYHGSMesh(unittest.TestCase):
         adj = defaultdict(list, [(0,[0,]), (1,[0,]),] )
 
         act = g._yield_fx_in_ssgrp(ssranges, adj)
-        des = 2*[set([0,]),]
+        des = 2*[[0,],]
         self.assertEqual([*act], des)
 
 
@@ -80,7 +80,7 @@ class TestPYHGSMesh(unittest.TestCase):
             )
 
         act = g._yield_fx_in_ssgrp(ssranges, adj)
-        des = [{0,}, set(),]
+        des = [[0,], [],]
         self.assertEqual([*act],des)
 
 
@@ -118,7 +118,7 @@ class TestPYHGSMesh(unittest.TestCase):
             (15,[5,]),
         ] )
 
-        des = [ {0,1,6,7,}, {2,3,4,5,}, ]
+        des = [ [0,1,6,7,], [2,3,4,5,], ]
 
         act = g._yield_fx_in_ssgrp(ssranges, adj)
         self.assertEqual([*act],des)
