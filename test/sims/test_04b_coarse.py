@@ -29,6 +29,10 @@ class Test_Module04bCoarse(unittest.TestCase):
         # reload the data.
         self.g = HGSGrid(SIM_PREFIX)
 
+        # test HGS' pm 2 fracture node mapping
+        # Note: pyhgs' fracture nodes are indexed starting at zero
+        self.pmn2fxn = self.g.hgs_fx_nodes['link_pm2frac'] - self.g.nn
+
     def test_grid_sizes(self):
         self.assertEqual(self.g.shape,(6,2,5))
         self.assertEqual(self.g.elshape,(5,1,4))
@@ -70,6 +74,8 @@ class Test_Module04bCoarse(unittest.TestCase):
         # try invalid > index
         with self.assertRaises(ValueError):
             actual[20]
+
+        self.assertTrue(self.pmn2fxn[0] < 0)
 
 
     def test_read_pm_conc(self):
@@ -122,13 +128,7 @@ class Test_Module04bCoarse(unittest.TestCase):
             nptest.assert_allclose(act, des, rtol=0.01)
 
 
-    def test_read_frac_conc(self):
-        """Read an example PM and fracture-domain concentration file"""
-        with self.subTest(read='Frac node concentration'):
-            cnfx = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010',
-                Domain.FRAC)
-            self.assertEqual(cnfx.size,24)
-            
+    def _assertEqual_fx_nodal_0010(self, actual):
             some_desired = {
                 3:9.86041470696363831e-08,
                 9:9.85499681860346755e-08,
@@ -136,19 +136,50 @@ class Test_Module04bCoarse(unittest.TestCase):
                 21:8.28335832920856774e-05,
             }
             
-            pmn2fxn = self.g.hgs_fx_nodes['link_pm2frac'] - self.g.nn
-            act = cnfx[list( pmn2fxn[k] for k in some_desired.keys())]
+            act = actual[list( self.pmn2fxn[k] for k in some_desired.keys())]
             des = list(some_desired.values())
             nptest.assert_allclose( act, des, rtol=0.01,)
 
+    def _assertEqual_fx_elem_0010(self, actual):
+        some_desired = {
+            0:0.546559039503335953,
+            5:0.000274344090939848684,
+        }
+
+        act = actual[list(k for k in some_desired.keys())]
+        des = list(some_desired.values())
+        nptest.assert_allclose( act, des, rtol=0.01,)
+
+    def test_read_frac_conc(self):
+        """Read an example PM and fracture-domain concentration file"""
+        with self.subTest(read='Frac node concentration'):
+            cnfx = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010',
+                Domain.FRAC)
+            self.assertEqual(cnfx.size,24)
+            self._assertEqual_fx_nodal_0010(cnfx)
+
             with self.assertRaises(IndexError):
-                cnfx[ pmn2fxn[0] ] # test where there is no fracture
+                cnfx[ self.pmn2fxn[0] ] # test where there is no fracture
 
         with self.subTest(read='Frac element concentration'):
             cefx = self.g.get_element_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010',
                 Domain.FRAC)
+            self._assertEqual_fx_elem_0010(cefx)
 
+    def test_read_frac_conc_from_pm(self):
+        """Test fracture concentrations from PM nodal concentration inputs"""
+        cnpm = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010')
+        self.assertEqual(cnpm.shape,(6,2,5))
+        self.assertEqual(cnpm.size,60)
 
+        with self.subTest(read='nodal concentration'):
+            cnfx = self.g.get_nodal_vals(cnpm, Domain.FRAC)
+            self.assertEqual(cnfx.size,24)
+
+        with self.subTest(read='elemental concentration'):
+            cefx = self.g.get_element_vals(cnpm, Domain.FRAC)
+            self.assertEqual(cefx.size,11)
+            self._assertEqual_fx_elem_0010(cefx)
 
     def test_read_flux(self):
         """Read example PM and fracture-domain velocity and flux files"""

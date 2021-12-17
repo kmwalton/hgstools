@@ -412,7 +412,7 @@ class HGSGrid():
                 # seems to be grid array of scalars
                 if d.shape == self.shape:
                     # data seems to be PM nodal values, as grid
-                    dd = np.flatten(d, order='F')
+                    dd = d.flatten(order='F')
                     func = _fx_node_avg
 
             elif len(d.shape) == 4:
