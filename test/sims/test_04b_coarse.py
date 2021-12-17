@@ -3,8 +3,10 @@
 
 import unittest
 import os
+from itertools import product
 import numpy as np
 import numpy.testing as nptest
+import pyhgs
 from pyhgs.parser import parse
 from pyhgs._test import skip_if_no_sim_output 
 from pyhgs.mesh import (HGSGrid, Domain)
@@ -213,6 +215,38 @@ class Test_Module04bCoarse(unittest.TestCase):
 
         nptest.assert_allclose(pmqmag, pmqmag_des, rtol=1e-5)
         nptest.assert_allclose(fxvmag, fxvmag_des, rtol=1e-5)
+
+
+    def test_supersample_distance_groups(self):
+
+        des_pm10xgrps = [[0,1], [1,2], [2,4], [4,4],]
+        des_pm10ygrps = [[0,1],]
+        des_pm10zgrps = [[0,1], [1,2], [2,3], [3,4],]
+
+        # test individual dimensions
+        # PM only
+        ssdg = pyhgs.mesh.make_supersample_distance_groups
+        self.assertEqual(ssdg([10.,10.,5.,5.,20.], 10.), des_pm10xgrps)
+        self.assertEqual(ssdg([1.,], 10.), des_pm10ygrps)
+        self.assertEqual(ssdg([6.,6.,8.,5.], 10.), des_pm10zgrps)
+
+        # test sequence of PM ss groups
+        des_pm10 = list(product(des_pm10xgrps, des_pm10ygrps, des_pm10zgrps))
+        act_pm10 = list(self.g.supersample_distance_groups(10.))
+        self.assertEqual(act_pm10, des_pm10)
+
+        # test sequence
+        des_fx10 = [
+            (), (), (0,), (0,), # z-index is fastest!
+            (), (), (1,), (1,),
+            (4,8,9,), (5,8,9,), (2,3,6,), (2,3,7,),
+            (), (), (), (), # note 0-length PM groups give NO fracture 10
+        ]
+        act_fx10 = list(
+                self.g.supersample_distance_groups(10., [Domain.FRAC,]))
+
+        self.assertEqual(act_fx10, des_fx10)
+
 
 if __name__ == '__main__':
     unittest.main()

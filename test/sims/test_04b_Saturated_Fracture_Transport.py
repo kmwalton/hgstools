@@ -4,7 +4,9 @@
 
 import unittest
 import os
-from pyhgs._test import skip_if_no_sim_output 
+import numpy as np
+
+from pyhgs._test import skip_if_no_sim_output
 from pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)+os.sep
@@ -39,6 +41,22 @@ class Test_Module04b(unittest.TestCase):
 
         self.assertEqual(tuple(self.g.find_grid_index(8181)), (0,1,40))
         self.assertEqual(tuple(self.g.find_grid_index(0.,1.,20.)), (0,1,40))
+
+    def test_calc_flux_weighted_conc(self):
+        """Flux-weighted supersample"""
+
+        cpm = self.g.get_element_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010')
+        pmq = self.g.get_element_vals(f'{SIM_PREFIX}o.q_pm.0001')
+        fxv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',
+                Domain.FRAC)
+
+        pmqmag = np.sqrt(np.sum(pmq**2, axis=3))
+        fxvmag = np.sqrt(np.sum(fxv**2, axis=1))
+
+        ssgr = [ self.g.supersample_distance_groups(2.) ]
+
+
+        
 
 if __name__ == '__main__':
     unittest.main()

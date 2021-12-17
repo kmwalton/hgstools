@@ -538,6 +538,76 @@ class HGSGrid():
 
         return r
 
+    def supersample_distance_groups(self, maxd, domains=(Domain.PM,)):
+        """Generate supersample groups for the requested domains
+
+        Arguments
+        ---------
+
+        maxd : `float` or list-like
+            The supersampling distance, or 3-tuple of distances to be applied to
+            the x- y- and z- domains respectively
+
+        domains : list-like of `pyhgs.mesh.Domain`
+            List of domains to create supersample groups
+
+        Returns
+        -------
+        A generator over tuples of distance groups.
+
+        'Distance groups' are:
+
+        - for `Domain.PM`, tuples of `((ixlo, ixhi), (iylo, iyhi), (izlo, izhi),)`,
+            which are lo (inclusive) and hi (exclusive) indicies into the PM element
+            grid in the respective directions, thus defining a block of space;
+        - for `Domain.FRAC`, possibly empty lists of fracture elements within or
+            on the edge of the preceding blocks, like `[]`, `[ifrac0,]`, or
+            `[ifrac0, ifrac1, ... ]`.
+
+        The order of these groups is what one would get from
+
+            product( starmap(
+                make_supersample_distance_groups,
+                [ (dx, maxd[0]), (dy, maxd[1]), (dz, maxd[2]), ]
+            ) )
+
+        If multiple domains are specified, generated items are concatenated
+        tuples of the preceding in the order specified in `domains`.
+
+        e.g. `domains = [Domain.FRAC, Domain.PM]` gives
+
+        `([ifx1, ...,], (ixlo, ixhi), (iylo, iyhi), (izlo, izhi),),
+        ...`
+        """
+        if not hasattr(maxd,'__len__'):
+            maxd = tuple(map(float, 3*(maxd,)))
+
+        gl = self.get_grid_lines()
+
+        # always make PM groups first
+        pm_ssgr = []
+
+        for a,maxda in zip(range(3),maxd):
+            gla = gl[a]
+            da = gla[1:]-gla[:-1]
+            pm_ssgr.append(make_supersample_distance_groups(da,maxda))
+
+        # make adjacency
+        adj = self.make_pm_to_fx_adjacency()
+
+        # dispatcher
+        func = {
+            Domain.PM: lambda grp: grp,
+            Domain.FRAC: lambda grp: self._find_fx_in_single_ssgrp(grp,adj)
+        }
+
+        for pmgrp in product(*pm_ssgr):
+            y = tuple()
+            for d in domains:
+                y = y + tuple(func[d](pmgrp))
+
+            yield y
+
     def _find_fx_in_single_ssgrp(self, ss_rng, pm2fxadj):
             r = set()
             ranges = (range(*lohi) for lohi in ss_rng)
