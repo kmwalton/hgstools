@@ -500,6 +500,9 @@ class HGSGrid():
         0-based element grid indices.
         """
 
+        if hasattr(self, '_pme2fxe'):
+            return self._pme2fxe
+
         class _KeyCheckDict(defaultdict):
             def __init__(self, owner_hgsgrid=self):
                 super().__init__(list)
@@ -536,6 +539,7 @@ class HGSGrid():
                         r[ self.elg2eli(gi0-one[a]) ].append(i)
                     break
 
+        self._pme2fxe = r
         return r
 
     def iter_supersample_distance_groups(self, maxd, domains=(Domain.PM,)):
