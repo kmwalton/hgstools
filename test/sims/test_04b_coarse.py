@@ -4,6 +4,7 @@
 import unittest
 import os
 from itertools import product
+from math import prod
 import numpy as np
 import numpy.testing as nptest
 
@@ -247,6 +248,62 @@ class Test_Module04bCoarse(unittest.TestCase):
                 self.g.iter_supersample_distance_groups(10., [Domain.FRAC,]))
 
         self.assertEqual(act_fx10, des_fx10)
+
+    def test_flux_weighted_conc(self):
+        
+        # alias
+        mesh_ssdg = pyhgs.mesh.make_supersample_distance_groups
+
+        # get concentrations
+        cnpm = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010')
+        cepm = self.g.get_element_vals(cnpm)
+        cefx = self.g.get_element_vals(cnpm,Domain.FRAC)
+        del cnpm
+
+        # calculate flux magnitudes (weights)
+        qepm = self.g.get_element_vals(f'{SIM_PREFIX}o.q_pm.0001')
+        qepm = np.sqrt(np.sum(qepm**2, axis=3))
+        qefx = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',Domain.FRAC)
+        qefx = np.sqrt(np.sum(qefx**2, axis=1))
+
+        # easy, but inefficient implementation
+        maxd = (10.,1.,10.)
+
+        # get supersample distance group sizes
+        ssdg_pm = []
+        for a,maxda in zip(range(3),maxd):
+            gla = self.g.get_grid_lines()[a]
+            da = gla[1:]-gla[:-1]
+            ssdg_pm.append(mesh_ssdg(da,maxda))
+
+        ssdata = np.zeros(prod(len(a) for a in ssdg_pm))
+
+        _iterfunc = self.g.iter_supersample_distance_groups
+        for i,grp in enumerate(_iterfunc(maxd, (Domain.PM,Domain.FRAC))):
+
+            # alias
+            (ixlo,ixhi),(yl,yh),(zl,zh),elfx = grp
+
+            # guard against 0-length zone --- go with 0.0 already in array
+            if any( lo == hi for (lo,hi) in grp[:-1] ): continue
+
+            # pm element grid index slice
+            sl = np.s_[ixlo:ixhi,yl:yh,zl:zh]
+            c = np.concatenate((cepm[sl].flatten(),cefx[elfx]))
+            w = np.concatenate((qepm[sl].flatten(),qefx[elfx]))
+
+            # compute average
+            ssdata[i] = np.average(c,weights=w)
+
+        # reshape to ss grid
+        ssdata = ssdata.reshape(tuple(len(a) for a in ssdg_pm))
+
+        self.assertTrue(ssdata[0,0,0] == cepm[0,0,0])
+        self.assertTrue(cepm[0,0,2] < ssdata[0,0,2] < cefx[0] )
+        self.assertTrue(cepm[0,0,3] < ssdata[0,0,3] < cefx[0] )
+
+        self.assertTrue(cepm[2,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
+        self.assertTrue(cepm[3,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
 
 
 if __name__ == '__main__':
