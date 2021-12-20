@@ -53,7 +53,7 @@ class Test_Module04b(unittest.TestCase):
         pmqmag = np.sqrt(np.sum(pmq**2, axis=3))
         fxvmag = np.sqrt(np.sum(fxv**2, axis=1))
 
-        ssgr = [ self.g.supersample_distance_groups(2.) ]
+        ssgr = [ self.g.iter_supersample_distance_groups(2.) ]
 
 
         

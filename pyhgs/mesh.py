@@ -538,7 +538,7 @@ class HGSGrid():
 
         return r
 
-    def supersample_distance_groups(self, maxd, domains=(Domain.PM,)):
+    def iter_supersample_distance_groups(self, maxd, domains=(Domain.PM,)):
         """Generate supersample groups for the requested domains
 
         Arguments
@@ -574,6 +574,16 @@ class HGSGrid():
         If multiple domains are specified, generated items are concatenated
         tuples of the preceding in the order specified in `domains`.
 
+        e.g. `domains = [Domain.FRAC]` gives
+
+        `( [ifx1, ifx2, ...], ),
+        ...`
+
+        e.g. `domains = [Domain.PM]` gives
+
+        `((ixlo, ixhi), (iylo, iyhi), (izlo, izhi),),
+        ...`
+        
         e.g. `domains = [Domain.FRAC, Domain.PM]` gives
 
         `([ifx1, ...,], (ixlo, ixhi), (iylo, iyhi), (izlo, izhi),),
@@ -598,13 +608,14 @@ class HGSGrid():
         # dispatcher
         func = {
             Domain.PM: lambda grp: grp,
-            Domain.FRAC: lambda grp: self._find_fx_in_single_ssgrp(grp,adj)
+            Domain.FRAC: lambda grp: (self._find_fx_in_single_ssgrp(grp,adj),)
         }
 
         for pmgrp in product(*pm_ssgr):
             y = tuple()
             for d in domains:
-                y = y + tuple(func[d](pmgrp))
+                yy = func[d](pmgrp)
+                y = y + yy
 
             yield y
 

@@ -6,6 +6,7 @@ import os
 from itertools import product
 import numpy as np
 import numpy.testing as nptest
+
 import pyhgs
 from pyhgs.parser import parse
 from pyhgs._test import skip_if_no_sim_output 
@@ -232,18 +233,18 @@ class Test_Module04bCoarse(unittest.TestCase):
 
         # test sequence of PM ss groups
         des_pm10 = list(product(des_pm10xgrps, des_pm10ygrps, des_pm10zgrps))
-        act_pm10 = list(self.g.supersample_distance_groups(10.))
+        act_pm10 = list(self.g.iter_supersample_distance_groups(10.))
         self.assertEqual(act_pm10, des_pm10)
 
         # test sequence
         des_fx10 = [
-            (), (), (0,), (0,), # z-index is fastest!
-            (), (), (1,), (1,),
-            (4,8,9,), (5,8,9,), (2,3,6,), (2,3,7,),
-            (), (), (), (), # note 0-length PM groups give NO fracture 10
+            [], [], [0,], [0,], # z-index is fastest!
+            [], [], [1,], [1,],
+            [4,8,9,], [5,8,9,], [2,3,6,], [2,3,7,],
+            [], [], [], [], # note 0-length PM groups give NO fracture 10
         ]
-        act_fx10 = list(
-                self.g.supersample_distance_groups(10., [Domain.FRAC,]))
+        act_fx10 = list( t[0] for t in 
+                self.g.iter_supersample_distance_groups(10., [Domain.FRAC,]))
 
         self.assertEqual(act_fx10, des_fx10)
 
