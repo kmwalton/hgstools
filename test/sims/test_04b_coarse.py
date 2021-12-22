@@ -245,7 +245,8 @@ class Test_Module04bCoarse(unittest.TestCase):
             [], [], [], [], # note 0-length PM groups give NO fracture 10
         ]
         act_fx10 = list( t[0] for t in 
-                self.g.iter_supersample_distance_groups(10., [Domain.FRAC,]))
+                self.g.iter_supersample_distance_groups(
+                    10., domains=[Domain.FRAC,]))
 
         self.assertEqual(act_fx10, des_fx10)
 
@@ -279,7 +280,8 @@ class Test_Module04bCoarse(unittest.TestCase):
         ssdata = np.zeros(prod(len(a) for a in ssdg_pm))
 
         _iterfunc = self.g.iter_supersample_distance_groups
-        for i,grp in enumerate(_iterfunc(maxd, (Domain.PM,Domain.FRAC))):
+        for i,grp in enumerate(_iterfunc(
+                    maxd, domains=(Domain.PM,Domain.FRAC))):
 
             # alias
             (ixlo,ixhi),(yl,yh),(zl,zh),elfx = grp
@@ -305,6 +307,73 @@ class Test_Module04bCoarse(unittest.TestCase):
         self.assertTrue(cepm[2,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
         self.assertTrue(cepm[3,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
 
+        self.assertTrue(ssdata[3,0,3] == 0.0)
+
+    def test_flux_weighted_conc_2(self):
+        
+        # alias
+        mesh_ssdg = pyhgs.mesh.make_supersample_distance_groups
+
+        # get concentrations
+        cnpm = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010')
+        cepm = self.g.get_element_vals(cnpm)
+        cefx = self.g.get_element_vals(cnpm,Domain.FRAC)
+        del cnpm
+
+        # calculate flux magnitudes (weights)
+        qepm = self.g.get_element_vals(f'{SIM_PREFIX}o.q_pm.0001')
+        qepm = np.sqrt(np.sum(qepm**2, axis=3))
+        qefx = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',Domain.FRAC)
+        qefx = np.sqrt(np.sum(qefx**2, axis=1))
+
+        # easy, but inefficient implementation
+        maxd = (10.,1.,10.)
+
+        # get supersample distance group sizes
+        ssdg_pm = []
+        for a,maxda in zip(range(3),maxd):
+            gla = self.g.get_grid_lines()[a]
+            da = gla[1:]-gla[:-1]
+            ssdg_pm.append(mesh_ssdg(da,maxda))
+
+            # make 0-length groups 1-length
+            for i in range(len(ssdg_pm[-1])):
+                (lo,hi) = ssdg_pm[-1][i]
+                if lo == hi:
+                    ssdg_pm[-1][i] = (lo, lo+1)
+
+        ssdata = np.zeros(prod(len(a) for a in ssdg_pm))
+
+        _iterfunc = self.g.iter_supersample_distance_groups
+        for i,grp in enumerate(_iterfunc(
+                    groups=ssdg_pm,
+                    domains=(Domain.PM,Domain.FRAC))):
+
+            # alias
+            (ixlo,ixhi),(yl,yh),(zl,zh),elfx = grp
+
+            # pm element grid index slice
+            sl = np.s_[ixlo:ixhi,yl:yh,zl:zh]
+            c = np.concatenate((cepm[sl].flatten(),cefx[elfx]))
+            w = np.concatenate((qepm[sl].flatten(),qefx[elfx]))
+
+            # compute average
+            ssdata[i] = np.average(c,weights=w)
+
+        # reshape to ss grid
+        ssdata = ssdata.reshape(tuple(len(a) for a in ssdg_pm))
+
+        self.assertTrue(ssdata[0,0,0] == cepm[0,0,0])
+        self.assertTrue(cepm[0,0,2] < ssdata[0,0,2] < cefx[0] )
+        self.assertTrue(cepm[0,0,3] < ssdata[0,0,3] < cefx[0] )
+
+        self.assertTrue(cepm[2,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
+        self.assertTrue(cepm[3,0,2] < ssdata[2,0,2] < np.max(cefx[[2,3,6]]))
+
+        self.assertTrue(cepm[4,0,0] < ssdata[3,0,0] < cefx[10])
+        self.assertTrue(cepm[4,0,1] < ssdata[3,0,1] < cefx[10])
+        self.assertTrue(cepm[4,0,2] == ssdata[3,0,2])
+        self.assertTrue(cepm[4,0,3] == ssdata[3,0,3])
 
 if __name__ == '__main__':
     unittest.main()

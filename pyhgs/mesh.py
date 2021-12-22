@@ -542,17 +542,26 @@ class HGSGrid():
         self._pme2fxe = r
         return r
 
-    def iter_supersample_distance_groups(self, maxd, domains=(Domain.PM,)):
+    def iter_supersample_distance_groups(self,
+            maxd=None,
+            groups=None,
+            domains=(Domain.PM,)):
         """Generate supersample groups for the requested domains
 
         Arguments
         ---------
 
-        maxd : `float` or list-like
+        maxd : `float` or list_like, optional
             The supersampling distance, or 3-tuple of distances to be applied to
             the x- y- and z- domains respectively
 
-        domains : list-like of `pyhgs.mesh.Domain`
+        groups : list_like, optional
+            A 3-tuple, one entry for each dimension of the grid, of lists of
+            (lo,hi PM-grid element index)-tuples of ready-made supersample
+            groups. If groups are not specified, then they will be created
+            according to the `maxd` argument.
+
+        domains : list-like of `pyhgs.mesh.Domain`, optional
             List of domains to create supersample groups
 
         Returns
@@ -593,18 +602,23 @@ class HGSGrid():
         `([ifx1, ...,], (ixlo, ixhi), (iylo, iyhi), (izlo, izhi),),
         ...`
         """
-        if not hasattr(maxd,'__len__'):
-            maxd = tuple(map(float, 3*(maxd,)))
 
-        gl = self.get_grid_lines()
-
-        # always make PM groups first
+        # PM groups
         pm_ssgr = []
 
-        for a,maxda in zip(range(3),maxd):
-            gla = gl[a]
-            da = gla[1:]-gla[:-1]
-            pm_ssgr.append(make_supersample_distance_groups(da,maxda))
+        if groups is not None:
+            # assume groups are perfect as passed
+            pm_ssgr = groups
+        else:
+            if not hasattr(maxd,'__len__'):
+                maxd = tuple(map(float, 3*(maxd,)))
+
+            gl = self.get_grid_lines()
+
+            for a,maxda in zip(range(3),maxd):
+                gla = gl[a]
+                da = gla[1:]-gla[:-1]
+                pm_ssgr.append(make_supersample_distance_groups(da,maxda))
 
         # make adjacency
         adj = self.make_pm_to_fx_adjacency()

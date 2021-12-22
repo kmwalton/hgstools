@@ -75,7 +75,8 @@ class Test_Module04b(unittest.TestCase):
         ssdata = np.zeros(prod(len(a) for a in ssdg_pm))
 
         _iterfunc = self.g.iter_supersample_distance_groups
-        for i,grp in enumerate(_iterfunc(maxd, (Domain.PM,Domain.FRAC))):
+        for i,grp in enumerate(_iterfunc(
+                    maxd, domains=(Domain.PM,Domain.FRAC))):
 
             # alias
             (ixlo,ixhi),(yl,yh),(zl,zh),elfx = grp
