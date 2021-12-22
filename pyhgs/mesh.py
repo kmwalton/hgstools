@@ -689,26 +689,32 @@ def make_supersample_distance_groups(dx, maxd):
         return [ [0, int(dx[0]<=maxd),], ]
 
 
-    ssbl = [] # super sample blocks
+    n = 0
+    ssbl = np.empty((len(dx),2), dtype=np.uint32) # super sample blocks
+    ssbl[0][0] = -1
+    NONE = ssbl[0][0]
     accd = 0
 
     # find initial entries that are > maxd
     for istart,d in enumerate(dx):
         if d > maxd:
-            ssbl.append([istart,istart,])
+            ssbl[n] = [istart,istart,]
+            n += 1
         else:
-            ssbl.append([istart,None,])
+            ssbl[n] = [istart,NONE,]
+            n += 1
             accd = d
             break
 
     # build up supersample blocks
-    istart = ssbl[-1][0]+1
+    istart = ssbl[n-1][0]+1
 
     for iend,d in enumerate(dx[istart:],start=istart):
 
         if accd <= 0 and d > maxd:
-            ssbl[-1][1] = iend
-            ssbl.append([iend+1,None,])
+            ssbl[n-1][1] = iend
+            ssbl[n] = [iend+1,NONE,]
+            n += 1
             accd = 0
             continue
 
@@ -716,27 +722,30 @@ def make_supersample_distance_groups(dx, maxd):
 
         if accd > maxd:
             # end has been found; finish-up ssbl's last entry
-            ssbl[-1][1] = iend
+            ssbl[n-1][1] = iend
 
             # begin a new entry
-            istart = ssbl[-1][0]
-            ssbl.append([istart, None,])
+            istart = ssbl[n-1][0]
+            ssbl[n] = [istart, NONE,]
+            n += 1
 
             # increment the new entry's start value to accommodate this block
             while accd > maxd:
                 accd = accd - dx[istart]
                 istart += 1
-                ssbl[-1][0] = istart
+                ssbl[n-1][0] = istart
 
             if istart > iend:
-                ssbl[-1] = [iend,iend,]
+                ssbl[n-1] = [iend,iend,]
                 if iend < len(dx)-1:
-                    ssbl.append([iend+1,None,])
+                    ssbl[n] = [iend+1,NONE,]
+                    n += 1
                 
-    if ssbl[-1][1] is None:
-        ssbl[-1][1] = len(dx)
+    if ssbl[n-1][1] == NONE:
+        ssbl[n-1][1] = len(dx)
 
-    return ssbl
+    ret = list( list(r) for r in ssbl[:n] )
+    return ret
 
 def supersample( groups, d, *more_d, weights=None ):
     """Return supersampled version of **d**
