@@ -312,7 +312,8 @@ class RFG:
                     apStr = self._strAperture(pack[-1])
                     print(f'\n{fracName}\n{apStr}\nend',file=fpropsout)
                 else:
-                    s += f'{apStr}\n'
+                    apStr = self._strAperture(pack[-1])
+                    s += f'\n{apStr}\n'
             print(s, file=fout)
 
 
@@ -329,7 +330,7 @@ class RFG:
                     s += f'\nread properties\n\t{apqName}\n'
                     print(f'\n{apqName}\n{apStr}\nend',file=fpropsout)
                 else:
-                    s += f'{apStr}\n'
+                    s += f'\n{apStr}\n'
 
                 print(s,file=fout)
         else:
