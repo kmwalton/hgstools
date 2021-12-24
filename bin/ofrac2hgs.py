@@ -562,7 +562,7 @@ def positive_decimal(v):
     return d
 
 class _Triple_List(argparse.Action):
-    """for parsing --reg-gl-space and --max-gl-space"""
+    """for parsing --reg-grid-space and --max-grid-space"""
 
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
@@ -581,7 +581,8 @@ class _Triple_List(argparse.Action):
             d = Decimal(val)
             if any(ell):
                 raise RuntimeError('Some values already assigned')
-            ell = 3*[d,]
+            for i in range(len(ell)):
+                ell[i] = d
 
         def _as_ax_eq_val(s, ell=ell):
             m=re.match(r'([xyz])\s*=\s*('+_numberREStr+')',s)
@@ -713,8 +714,6 @@ if __name__ == "__main__":
             nargs='+')
 
     args = parser.parse_args()
-
-    #import pdb ; pdb.set_trace()
 
     __VERBOSITY__ = args.verbosity
 
