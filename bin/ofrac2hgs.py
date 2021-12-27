@@ -277,8 +277,12 @@ class RFG:
                 single "read properties" statement.
         """
         prefixGuess = re.sub('o\.eco','',self.fnin)
-        more = '\n!use domain type\n!fracture\n\n!properties file\n'
-        more +='!{}.fprops\n\n'.format( prefixGuess )
+        more = ''
+        
+        if fpropsout is not None:
+            more += '\nuse domain type\n\tfracture\n\n'
+            more += f'properties file\n\t{fpropsout.name}\n\n'
+
         more +='! begin explicit fractures\n'
         print( more, file=fout )
 
