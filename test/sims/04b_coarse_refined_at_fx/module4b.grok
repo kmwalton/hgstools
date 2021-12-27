@@ -49,58 +49,28 @@ porous medium 2
 use domain type
 fracture
 
+include fracinclude.grok
+
 properties file
 f_cd.fprops
 
-!--------------------------  fracture 1
-clear chosen faces
-choose faces block
--0.01, 30.1
--0.01, 1.01
-19.9, 20.1
-
-new zone
-1
+clear chosen zones
+choose zone number
+	1
+read properties
+	fracture1
 
 clear chosen zones
 choose zone number
-1
-
+	2
 read properties
-fracture1
-
-!--------------------------  fracture 2
-choose faces x plane
-25
-1.e-5
-
-new zone
-2
+	fracture2
 
 clear chosen zones
 choose zone number
-2
-
+	3
 read properties
-fracture2
-
-
-!--------------------------  fracture 3
-clear chosen faces
-choose faces block
-19.9, 50.1
--0.01, 1.01
-5.9, 6.1
-new zone
-3
-
-clear chosen zones
-choose zone number
-3
-
-read properties
-fracture3
-
+	fracture3
 
 
 !--------------------------  Porous media flow
