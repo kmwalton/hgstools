@@ -103,9 +103,13 @@ class HGSGrid():
 
     @staticmethod
     def _to_index_nocheck(t,shp):
-        if len(t) == 1 : return t[0]
-        return t[0] + shp[0]*HGSGrid._to_index_nocheck(t[1:],shp[1:])
-        #return t[0] + shp[0]*t[1] + shp[0]*shp[1]*t[2]
+        # Recursive call is supremely slow -- only good if 2D/3D grid is
+        # unknown.
+        #if len(t) == 1 : return t[0]
+        #return t[0] + shp[0]*HGSGrid._to_index_nocheck(t[1:],shp[1:])
+
+        # 3D grid calculation
+        return t[0] + shp[0]*(t[1] + shp[1]*t[2])
 
     @staticmethod
     def _to_index(t,shp):
@@ -638,11 +642,13 @@ class HGSGrid():
             yield y
 
     def _find_fx_in_single_ssgrp(self, ss_rng, pm2fxadj):
-            r = set()
-            ranges = (range(*lohi) for lohi in ss_rng)
-            for elg in product(*ranges):
-                r.update(pm2fxadj[self.elg2eli(elg)])
-            return list(sorted(r))
+        _elg2eli = lambda t: self._to_index_nocheck(t,self.elshape)
+        r = set()
+        ranges = (range(*lohi) for lohi in ss_rng)
+        for elg in product(*ranges):
+            #r.update(pm2fxadj[self.elg2eli(elg)])
+            r.update(pm2fxadj[_elg2eli(elg)])
+        return list(sorted(r))
 
     def _yield_fx_in_ssgrp(self, ss_ranges, pm2fxadj):
         """Generates a list of incident fracture elements for each SS group
