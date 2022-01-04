@@ -11,9 +11,9 @@ $scriptForMerge = "" # skip merge with 0-string
 $preprocessFilePattern  = "preprocess*"
 $postprocessFilePattern = "postprocess*"
 
-$EXE_GROK = "C:\Program_Files\HydroGeoSphere\grok.exe"
-$EXE_HGS = "C:\Program_Files\HydroGeoSphere\phgs.exe"
-$EXE_HSPLOT = "C:\Program_Files\HydroGeoSphere\hsplot.exe"
+$EXE_GROK = "grok.exe"
+$EXE_HGS = "phgs.exe"
+$EXE_HSPLOT = "hsplot.exe"
 
 ########################################
 # Helper functions
