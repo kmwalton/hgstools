@@ -27,11 +27,9 @@ from collections import defaultdict
 import numpy as np
 
 
+import ofracs
 from ofracs import (D_AP, OFrac)
 from pyhgs.gridgen_tools import *
-from pyhgs.parser.rfgen import *
-from parser_fractran import *
-from parser_hgs_rfgeneco import *
 
 __VERBOSITY__ = 0
 
@@ -142,42 +140,8 @@ class RFG:
             print('\nTransformed domain ' + str(self.fxnet), file=sys.stderr)
 
     @staticmethod
-    def _findParser(fn):
-        errmsg = ''
-        retParser = None
-
-        # create a prioritized list of parser types
-        parsers = [
-             OFracGrid.PickleParser,
-             RFGenOutFileParser,
-             HGSEcoFileParser,
-            ] \
-            + list(iterFractranParsers())
-
-        # try some different parsers
-        for ParserClass in parsers:
-            try:
-                retParser = ParserClass(fn)
-            except (
-                  NotValidFractranInputError,
-                  NotValidOFracGridError,
-                  NotValidRFGenInputError,
-                  NotValidHGSEcoInputError
-                   ) as e:
-                errmsg += '\n  '+ParserClass.__name__+\
-                          ' did not work- {}'.format(str(e))
-                retParser = None
-            if retParser:
-                return retParser
-
-        if not retParser:
-            print('Could not parse input file "{}":{}'.format(fn, str(errmsg)),
-                    file=sys.stderr)
-            sys.exit(1)
-
-    @staticmethod
     def _getGrid(fn):
-        return RFG._findParser( fn ).getOFracGrid()
+        return ofracs.parse(fn)
 
     def spewPreamble(self, moreMessages='', fout=sys.stdout):
         """Print a message about this grid and some of its parameters."""
