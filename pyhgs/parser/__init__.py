@@ -300,24 +300,24 @@ Returns
                 _d = np.vstack((_d,_rd,))
         return _d
 
-    def _read_rowbyrow(shp):
-        _d = np.empty(shp, dtype=dtype)
-        for r in range(shp[0]):
-            try:
-                _d[r,:] = fin.read_reals(dtype=dtype)
-            except FortranEOFError as e:
-                raise RuntimeError(f'FortranEOFError encountered at row {r}.')
-        return _d
-
+    ts = None
     d = None
 
-    with FortranFile(fn,'r') as fin:
-        ts = fin.read_ints(dtype=np.byte)
-
-        if shape is None:
+    if shape is None:
+        with FortranFile(fn,'r') as fin:
+            ts = fin.read_ints(dtype=np.byte)
             d = _read_shape_unknown()
-        else:
-            d = _read_rowbyrow(shape)
+
+    else:
+        # Assumes HGS-"standard" offset of 80-character fortran array at the
+        # beginning of the file
+        with open(fn,'rb') as fin:
+            ts = np.fromfile( fin,
+                    dtype=[ ('','i4'), ('time_str','a80',), ('','i4'),],
+                    count=1,)['time_str']
+            d = np.fromfile(fin,
+                    dtype=[('','i4'), ('data', dtype, shape[1],), ('','i4',),],
+                    count=shape[0])['data']
 
     return OrderedDict( [
             ('ts',ts.tobytes().decode('UTF-8').strip()),
