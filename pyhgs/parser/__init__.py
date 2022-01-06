@@ -439,13 +439,14 @@ Used for:
     o.v_well.XXXX
     """
 
-    if 'shape' not in kwargs:
+    if 'count' not in kwargs:
         logger.warning(
-                f'Parsing {fn} without "shape". This might take a while.')
+                f'Parsing {fn} without "count". This might take a while.')
         return _parse_nd(fn,np.float32)
 
-    logger.info(f'Parsing {fn} using shape={kwargs["shape"]}')
-    return _parse_nd(fn,np.float32, shape=kwargs["shape"])
+    _shp=(kwargs["count"],3,)
+    logger.info(f'Parsing {fn} using shape={_shp}')
+    return _parse_nd(fn,np.float32, shape=_shp)
 
 
 def _is_fs_case_sensitive():
@@ -521,11 +522,12 @@ def parse(fn, **kwargs):
     Arguments
     ---------
 
-    shape : tuple, optional
-        A tuple of integers representing the shape of the data that will be
-        parsed. This will give the implementing parser function a hint at the
-        size of the data to expect in the file and may increase the performance
-        of the data read by putting it in a container of a priori-known size.
+    count : int, optional
+        An integer denoting the quantity of scalar or vector data points in the
+        file.  This will give the implementing parser function a hint at the
+        size/shape of the data to expect in the file and may improve the
+        performance of the data read by putting it in a container of an a
+        priori-known size.
 
     """
 
