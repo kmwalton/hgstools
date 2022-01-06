@@ -60,9 +60,10 @@ class TestPYHGSMesh(unittest.TestCase):
 
         g = object.__new__(HGSGrid)   # uninitialized object
 
-        g.elshape = (2,1,)
+        g.elshape = (2,1,1,)
         ssranges = (
                 [(0,1), (1,2), ],
+                [(0,1,), ],
                 [(0,1,), ],
             )
         adj = defaultdict(list, [(0,[0,]), (1,[0,]),] )
@@ -73,17 +74,6 @@ class TestPYHGSMesh(unittest.TestCase):
 
 
 
-        g.elshape = (4,1)
-        ssranges = (
-                [(0,2), (2,3),],
-                [(0,1,),],
-            )
-
-        act = g._yield_fx_in_ssgrp(ssranges, adj)
-        des = [[0,], [],]
-        self.assertEqual([*act],des)
-
-
         g.elshape = (4,1,1)
         ssranges = (
                 [(0,2), (2,3),],
@@ -92,6 +82,7 @@ class TestPYHGSMesh(unittest.TestCase):
             )
 
         act = g._yield_fx_in_ssgrp(ssranges, adj)
+        des = [[0,], [],]
         self.assertEqual([*act],des)
 
 
