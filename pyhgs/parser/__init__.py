@@ -33,7 +33,8 @@ files must be parsed with the `3D` reader.
 import os
 import tempfile
 import logging
-from collections import OrderedDict
+import enum
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 from scipy.io import FortranFile, FortranEOFError
@@ -322,8 +323,16 @@ Returns
             ('ts',ts.tobytes().decode('UTF-8').strip()),
             ('data',d), ] )
 
-def parse_1D_real8(fn):
+def parse_1D_real8(fn, **kwargs):
     """(a) 1D real8 fields
+
+Arguments
+---------
+    fn : str
+        File name
+
+    kwargs : dict, optional
+        Ignored.
 
 Notes
 -----
@@ -358,8 +367,16 @@ Used for:
     """
     return _parse(fn, np.double)
 
-def parse_1D_real4(fn):
+def parse_1D_real4(fn, **kwargs):
     """(b) 1D real4 fields
+
+Arguments
+---------
+    fn : str
+        File name
+
+    kwargs : dict, optional
+        Ignored.
 
 Notes
 -----
@@ -391,8 +408,16 @@ Used for:
     """
     return _parse(fn, np.float)
 
-def parse_2D_real8(fn):
+def parse_2D_real8(fn, **kwargs):
     """(c) 2D real8 fields
+
+Arguments
+---------
+    fn : str
+        File name
+
+    kwargs : dict, optional
+        Ignored.
 
 Notes
 -----
@@ -414,6 +439,14 @@ Used for:
 
 def parse_3D_real4(fn, **kwargs):
     """(d) 3D real4 fields
+
+Arguments
+---------
+    fn : str
+        File name
+
+    count : int
+        The number of 3-length vectors to be read
 
 Notes
 -----
@@ -460,61 +493,90 @@ def _is_fs_case_sensitive():
                     not os.path.exists(tmp_file.name.lower()))
     return(_is_fs_case_sensitive.case_sensitive)
 
-_file_to_parser_dict = {
-    'o.coordinates_pm':parse_coordinates_pm,
-    'o.elements_pm':parse_elements_pm,
-    'o.coordinates_frac':parse_coordinates_frac,
-    'o.elements_frac':parse_elements_frac,
+class HGS_DATATYPE(enum.Enum):
+    """Enumeration to describe types of data found in HGS output files""" 
+    UNSPEC = -1
+    'Not yet specified'
 
-    'o.ETEvap_olf':parse_1D_real8,
-    'o.ETPmEvap3D_pm':parse_1D_real8,
-    'o.ETPmEvap_olf':parse_1D_real8,
-    'o.ETPmTranspire3D_pm':parse_1D_real8,
-    'o.ETPmTranspire_olf':parse_1D_real8,
-    'o.ETTotal_olf':parse_1D_real8,
-    'o.conc_dual':parse_1D_real8,
-    'o.conc_frac':parse_1D_real8,
-    'o.conc_olf':parse_1D_real8,
-    'o.conc_pm':parse_1D_real8,
-    'o.freeze_thaw_temp_pm':parse_1D_real8,
-    'o.head_chan':parse_1D_real8,
-    'o.head_dual':parse_1D_real8,
-    'o.head_frac':parse_1D_real8,
-    'o.head_olf':parse_1D_real8,
-    'o.head_pm':parse_1D_real8,
-    'o.head_well':parse_1D_real8,
-    'o.iconc_pm':parse_1D_real8,
-    'o.pet_olf':parse_1D_real8,
-    'o.rain_olf':parse_1D_real8,
+    MULTI = 0
+    'Combination of multiple sets of data'
 
-    'o.ExchFlux_chan':parse_1D_real4,
-    'o.ExchFlux_dual':parse_1D_real4,
-    'o.ExchFlux_olf':parse_1D_real4,
-    'o.ExchFlux_olf2_chan':parse_1D_real4,
-    'o.ExchFlux_pm2_chan':parse_1D_real4,
-    'o.ExchFlux_well':parse_1D_real4,
-    'o.ExchSolAdv_olf':parse_1D_real4,
-    'o.ExchSolDisp_olf':parse_1D_real4,
-    'o.exchsol_dual':parse_1D_real4,
-    'o.ice_sat_pm':parse_1D_real4,
-    'o.kxx':parse_1D_real4,
-    'o.kyy':parse_1D_real4,
-    'o.kzz':parse_1D_real4,
-    'o.por_pm':parse_1D_real4,
-    'o.sat_dual':parse_1D_real4,
-    'o.sat_frac':parse_1D_real4,
-    'o.sat_pm':parse_1D_real4,
+    NODAL = 1
+    'Data items for each node in the given domain'
 
-    'o.q_dual':parse_3D_real4,
-    'o.q_pm':parse_3D_real4,
-    'o.tvk_pm':parse_3D_real4,
-    'o.v_chan':parse_3D_real4,
-    'o.v_dual':parse_3D_real4,
-    'o.v_frac':parse_3D_real4,
-    'o.v_olf':parse_3D_real4,
-    'o.v_pm':parse_3D_real4,
-    'o.v_well':parse_3D_real4,
+    ELEMENTAL = 2
+    'Data items for each element in the given domain'
+
+_file_info = {
+    'o.coordinates_pm'       :  (parse_coordinates_pm,    HGS_DATATYPE.MULTI,  ),
+    'o.elements_pm'          :  (parse_elements_pm,       HGS_DATATYPE.MULTI,  ),
+    'o.coordinates_frac'     :  (parse_coordinates_frac,  HGS_DATATYPE.MULTI,  ),
+    'o.elements_frac'        :  (parse_elements_frac,     HGS_DATATYPE.MULTI,  ),
+    'o.ETEvap_olf'           :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ETPmEvap3D_pm'        :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ETPmEvap_olf'         :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ETPmTranspire3D_pm'   :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ETPmTranspire_olf'    :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ETTotal_olf'          :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.conc_dual'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.conc_frac'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.conc_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.conc_pm'              :  (parse_1D_real8,          HGS_DATATYPE.NODAL,  ),
+    'o.freeze_thaw_temp_pm'  :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_chan'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_dual'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_frac'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_pm'              :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.head_well'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.iconc_pm'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.pet_olf'              :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.rain_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_chan'        :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_dual'        :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_olf'         :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_olf2_chan'   :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_pm2_chan'    :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchFlux_well'        :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchSolAdv_olf'       :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ExchSolDisp_olf'      :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.exchsol_dual'         :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.ice_sat_pm'           :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.kxx'                  :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.kyy'                  :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.kzz'                  :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.por_pm'               :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.sat_dual'             :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.sat_frac'             :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.sat_pm'               :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.q_dual'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.q_pm'                 :  (parse_3D_real4,          HGS_DATATYPE.ELEMENTAL,  ),
+    'o.tvk_pm'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.v_chan'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.v_dual'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.v_frac'               :  (parse_3D_real4,          HGS_DATATYPE.ELEMENTAL,  ),
+    'o.v_olf'                :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
+    'o.v_pm'                 :  (parse_3D_real4,          HGS_DATATYPE.ELEMENTAL,  ),
+    'o.v_well'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
 }
+
+def _find_file_info_entry(fn):
+    # use lower case if filesystem is case insensitive
+    _lowerfunc = lambda s: s
+    if not _is_fs_case_sensitive:
+        _lowerfunc = lambda s: s.lower()
+
+    # linear search through FILE_TO_PARSER
+    # ick.
+    fn = _lowerfunc(fn)
+    for pat,info in _file_info.items():
+        if _lowerfunc(pat) in fn:
+            return info
+
+    raise RuntimeError(f'{fn} did not match any known HGS output file')
+
+def get_datatype(fn):
+    return _find_file_info_entry(fn)[1]
 
 def parse(fn, **kwargs):
     """Find a parser based on the given file name
@@ -531,20 +593,7 @@ def parse(fn, **kwargs):
 
     """
 
-    p = None
-
-    # use lower case if filesystem is case insensitive
-    _lowerfunc = lambda s: s
-    if not _is_fs_case_sensitive:
-        _lowerfunc = lambda s: s.lower()
-
-    # linear search through _file_to_parser_dict
-    # ick.
-    fn = _lowerfunc(fn)
-    for pat in _file_to_parser_dict:
-        if _lowerfunc(pat) in fn:
-            p = _file_to_parser_dict[pat]
-            break
+    p = _find_file_info_entry(fn)[0]
 
     if p:
         logger.info(f'Parsing {fn} using {p.__name__}')

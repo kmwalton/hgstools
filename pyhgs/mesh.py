@@ -13,6 +13,8 @@ from pyhgs.parser import (
     parse_elements_pm,
     parse_coordinates_frac,
     parse_elements_frac,
+    HGS_DATATYPE,
+    get_datatype,
     )
 
 __docformat__ = 'numpy'
@@ -305,7 +307,19 @@ class HGSGrid():
         # data, format unspecified
         d = data
         if type(data) == str:
-            d = parse(data)['data']
+            _count = None
+            _dt = get_datatype(data)
+            if _dt is HGS_DATATYPE.NODAL:
+                if dom == Domain.PM: _count = self.nn
+                elif dom == Domain.FRAC: _count = self.nfn
+            elif _dt is HGS_DATATYPE.ELEMENTAL:
+                if dom == Domain.PM: _count = self.ne
+                elif dom == Domain.FRAC: _count = self.nfe
+
+            if _count is not None:
+                d = parse(data,count=_count)['data']
+            else:
+                d = parse(data)['data']
 
         # function to calculate elemental data
         func = lambda i : i # identity method, for now
