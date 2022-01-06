@@ -42,6 +42,12 @@ __docformat__ = 'numpy'
 # see https://numpydoc.readthedocs.io/en/latest/format.html
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARN)
+_console = logging.StreamHandler()
+_console.setLevel(logging.WARN)
+_console.setFormatter(
+    logging.Formatter(f'pyhgs.parser %(levelname)s - %(message)s'))
+logger.addHandler(_console)
 
 def parse_coordinates_pm(fn):
     """Parse `o.coordinates_pm` file and return a dict.
