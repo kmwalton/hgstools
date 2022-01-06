@@ -256,11 +256,15 @@ def _parse(fn, dtype, shape=None):
             ('data',d),
         ] )
 
-def _parse_nd(fn, dtype):
-    """Read an undetermined number of *n-tuple* data points from file
+def _parse_nd(fn, dtype, shape=None):
+    """Read a number of *n-tuple* data points from file
 
-e.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
-unknown-length sequence of nodal values.
+E.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
+unknown-length sequence of elemental values.
+
+This function is _much_ more efficient if the shape of the data is know a
+priori. Array copying for unknown-length final data is avoided in this case.
+
 
 Arguments
 ---------
@@ -270,24 +274,43 @@ fn : str
 dtype : `numpy.dtype`
     The numeric type of the data in the array.
 
+shape : tuple, optional
+    The shape of the output data.
+
 Returns
 -------
     `numpy.ndarray` with shape (-1, len(*n-tuple*))
     """
+
+    def _read_shape_unknown():
+        _d = fin.read_reals(dtype=dtype)
+        while True:
+            try:
+                _rd = fin.read_reals(dtype=dtype)
+            except FortranEOFError as e:
+                break
+            else:
+                _d = np.vstack((_d,_rd,))
+        return _d
+
+    def _read_rowbyrow(shp):
+        _d = np.empty(shp, dtype=dtype)
+        for r in range(shp[0]):
+            try:
+                _d[r,:] = fin.read_reals(dtype=dtype)
+            except FortranEOFError as e:
+                raise RuntimeError(f'FortranEOFError encountered at row {r}.')
+        return _d
 
     d = None
 
     with FortranFile(fn,'r') as fin:
         ts = fin.read_ints(dtype=np.byte)
 
-        d = fin.read_reals(dtype=dtype)
-        while True:
-            try:
-                rd = fin.read_reals(dtype=dtype)
-            except FortranEOFError as e:
-                break
-            else:
-                d = np.vstack((d,rd,))
+        if shape is None:
+            d = _read_shape_unknown()
+        else:
+            d = _read_rowbyrow(shape)
 
     return OrderedDict( [
             ('ts',ts.tobytes().decode('UTF-8').strip()),
@@ -383,7 +406,7 @@ Used for:
     """
     raise NotImplementedError()
 
-def parse_3D_real4(fn):
+def parse_3D_real4(fn, **kwargs):
     """(d) 3D real4 fields
 
 Notes
@@ -409,7 +432,15 @@ Used for:
     o.v_pm.XXXX
     o.v_well.XXXX
     """
-    return _parse_nd(fn,np.float32)
+
+    if 'shape' not in kwargs:
+        logger.warning(
+                f'Parsing {fn} without "shape". This might take a while.')
+        return _parse_nd(fn,np.float32)
+
+    logger.info(f'Parsing {fn} using shape={kwargs["shape"]}')
+    return _parse_nd(fn,np.float32, shape=kwargs["shape"])
+
 
 def _is_fs_case_sensitive():
     """https://newbedev.com/check-if-file-system-is-case-insensitive-in-python
@@ -478,8 +509,19 @@ _file_to_parser_dict = {
     'o.v_well':parse_3D_real4,
 }
 
-def parse(fn):
-    """Find a parser based on the given file name"""
+def parse(fn, **kwargs):
+    """Find a parser based on the given file name
+
+    Arguments
+    ---------
+
+    shape : tuple, optional
+        A tuple of integers representing the shape of the data that will be
+        parsed. This will give the implementing parser function a hint at the
+        size of the data to expect in the file and may increase the performance
+        of the data read by putting it in a container of a priori-known size.
+
+    """
 
     p = None
 
@@ -499,7 +541,7 @@ def parse(fn):
     if p:
         logger.info(f'Parsing {fn} using {p.__name__}')
         logger.log(logging.INFO-1,p.__doc__)
-        return p(fn)
+        return p(fn, **kwargs)
     else:
         raise RuntimeError(f'No parser for {fn}')
 
