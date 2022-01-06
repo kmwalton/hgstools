@@ -1,3 +1,5 @@
+"""A parser for RFGen grids from a grok .eco file"""
+
 import re,sys,copy
 from ofracs import *
 

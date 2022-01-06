@@ -1,3 +1,5 @@
+"""A parser for RFGen grids from RFGen text output"""
+
 import re,sys,copy
 from ofracs import *
 
