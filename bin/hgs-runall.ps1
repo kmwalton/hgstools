@@ -136,15 +136,15 @@ echo ""
 
 $phgsstatus = ( ( & $EXE_HGS ) | select-object -last 17 )
 
-echo $phgsstatus[0..14]
-if ( $phgsstatus[-2]  -notmatch "NORMAL EXIT" ) {
+echo $phgsstatus[0..17]
+if ( $phgsstatus | Select-String -Pattern "NORMAL EXIT" ) {
+   echo "--- phgs: normal exit ---" ""
+   [Console]::Out.Flush()
+}
+else {
    echo "--- phgs failed; not running hsplot ---"
    date
    exit 1
-}
-else {
-   echo "--- phgs: normal exit ---" ""
-   [Console]::Out.Flush()
 }
 
 
