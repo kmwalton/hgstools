@@ -26,7 +26,8 @@ function Run-Processing($pattern) {
       # check executable status
       if( get-command $sc -ErrorAction SilentlyContinue ) {
          $short_sc="$((get-item $sc).Name)"
-         echo "--- Running $short_sc ---"
+         echo "--- Running $short_sc $(date)---"
+         echo "--- Running $short_sc $(date)---" >> $console
 
          if ( $sc -match '.py$' ) {
             # prepend 'python' so the correct interpreter is launched
@@ -43,7 +44,7 @@ function Run-Processing($pattern) {
          else {
             echo "--- Failed: $short_sc ---"
             if ( $ssc.length -gt 1 ) {
-               echo "--- stopping $($pattern) script sequence ==="
+               echo "--- stopping $($pattern) script sequence ---"
             }
             $code=1
             break
@@ -90,7 +91,7 @@ if( Test-Path $preprocessFilePattern ) {
    Run-Processing $preprocessFilePattern
 
    if( $LastExitCode -eq 0 ) {
-   echo "--- preprocessing done $(date) ---"
+      echo "--- preprocessing done $(date) ---"
    }
    else {
       echo "--- prepocessing failed $(date) ---"
@@ -103,6 +104,7 @@ if( Test-Path $preprocessFilePattern ) {
 ########################################
 # run grok
 echo "`n--- Starting grok $(date) ---`n"
+echo "`n--- Starting grok $(date) ---`n" >> $console
 
 if ( ( & $EXE_GROK | Select-Object -Last 3 | Select-Object -First 1 )  -notmatch "normal exit" ) {
    echo "--- grok failed, not running phgs ---"
@@ -119,6 +121,7 @@ else {
 ########################################
 # run phgs
 echo "`n--- Starting phgs $(date) ---`n"
+echo "`n--- Starting phgs $(date) ---`n" >> $console
 
 # Works, but writes a big 'console' file
 #echo "phgs console output is being sent to $console" ""
@@ -152,6 +155,7 @@ else {
 # run hsplot
 #
 echo "`n--- Starting hsplot $(date) ---`n"
+echo "`n--- Starting hsplot $(date) ---`n" >> $console
 
 if ( ( & $EXE_HSPLOT | Select-Object -Last 1 )  -notmatch "Normal Exit" ) {
    echo "--- hsplot failed, not running preplot(tecplot) ---"
@@ -217,8 +221,10 @@ if( test-path *o.dual.dat ) {
 
 if( Test-Path $postprocessFilePattern ) {
    echo "`n--- Starting postprocessing $(date) ---`n"
+   echo "`n--- Starting postprocessing $(date) ---`n" >> $console
    Run-Processing $postprocessFilePattern
    echo "`n--- postprocessing done $(date) ---`n"
+   echo "`n--- postprocessing done $(date) ---`n" >> $console
 }
 #else {
 #   echo "`n--- Starting preplot $(date) ---`n"
