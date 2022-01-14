@@ -538,11 +538,11 @@ class _Triple_List(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=''):
         ell = getattr(namespace,re.sub('-','_',option_string[2:]))
         for v in values:
-            self._parse(v,ell)
+            self._parse(v,ell, parser, option_string)
         return ell
 
     @staticmethod
-    def _parse(v,ell):
+    def _parse(v,ell, parser, opts):
         """Add v to the triple_list ell"""
 
         def _as_Decimal(val, ell=ell):
@@ -567,12 +567,13 @@ class _Triple_List(argparse.Action):
             try:
                 p(v)
             except Exception as e:
-                errret.append(f'{p}: {e!s}')
+                errret.append(f'{p.__name__} gave {e!r}')
             else:
                 break
 
         if len(errret) == len(pl):
-            raise RuntimeError('\n'.join(errret))
+            #raise RuntimeError(f'when parsing "{v}"\n'+'\n'.join(errret))
+            parser.error(f'Invalid argument {f"{opts}=" if opts else ""}{v}')
 
         return ell
 
@@ -614,19 +615,23 @@ def make_arg_parser():
     parser.add_argument(
         '--reg-grid-space',
         nargs='+',
+        metavar=('V | x=V1', 'y=V2'),
         action=_Triple_List,
         default=[None,None,None,],
         help='''Add regular spacing at the specified intervals from the origin.
-        E.g. '5' for a regular grid spacing of 5 in all directions; 'x=5 z=1' to
-        apply regular spacing to the x- and z- axes only'''
+        E.g. '5' for a regular grid spacing of 5 in all directions; 'x=5 z=1'
+        to apply regular spacing to the x- and z- axes only'''
         )
 
     parser.add_argument(
         '--max-grid-space',
         nargs='+',
+        metavar=('V | x=V1', 'y=V2'),
         action=_Triple_List,
         default=[None,None,None,],
-        help='The maximum space between gridlines. E.g. "5", "x=5 z=1", ...')
+        help='''The maximum space between gridlines. See format of
+        --reg-grid-space'''
+        )
 
     parser.add_argument(
             '--grid-out',
