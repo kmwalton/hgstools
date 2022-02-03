@@ -28,7 +28,7 @@ import numpy as np
 
 
 import ofracs
-from ofracs import (D_AP, OFrac, OFracGrid)
+from ofracs import (D_AP, D_CO, OFrac, OFracGrid)
 from pyhgs.gridgen_tools import *
 
 __VERBOSITY__ = 0
