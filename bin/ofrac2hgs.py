@@ -457,6 +457,11 @@ class OneLayerRFG(RFG):
     def spewGrid(self,fout=sys.stdout):
         """Print an xy- grid with 1-layer z- with undulating thickness"""
 
+        # fall back to superclass grid output style if this grid does not
+        # actually undulate
+        if np.unique(self._xz[:,1]).size == 1:
+            return super().spewGrid(fout)
+
         fw = fout.write # note, with write must add newlines at end
         ind = '  ' #indent
         il = 0 # indent level
