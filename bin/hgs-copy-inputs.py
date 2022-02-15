@@ -13,10 +13,6 @@ array_sizes.default
 *.control
 batch.pfx
 
-Other includes:
-preprocess*
-postprocess*
-
 Excludes:
 File names beginning with a '.' (Unix hidden files)
 File names ending with a '~' (Some file editor temporary files)
@@ -103,8 +99,6 @@ include_regex = [
     r'array_sizes\.default',
     r'.*\.control',
     r'batch\.pfx',
-    r'preprocess.*',
-    r'postprocess.*'
 ]
 
 includePatterns = list(
