@@ -122,8 +122,9 @@ class HGS_MCRunner():
         if keep_file and os.path.isfile(keep_file):
             self.keep_file_list = PyPowerShellRunner.read_keep_file(keep_file)
 
+        _bdn = os.path.split(base_dir)[1]
         self._bd_tmp = tempfile.TemporaryDirectory(
-            prefix=f'{self._make_mc_run_tag()}_{os.path.basename(base_dir)}_',
+            prefix=f'{self._make_mc_run_tag()}_{_bdn}_',
             dir=os.path.dirname(os.path.abspath(self.base_sim_dirn)))
         """tempfile.TemporaryDirectory, adjacent to base_dir, that is a copy of
         base_dir"""
@@ -276,12 +277,14 @@ class HGS_MCRunner():
 
     def run(self, num_processes):
         """Run series instances."""
+        _N = self._stop - self._start
         # run
         results = []
         if num_processes > 1:
             with Pool(num_processes) as pool:
                 results_objs = []
                 for ii,inst in enumerate(mc.gen_mc_instances()):
+                    logger.info(f'Launching instance {ii+1} of {_N}')
                     results_objs.append(pool.apply_async(
                             HGS_MCRunner._run_instance, (inst,
                                 self.copy_command, self.base_temp_dirn,
