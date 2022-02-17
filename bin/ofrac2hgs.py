@@ -420,6 +420,9 @@ class OneLayerRFG(RFG):
         super().__init__(*args, **kwargs)
         self._xz = self._make_xz_pairs()
 
+        # hack the underlying OFracGrid to remove z-layers
+        self.fxnet._gl[2] = [ 0., 1.,]
+
     def get_z(self,x):
         """Return the z of the given x"""
         ix = np.searchsorted(self._xz[:,0],x)
