@@ -119,8 +119,13 @@ class HGS_MCRunner():
         """A list of files/globs, relative to simulation instance directory,
         to retain in each instance directory."""
 
-        if keep_file and os.path.isfile(keep_file):
+        if keep_file:
+            if not os.path.isfile(keep_file):
+                raise RuntimeError(f'Could not find keep file {keep_file}')
             self.keep_file_list = PyPowerShellRunner.read_keep_file(keep_file)
+        else:
+            logger.warn('No keep file specified. Most simulation outputs '\
+                    'will be discarded')
 
         _bdn = os.path.split(base_dir)[1]
         self._bd_tmp = tempfile.TemporaryDirectory(
