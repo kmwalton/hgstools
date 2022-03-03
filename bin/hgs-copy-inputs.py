@@ -140,7 +140,7 @@ else:
 
 
 # do copying
-for f in fileList:
+for f in sorted(fileList):
     if copy_func( f, args.dest ):
         if args.verbose > 1:
             print( "Copied {}".format(f) )
