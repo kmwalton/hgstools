@@ -23,8 +23,10 @@ function Run-Processing($pattern) {
    #    e.g. postprocess.0.ps1 runs before postprocess.1.py
    $ssc = ( Get-ChildItem $pattern | sort )
    foreach ( $sc in $ssc ) {
-      # check executable status
-      if( get-command $sc -ErrorAction SilentlyContinue ) {
+      # check executable status. It must exist as a command and be an executable
+      # file type per env:PATHEXT
+      if( ( get-command $sc -ErrorAction SilentlyContinue ) -and
+              ( $env:PATHEXT -Match (Get-Item $sc).Extension ) ) {
          $short_sc="$((get-item $sc).Name)"
          echo "--- Running $short_sc $(date)---"
          echo "--- Running $short_sc $(date)---" >> $console
