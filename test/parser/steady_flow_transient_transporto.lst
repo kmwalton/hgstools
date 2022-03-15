@@ -1,0 +1,617 @@
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@                                                                      @@ 
+ @@  HYDROGEOSPHERE: 3-D coupled surface/subsurface flow and transport   @@
+ @@                                                                      @@ 
+ @@   REVISION:   1827                                                   @@
+ @@   BUILD DATE: 20170831                                               @@
+ @@   BUILD INFO: 64bit                                                  @@
+ @@                                                                      @@ 
+ @@   (c) Aquanty, Inc.                                                  @@
+ @@       www.aquanty.com                                                @@ 
+ @@       support@aquanty.com                                            @@
+ @@                                                                      @@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+  
+ PROBLEM TITLE:
+IEL NE3 Composed RD36 (Needs review, need to add moment calc
+  
+ 1. Initial time =   0.000000000000000E+000
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      1                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.00000          0.01000          0.01000 Accept timestep
+     Calculating steady-state flow solution...
+    
+ Number of flow matrix solver iterations =  25775
+
+--------------------------------------------------------------------
+FLUID BALANCE
+-------------------------------------------------------
+RATE OF FLUID EXCHANGE                IN                       OUT                      TOTAL
+Head_1                               0.1138018871             0.0000000000             0.1138018871        porous_media
+Head_2                               0.0000000000            -0.1138036634            -0.1138036634        porous_media
+TOTAL:[NET1(+),NET1(-),NET1]         0.1138018871            -0.1138036634            -0.0000017763
+
+Steady-state simulation(No accumulation in domain)
+
+---------------------------------------------------------------------------------------------------
+
+---- Solving transport for species   1 ----
+
+Peclet number:     Dimension   maximum    element
+                       1  0.116641220E+001 0
+                       2  0.333333033E+000 0
+                       3  0.135055148E-004 0
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+-----------------------------
+Initial mass/energy in system
+-----------------------------
+ Species  1:     0.000000000    
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  9.999999776482582E-003  Time-step =  9.999999776482582E-003 )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   9.999999776482582E-003
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      2                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.01000          0.02000          0.03000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  2.999999932944775E-002  Time-step =  1.999999955296516E-002 )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   2.999999932944775E-002
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      3                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.03000          0.04000          0.07000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  6.999999843537807E-002  Time-step =  3.999999910593033E-002 )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   6.999999843537807E-002
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      4                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.07000          0.08000          0.15000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  0.149999996647239       Time-step =  7.999999821186066E-002 )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   0.149999996647239     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      5                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.15000          0.16000          0.31000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  0.309999993070960       Time-step =  0.159999996423721      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   0.309999993070960     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      6                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.31000          0.32000          0.63000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =  0.629999985918403       Time-step =  0.319999992847443      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time   0.629999985918403     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      7                          
+----------------------------------------------------------------------------------
+Global target time:           1.00000(     1 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          0.63000          0.64000          1.27000 !! Tnext >= target
+  0.00          0.63000          0.37000          1.00000 1 step to target
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =   1.00000000000000       Time-step =  0.370000014081597      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time    1.00000000000000     
+ Met global target time    1.00000000000000     
+ Restore last big timestep used  0.639999985694885     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      8                          
+----------------------------------------------------------------------------------
+Global target time:       36499.00000(     2 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          1.00000          0.64000          1.64000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =   1.63999998569489       Time-step =  0.639999985694885      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time    1.63999998569489     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP      9                          
+----------------------------------------------------------------------------------
+Global target time:       36499.00000(     2 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          1.64000          1.28000          2.92000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =   2.91999995708466       Time-step =   1.27999997138977      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+No more mass stored in system for species    1
+No more mass stored in system
+  
+  Minimum dt_multiplier   >    Maximum allowed
+  1.000000020040877E+020  >    2.00000000000000     
+  Timestep multiplier:    2.00000000000000     
+ Accepted solution at time    2.91999995708466     
+
+----------------------------------------------------------------------------------
+                      SOLUTION FOR TIMESTEP     10                          
+----------------------------------------------------------------------------------
+Global target time:       36499.00000(     2 of     48)
+ %done      Time             delta_t          Tnext
+  0.00          2.92000          2.56000          5.48000 Accept timestep
+---- Solving transport for species   1 ----
+Number of transport matrix solver iterations:   1
+  
+ Variable             Max. change     Target change   Dt multiplier   At node
+ ========             ===========     =============   =============   =======
+  Timestep multiplier:   1.000000020040877E+020
+
+---------------------------------------------------------------------------------------------------
+MASS BALANCE SPECIES  1 - TCE                           
+---------------------------------------------------------------------------------------------------
+ (Time =   5.47999989986420       Time-step =   2.55999994277954      )
+RATE OF MASS EXCHANGE                 IN                       OUT                      TOTAL
+   Fixed head nodes                  0.0000000000             0.0000000000
+   Fixed concentration nodes         0.0000000000             0.0000000000
+   NET1 EXCHANGE RATE (IN-OUT)                                                         0.0000000000
+ 
+MASS STORAGE COMPONENTS
+   Porous medium: 
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+   Discrete fractures:
+      Dissolved                      0.0000000000
+      Decay (dissolved)              0.0000000000
+      Sorbed                         0.0000000000
+      Decay (sorbed)                 0.0000000000
+                                     -----------------
+   TOTAL MASS                        0.0000000000
+   INITIAL MASS                      0.0000000000
+                                     -----------------
+   CHANGE DURING TIMESTEP            0.0000000000
+   CHANGE SINCE BEGINNING            0.0000000000
+ 
+   NET2 RATE OF CHANGE OF MASS/ENERGY DURING TIMESTEP                                  0.0000000000
+  
+ 
+MASS BALANCE ERROR
+   Absolute: (NET1-NET2)                                                               0.0000000000
+   Relative: (abs(NET1)+abs(NET2)) is 0.0
+---------------------------------------------------------------------------------------------------
+ Accepted solution at time    61320.0000000000     
+ Met global target time    61320.0000000000     
+ Restore last big timestep used   426.335924694557     
+ Met last target time, exit time loop
+----------------------------------------------------------
+
+--------- SIMULATION TIME REPORT    
+number of CPU applied                =          1
+number of time step                  =       2651
+number of total Newton-Raphson loop =          0
+number of total solver iteration     =      47712
+number of equation                   =   34619064
+Global assembly  time    =  0.18771E+06
+ILUC             time    =   8925.6    
+Solver           time    =  0.19464E+06
+SetBC            time    =  0.57263E-01
+PARTIAL simulation time  =  0.39826E+06
+----------------------------------------------------------
+  
+Time of operation was  0.39625E+06 seconds
+
+                    ---- NORMAL EXIT ----
+
+
+*** NOTE : PARTIAL SIMULATION : 0th ***
+
