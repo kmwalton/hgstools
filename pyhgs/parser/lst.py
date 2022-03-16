@@ -3,16 +3,24 @@
 import os
 import re
 
+from itertools import count
+
 import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 ERRORS_FILTER = [
+    re.compile(r'^(?P<name>W0SOLV): (?P<message>.*)$', flags=re.M),
 ]
+"""A list of regular expressions for error messages found in the .lst output
+"""
+
+_NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
+"""RegEx for a floating point number"""
 
 class LSTFileParser:
-    """Parse and return data from phgs output, the .lst file"""
+    """Parse and return (select) data from phgs output, the .lst file"""
 
     def __init__(self, fnin):
         """Load the .lst file text, given file name or HGS prefix"""
@@ -40,6 +48,7 @@ class LSTFileParser:
 
 
         # index the timestep locations
+        # HGS labels its timesteps starting from 1.
         self._tsloc = []
         _ts = {}
 
@@ -60,35 +69,124 @@ class LSTFileParser:
         if any( isinstance(v,list) for v in _ts.values() ):
             raise NotImplementedError('Found timestep reported twice')
 
-        self._tsloc = list( v for k,v in sorted(_ts.items()) )
+        # bookend the list of timesteps with 0 for the beginning of the file and
+        # the max length
+        self._tsloc = [0,] \
+                  + list( v for k,v in sorted(_ts.items()) ) \
+                  + [len(self._txt),]
         logger.debug(f'Found {len(self._tsloc)} timesteps.')
 
     def ss_flow(self):
         """Return True if the flow system is steady state"""
-        m = re.search('Steady-state simulation(No accumulation in domain)',
-            self._txt[self._tsloc[0]:self._tsloc[1]],
+
+        # 'steady-state' statements should be found in the preamble (failure
+        # case) or before the beginning of the second timestep
+        _end = self._tsloc[-1]
+        if self.get_n_ts() > 1:
+            _end = self._tsloc[2]
+
+        m = re.search('Steady-state (?:flow )?simulation',
+            self._txt[:_end],
             flags = re.M|re.S)
 
         return bool(m)
 
     def get_n_ts(self):
-        """Return the number of timesteps"""
-        return len(self._tsloc)
+        """Return the number of timesteps
+
+        Valid timestep indices are 1 to this number, inclusive.
+        """
+        # subtract 0 from the "0" timestep, which is all the text before the
+        # first timestep
+        return len(self._tsloc)-2
 
     def get_ec(self):
         """Return 0 for NORMAL EXIT, 1 otherwise."""
 
         exit_phrase = re.search(r'SIMULATION TIME REPORT.*---- (.*?) ----',
-            self._txt[self._tsloc[-1]:],
+            self._txt[self._tsloc[-2]:],
             flags = re.M | re.S )
 
-        if exit_phrase.group(1) == 'NORMAL EXIT':
+        if exit_phrase and exit_phrase.group(1) == 'NORMAL EXIT':
             return 0
 
         return 1
 
-    #def iter_errors(self):
+    def iter_errors(self):
+        """Yield errors (timestep index, error name, error message)"""
 
-    #    for tss,tse in zip(
+        for itime,tss,tse in zip(count(), self._tsloc[:-1], self._tsloc[1:]):
+            for err_re in ERRORS_FILTER:
+                m = err_re.search(self._txt,tss,tse)
+                if m:
+                    yield (itime, m.group('name'), m.group('message'),)
 
 
+    def get_fluid_balance(self, itimestep=1):
+        """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
+        """
+
+        fbre = re.compile(
+            r'RATE OF FLUID EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
+            r'(?s:(?P<bc_data>.*))\n'\
+            r'TOTAL\S+(?P<total>(?:\s+'+_NUM_RE+'){3}).*\n',
+            flags=re.M)
+
+        m = fbre.search(self._txt,
+                self._tsloc[itimestep],
+                self._tsloc[itimestep+1])
+
+        ret = {}
+
+        # get BCs
+        for l in m.group(1).split('\n'):
+            l = l.strip().split()
+            ret[l[0]] = (float(l[1]), float(l[2]), float(l[3]), l[4],)
+
+        # get total
+        l = m.group(2).strip().split()
+        ret['TOTAL'] = (float(l[0]), float(l[1]), float(l[2]), None,)
+
+        return ret
+
+        
+    def get_flow_solver_iterations(self, itimestep=1):
+        
+        # for flow solver iterations, search the preamble as well as timestep 1
+        # if timestep 1 is requested.
+
+        _s = self._tsloc[0]
+        if itimestep > 1:
+            _s = self._tsloc[itimestep]
+
+        _e = self._tsloc[-1]
+        if itimestep <= self.get_n_ts():
+            _e = self._tsloc[itimestep+1]
+
+        m = re.search(
+            r'^\s*Number of flow matrix solver iterations = +(\d+)',
+            self._txt[_s:_e],
+            flags=re.M)
+
+        if m:
+            return int(m.group(1))
+        return 0
+
+    def get_transport_solver_iterations(self, itimestep=1):
+
+        _s = self._tsloc[0]
+        if itimestep > 1:
+            _s = self._tsloc[itimestep]
+
+        _e = self._tsloc[-1]
+        if itimestep <= self.get_n_ts():
+            _e = self._tsloc[itimestep+1]
+
+        m = re.search(
+            r'^\s*Number of transport matrix solver iterations: +(\d+)',
+            self._txt[_s:_e],
+            flags=re.M)
+
+        if m:
+            return int(m.group(1))
+        return 0
