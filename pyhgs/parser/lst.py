@@ -112,10 +112,26 @@ class LSTFileParser:
 
         return 1
 
-    def iter_errors(self):
-        """Yield errors (timestep index, error name, error message)"""
+    def iter_errors(self,itimestep=None):
+        """Yield errors (timestep index, error name, error message)
 
-        for itime,tss,tse in zip(count(), self._tsloc[:-1], self._tsloc[1:]):
+        Arguments
+        ---------
+
+        itimestep : int, optional
+            Yield errors for the given timestep, only. Default: yield errors for
+            all timesteps.
+        """
+
+        itss = self._tsloc[:-1]
+        itse = self._tsloc[1:]
+
+        if itimestep is not None:
+            itss = [self._tsloc[itimestep],]
+            itse = [self._tsloc[itimestep+1],]
+
+
+        for itime,tss,tse in zip(count(), itss, itse):
             for err_re in ERRORS_FILTER:
                 m = err_re.search(self._txt,tss,tse)
                 if m:
@@ -149,9 +165,9 @@ class LSTFileParser:
 
         return ret
 
-        
+
     def get_flow_solver_iterations(self, itimestep=1):
-        
+
         # for flow solver iterations, search the preamble as well as timestep 1
         # if timestep 1 is requested.
 
