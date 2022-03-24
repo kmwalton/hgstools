@@ -3,6 +3,7 @@
 
 import os
 import unittest
+from itertools import islice
 
 from pyhgs.parser.lst import LSTFileParser
 
@@ -75,7 +76,7 @@ class Test_LST_Parser(unittest.TestCase):
         self.assertEqual(len(list(p.iter_errors(1))), 1)
         self.assertEqual(len(list(p.iter_errors(2))), 0)
 
-    def test_n_iter(self):
+    def test_n_solver_iter(self):
 
         p = LSTFileParser(DATDIR+'good')
         self.assertEqual(p.get_transport_solver_iterations(1082), 4)
@@ -83,6 +84,23 @@ class Test_LST_Parser(unittest.TestCase):
         p = LSTFileParser(DATDIR+'fail')
         self.assertEqual(p.get_n_ts(), 0)
         self.assertEqual(p.get_flow_solver_iterations(0), 20000)
+
+    def test_ts_solution_times(self):
+        p = LSTFileParser(DATDIR+'good')
+        
+        self.assertAlmostEqual(p.get_ts_time(0),0.0)
+        self.assertAlmostEqual(p.get_ts_time(1),0.01)
+        self.assertAlmostEqual(p.get_ts_time(4),0.15)
+
+        ts_list = [ i for i in islice(p.get_ts_time(),6) ]
+
+        for act,des in zip(ts_list, [0., 0.01, 0.03, 0.07, 0.15, 0.31,]):
+            self.assertAlmostEqual(act,des)
+
+        self.assertEqual(p.get_n_ts(),1082)
+        ts_list = list( p.get_ts_time() )
+        self.assertEqual(len(ts_list),1082+1)
+
 
 if __name__ == '__main__':
     unittest.main()

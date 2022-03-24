@@ -19,6 +19,18 @@ ERRORS_FILTER = [
 _NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
 """RegEx for a floating point number"""
 
+FILTER = {
+    'timestepsize':re.compile(
+        r'(?ms:^Global target time.*Tnext)' \
+        r'(^(?:\s+'+_NUM_RE+'){3}(?:\s+.*)$)+'),
+    'accepted_solution_time':re.compile(
+        r'^ Accepted solution at time\s+('+_NUM_RE+')', flags=re.M),
+    'initial_time':re.compile(r'Initial time =\s+('+_NUM_RE+')', flags=re.M),
+
+}
+"""Dictionary of compiled re objects for various chunks of a .lst file"""
+
+
 class LSTFileParser:
     """Parse and return (select) data from phgs output, the .lst file"""
 
@@ -99,6 +111,59 @@ class LSTFileParser:
         # subtract 0 from the "0" timestep, which is all the text before the
         # first timestep
         return len(self._tsloc)-2
+
+    def get_ts_time(self, itime='all'):
+        """Get the simulation time, as of the end of the itime'th timestep.
+
+        Arguments:
+            itime : int or 'all'
+                Return the simulation time (in simulation time units) of the
+                specified timestep (int). Or, If itime is the keyword 'all',
+                return a generator of all simulation time for all timesteps.
+
+        Returns
+            A singleton float value if the time of one timestep is requested
+            Or, a generator of all times. This includes the initial time of the
+            simulation in timestep zero.
+
+        This probably won't work for restarted simulations, 
+        """
+
+        if not itime == 'all':
+            # allow ValueError to be raised if necessary
+            its = int(itime)
+            # allow bad index errors to be raised
+            tss = self._tsloc[its]
+            tse = self._tsloc[its+1]
+
+            if its == 0:
+                match = FILTER['initial_time'].search(
+                        self._txt[tss:tse])
+            else:
+                match = FILTER['accepted_solution_time'].search(
+                        self._txt[tss:tse])
+
+            return float(match.group(1))
+
+        else:
+            def _gen_times():
+
+                match = FILTER['initial_time'].search(
+                        self._txt[:self._tsloc[1]])
+                yield float(match.group(1))
+
+                itss = self._tsloc[1:-1]
+                itse = self._tsloc[2:]
+                for i, tss, tse in zip(count(1), itss, itse):
+                    match = FILTER['accepted_solution_time'].search(
+                            self._txt[tss:tse])
+                    if not match:
+                        raise RuntimeError(
+                            f'No accepted solution found in timestep {i}')
+                    yield float(match.group(1))
+
+            return _gen_times()
+
 
     def get_ec(self):
         """Return 0 for NORMAL EXIT, 1 otherwise."""
