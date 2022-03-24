@@ -113,20 +113,18 @@ class LSTFileParser:
         return len(self._tsloc)-2
 
     def get_ts_time(self, itime='all'):
-        """Get the simulation time, as of the end of the itime'th timestep.
+        """Get the simulation time at the end of the itime'th timestep.
 
         Arguments:
             itime : int or 'all'
-                Return the simulation time (in simulation time units) of the
-                specified timestep (int). Or, If itime is the keyword 'all',
-                return a generator of all simulation time for all timesteps.
+                A specific timestep index or the keyword 'all' to signify
+                all simulation solution times are desired.
 
         Returns
-            A singleton float value if the time of one timestep is requested
-            Or, a generator of all times. This includes the initial time of the
-            simulation in timestep zero.
-
-        This probably won't work for restarted simulations, 
+            A singleton float value.
+            Or, a generator of simulation times over all timesteps. (This
+            includes the initial time of the simulation in timestep 0, so the
+            length of this generated sequence is get_n_ts()+1.)
         """
 
         if not itime == 'all':
