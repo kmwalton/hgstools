@@ -1,0 +1,12 @@
+# Ignore all files in this directory except the HGS simulation input files and
+# visualization layout file.
+**
+!.gitignore
+!batch.pfx
+!f_cd.fprops
+!module4b.grok
+!module4b.mprops
+!fracs.rfd
+!preprocess-make-mesh.py
+!r.lay
+!readme.txt
