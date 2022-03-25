@@ -5,6 +5,8 @@ import unittest
 
 import os
 from itertools import islice
+from bisect import bisect_left
+from operator import itemgetter
 
 from pyhgs.parser.lst import LSTFileParser
 
@@ -108,6 +110,22 @@ class Test_LST_Parser(unittest.TestCase):
         ts_list = list( p.get_ts_time() )
         self.assertEqual(len(ts_list),1082+1)
 
+    def test_gtt(self):
+        """Test global target times harvesting"""
+        p = LSTFileParser(DATDIR+'good')
+        
+        # total number of times
+        gtt_actual = p.get_global_target_times()
+        gtt_actual_times = list( map(itemgetter(0), gtt_actual) )
+        self.assertEqual(len(gtt_actual),88)
+
+        # specific time
+        tgt_desired = 37412.5
+        tgt_idesired = 251
+        
+        i = bisect_left(gtt_actual_times, tgt_desired)
+        self.assertAlmostEqual(gtt_actual[i][0],tgt_desired)
+        self.assertEqual(gtt_actual[i][1],tgt_idesired)
 
 if __name__ == '__main__':
     unittest.main()

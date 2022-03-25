@@ -32,6 +32,9 @@ FILTER = {
     'initial_time':re.compile(
         r'Initial time =\s+('+_NUM_RE+')',
         flags=re.M),
+    'met_global_target':re.compile(
+        r'^ Met global target time\ +('+_NUM_RE+')',
+        flags=re.M),
     'simulation_time_report':re.compile(
         r'^-{9} SIMULATION TIME REPORT\s*\n(?P<report>(?ms:.*?))\n-{58}',
         flags=re.M),
@@ -143,6 +146,20 @@ class LSTFileParser:
             flags = re.M|re.S)
 
         return bool(m)
+
+    def get_global_target_times(self):
+        """Return a list of ( target time, itime when target achieved)-tuples.
+        """
+        ret = []
+
+        for i, tss, tse in self._iter_timestep_text_bounds():
+            # look in last 256 chars of a timestep for this regex
+            m = FILTER['met_global_target'].search(self._txt[tse-256:tse])
+
+            if m:
+                ret.append((float(m.group(1)), i,))
+
+        return ret
 
     def get_n_ts(self):
         """Return the number of timesteps
