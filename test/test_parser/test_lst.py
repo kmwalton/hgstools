@@ -47,10 +47,12 @@ class Test_LST_Parser(unittest.TestCase):
         p = LSTFileParser(DATDIR+'steady_flow_transient_transporto.lst')
         with self.subTest('good exit'):
             self.assertEqual(p.get_ec(), 0)
+            self.assertTrue(p._has_sim_report)
 
         p = LSTFileParser(DATDIR+'fail')
         with self.subTest('bad exit'):
             self.assertEqual(p.get_ec(), 1)
+            self.assertFalse(p._has_sim_report)
 
     def test_fluid_balance(self):
 

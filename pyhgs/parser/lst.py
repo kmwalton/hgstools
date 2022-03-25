@@ -20,12 +20,21 @@ _NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
 """RegEx for a floating point number"""
 
 FILTER = {
+    'timestep_start':re.compile(
+        r'^-{82}\n\s+SOLUTION FOR TIMESTEP\s+(\d+)',
+        flags=re.M),
     'timestepsize':re.compile(
         r'(?ms:^Global target time.*Tnext)' \
         r'(^(?:\s+'+_NUM_RE+'){3}(?:\s+.*)$)+'),
     'accepted_solution_time':re.compile(
-        r'^ Accepted solution at time\s+('+_NUM_RE+')', flags=re.M),
-    'initial_time':re.compile(r'Initial time =\s+('+_NUM_RE+')', flags=re.M),
+        r'^ Accepted solution at time\s+('+_NUM_RE+')',
+        flags=re.M),
+    'initial_time':re.compile(
+        r'Initial time =\s+('+_NUM_RE+')',
+        flags=re.M),
+    'simulation_time_report':re.compile(
+        r'^-{9} SIMULATION TIME REPORT\s*\n(?P<report>(?ms:.*?))\n-{58}',
+        flags=re.M),
 
 }
 """Dictionary of compiled re objects for various chunks of a .lst file"""
@@ -62,12 +71,11 @@ class LSTFileParser:
         # index the timestep locations
         # HGS labels its timesteps starting from 1.
         self._tsloc = []
-        _ts = {}
+        self._n_ts = -1
+        self._has_sim_report = False
 
-        for m in re.finditer(
-                r'^ +SOLUTION FOR TIMESTEP +(\d+)',
-                self._txt,
-                flags=re.M, ):
+        _ts = {}
+        for m in FILTER['timestep_start'].finditer(self._txt):
             itime = int(m.group(1))
 
             if itime in _ts:
@@ -81,12 +89,45 @@ class LSTFileParser:
         if any( isinstance(v,list) for v in _ts.values() ):
             raise NotImplementedError('Found timestep reported twice')
 
-        # bookend the list of timesteps with 0 for the beginning of the file and
-        # the max length
-        self._tsloc = [0,] \
-                  + list( v for k,v in sorted(_ts.items()) ) \
-                  + [len(self._txt),]
+        self._n_ts = len(_ts)
+
+        # bookend the list of timesteps with 0 for the beginning of the file,
+        # and the simulation report + the max length
+        self._tsloc = [0,] + list( v for k,v in sorted(_ts.items()) )
+
+        # find the simulation report
+        sim_rpt = FILTER['simulation_time_report'].search(
+                self._txt[self._tsloc[-1]:])
+        if sim_rpt:
+            self._tsloc.append(self._tsloc[-1]+sim_rpt.span()[0])
+            self._has_sim_report = True
+
+        # end of input
+        self._tsloc.append(len(self._txt))
+
         logger.debug(f'Found {len(self._tsloc)} timesteps.')
+
+    def _iter_timestep_text_bounds(self, itimestep=None):
+        """Generate the start and end character numbers of timestep text blocks
+
+        Arguments
+            itimestep : int or None
+                Get an iterator over only the requested timestep. Default None,
+                implying all timesteps
+
+        Yields tuples of (timestep index, text start position, text end
+        position), where positions are absolute character indices in self._txt.
+        """
+
+        itss = self._tsloc[1:-1-self._has_sim_report]
+        itse = self._tsloc[2:]
+
+        if itimestep is not None:
+            itss = [self._tsloc[itimestep],]
+            itse = [self._tsloc[itimestep+1],]
+
+        for i, tss, tse in zip(count(1), itss, itse):
+            yield (i,tss,tse,)
 
     def ss_flow(self):
         """Return True if the flow system is steady state"""
@@ -106,11 +147,11 @@ class LSTFileParser:
     def get_n_ts(self):
         """Return the number of timesteps
 
-        Valid timestep indices are 1 to this number, inclusive.
+        For parameters to other functions in this module, valid timestep indices
+        are 1 to this number, inclusive. (Hydrogeosphere reports 1-based time
+        indices.)
         """
-        # subtract 0 from the "0" timestep, which is all the text before the
-        # first timestep
-        return len(self._tsloc)-2
+        return self._n_ts
 
     def get_ts_time(self, itime='all'):
         """Get the simulation time at the end of the itime'th timestep.
@@ -150,9 +191,7 @@ class LSTFileParser:
                         self._txt[:self._tsloc[1]])
                 yield float(match.group(1))
 
-                itss = self._tsloc[1:-1]
-                itse = self._tsloc[2:]
-                for i, tss, tse in zip(count(1), itss, itse):
+                for i, tss, tse in self._iter_timestep_text_bounds():
                     match = FILTER['accepted_solution_time'].search(
                             self._txt[tss:tse])
                     if not match:
@@ -166,11 +205,9 @@ class LSTFileParser:
     def get_ec(self):
         """Return 0 for NORMAL EXIT, 1 otherwise."""
 
-        exit_phrase = re.search(r'SIMULATION TIME REPORT.*---- (.*?) ----',
-            self._txt[self._tsloc[-2]:],
-            flags = re.M | re.S )
-
-        if exit_phrase and exit_phrase.group(1) == 'NORMAL EXIT':
+        if self._has_sim_report and \
+                re.search(r'- +NORMAL EXIT +-', self._txt[self._tsloc[-2]:],
+                flags=re.M ):
             return 0
 
         return 1
@@ -186,15 +223,7 @@ class LSTFileParser:
             all timesteps.
         """
 
-        itss = self._tsloc[:-1]
-        itse = self._tsloc[1:]
-
-        if itimestep is not None:
-            itss = [self._tsloc[itimestep],]
-            itse = [self._tsloc[itimestep+1],]
-
-
-        for itime,tss,tse in zip(count(), itss, itse):
+        for itime,tss,tse in self._iter_timestep_text_bounds(itimestep):
             for err_re in ERRORS_FILTER:
                 m = err_re.search(self._txt,tss,tse)
                 if m:
