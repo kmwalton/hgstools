@@ -1,0 +1,29 @@
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@                                                                      @@ 
+ @@  HYDROGEOSPHERE: 3-D coupled surface/subsurface flow and transport   @@
+ @@                                                                      @@ 
+ @@   REVISION:   1827                                                   @@
+ @@   BUILD DATE: 20170831                                               @@
+ @@   BUILD INFO: 64bit                                                  @@
+ @@                                                                      @@ 
+ @@   (c) Aquanty, Inc.                                                  @@
+ @@       www.aquanty.com                                                @@ 
+ @@       support@aquanty.com                                            @@
+ @@                                                                      @@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+  
+ PROBLEM TITLE:
+Script-testing/model set up-testing
+  
+    File for last time head values (.hen) will be overwritten **
+  
+  Steady-state flow simulation
+     Calculating steady-state flow solution...
+    
+ Number of flow matrix solver iterations =  20000
+    Steady-state flow simulation **
+    Maximum number of nonlinear iterations exceeded **
+  
+ Program TERMINATES without finding a solution

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
+"""Test functions in `pyhgs.parser.lst`"""
 
+import unittest
 
 import os
-import unittest
 from itertools import islice
 
 from pyhgs.parser.lst import LSTFileParser
-
 
 import logging
 lstlog = logging.getLogger('pyhgs.parser.lst')
