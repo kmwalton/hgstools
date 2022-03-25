@@ -45,10 +45,12 @@ class Test_LST_Parser(unittest.TestCase):
     def test_ec(self):
 
         p = LSTFileParser(DATDIR+'steady_flow_transient_transporto.lst')
-        self.assertEqual(p.get_ec(), 0)
+        with self.subTest('good exit'):
+            self.assertEqual(p.get_ec(), 0)
 
         p = LSTFileParser(DATDIR+'fail')
-        self.assertEqual(p.get_ec(), 1)
+        with self.subTest('bad exit'):
+            self.assertEqual(p.get_ec(), 1)
 
     def test_fluid_balance(self):
 
@@ -64,17 +66,20 @@ class Test_LST_Parser(unittest.TestCase):
 
     def test_iter_errors(self):
 
-        p = LSTFileParser(DATDIR+'good')
-        self.assertEqual(len(list(p.iter_errors())), 0)
+        with self.subTest('no errors, goodo.lst'):
+            p = LSTFileParser(DATDIR+'good')
+            self.assertEqual(len(list(p.iter_errors())), 0)
 
-        p = LSTFileParser(DATDIR+'fail')
-        self.assertEqual(len(list(p.iter_errors())), 0)
+        with self.subTest('no errors, failo.lst'):
+            p = LSTFileParser(DATDIR+'fail')
+            self.assertEqual(len(list(p.iter_errors())), 0)
 
-        p = LSTFileParser(DATDIR+'sflow_ttransport_w0solv_erroro.lst')
-        self.assertEqual(len(list(p.iter_errors())), 1)
-        
-        self.assertEqual(len(list(p.iter_errors(1))), 1)
-        self.assertEqual(len(list(p.iter_errors(2))), 0)
+        with self.subTest('errors, sflow_...o.lst'):
+            p = LSTFileParser(DATDIR+'sflow_ttransport_w0solv_erroro.lst')
+            self.assertEqual(len(list(p.iter_errors())), 1)
+            
+            self.assertEqual(len(list(p.iter_errors(1))), 1)
+            self.assertEqual(len(list(p.iter_errors(2))), 0)
 
     def test_n_solver_iter(self):
 
