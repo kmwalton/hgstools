@@ -23,6 +23,7 @@ class Domain(IntEnum):
     """Types of domains in Hydrogeosphere"""
     PM = auto()
     FRAC = auto()
+    NODES_PM = auto()
 
 class HGSGrid():
     '''Inspect a Hydrogeosphere rectilinear grid'''
@@ -137,15 +138,32 @@ class HGSGrid():
         return i
 
     def get_grid_lines(self):
-        """Return the ([x-],[y-],[z-grid lines]) in this rectilinear grid"""
+        """Return the ([x-],[y-],[z-grid lines]) in this rectilinear grid.
+
+        If the grid is not rectilinear, one or more sets of gridlines will be
+        returned as `None`.
+        """
         # store
         if not hasattr(self,'gl'):
             (nx,ny,nz) = self.shape
-            self.gl = (
-                self.hgs_pm_nodes['ncoords'][0:nx,0],
-                self.hgs_pm_nodes['ncoords'][0:nx*ny:nx,1],
-                self.hgs_pm_nodes['ncoords'][0::nx*ny,2],
-            )
+
+            # check whether the grid spacing consistent along the grid
+            n_unique = [ np.unique(self.hgs_pm_nodes['ncoords'][:,a]).size
+                            for a in range(3) ]
+            _gl = 3*[None,]
+
+            # replace flag 'None' with grid line list
+            if nx == n_unique[0]:
+                _gl[0] = self.hgs_pm_nodes['ncoords'][0:nx,0]
+
+            if ny == n_unique[1]:
+                _gl[1] = self.hgs_pm_nodes['ncoords'][0:nx*ny:nx,1]
+
+            if nz == n_unique[2]:
+                _gl[2] = self.hgs_pm_nodes['ncoords'][0::nx*ny,2]
+
+            self.gl = tuple(_gl)
+
         return self.gl
 
 
@@ -194,12 +212,14 @@ class HGSGrid():
             Arguments:
 
                 iel : int or tuple
-                    Element index, or
-                    Element from grid indices (ix, iy, iz), for appropriate
+                    Scalar index, or
+                    Grid index triple, (ix, iy, iz), for appropriate
                     domain types.
 
             Returns:
-                Tuple of 3D coordinates ( c0, c1, ... )
+                Nodal coordinates (x0,y0,z0), or
+                Tuple of bounding nodal coordinates
+                    `( (x0,y0,z0), (x1,y1,z1), ... )` that bound the element
         """
 
         if dom == Domain.PM:
@@ -207,6 +227,11 @@ class HGSGrid():
                 iel = self._to_index_nocheck(iel,self.elshape)
             inc_nodes = self.hgs_pm_elems['inc'][iel]
             return tuple(self.hgs_pm_nodes['ncoords'][i] for i in inc_nodes)
+
+        elif dom == Domain.NODES_PM:
+            if type(iel) == tuple:
+                iel = self._to_index_nocheck(iel,self.shape)
+            return self.hgs_pm_nodes['ncoords'][iel]
 
         elif dom == Domain.FRAC:
             inc_nodes = self.hgs_fx_elems['inc'][iel]
