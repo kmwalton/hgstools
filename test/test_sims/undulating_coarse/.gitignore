@@ -1,0 +1,11 @@
+# Ignore all files in this directory except the HGS simulation input files and
+# visualization layout file.
+**
+!.gitignore
+!batch.pfx
+!f_cd.fprops
+!undf.grok
+!undf.mprops
+!fracs.rfd
+!r.lay
+!readme.txt

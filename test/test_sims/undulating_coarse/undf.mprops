@@ -1,0 +1,28 @@
+! units: kilogram-metre-second
+!------------------------------------------
+porous medium
+
+k isotropic
+1e-9
+
+specific storage                
+0.001 
+
+porosity
+0.3     
+
+end material
+!------------------------------------------
+porous medium 2
+
+k isotropic
+8e-10
+
+specific storage                
+0.0008
+
+porosity
+0.2     
+
+end material
+!------------------------------------------

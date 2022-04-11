@@ -1,0 +1,53 @@
+!-------------------------
+! fracture property set
+fracture1
+
+specific storage 
+0.0               
+
+aperture
+.0001           
+
+longitudinal dispersivity
+1.0               
+
+transverse dispersivity
+1.0               
+
+end
+!-------------------------
+!-------------------------
+! fracture property set
+fracture2
+
+specific storage 
+0.0               
+
+aperture
+.0001           
+
+longitudinal dispersivity
+1.0               
+
+transverse dispersivity
+1.0               
+
+end
+!-------------------------
+! fracture property set
+fracture3
+
+specific storage 
+0.0               
+
+aperture
+.0001           
+
+longitudinal dispersivity
+1.0               
+
+transverse dispersivity
+1.0               
+
+end
+!-------------------------
