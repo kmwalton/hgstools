@@ -375,5 +375,33 @@ class Test_Module04bCoarse(unittest.TestCase):
         self.assertTrue(cepm[4,0,2] == ssdata[3,0,2])
         self.assertTrue(cepm[4,0,3] == ssdata[3,0,3])
 
+    def test_fx_elem_volume(self):
+
+        ap = 100e-6
+        exp = ap * np.array(
+             [ 10., 10.,  5., 5., 
+                6.,  6.,  8., 5., 
+                5.,  5., 20., ]
+            )
+
+        fx_vol = self.g.get_element_volumes(Domain.FRAC)
+        nptest.assert_allclose(fx_vol, exp)
+
+    def test_pm_elem_volume(self):
+        exp = np.array(
+              [ [ 60., 60., 30., 30., 120., ], # z- bottom row
+                [ 60., 60., 30., 30., 120., ],
+                [ 80., 80., 40., 40., 160., ],
+                [ 50., 50., 25., 25., 100., ], ]  # top row
+            ).T # Transpose to match HGS;
+
+        pm_vol = self.g.get_element_volumes()
+
+        pm_conc = \
+            self.g.get_element_vals(f'{SIM_PREFIX}o.conc_pm.salt.0013')
+
+        nptest.assert_allclose(pm_vol[:,0,:], exp)
+
+
 if __name__ == '__main__':
     unittest.main()

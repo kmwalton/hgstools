@@ -7,6 +7,7 @@ from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
+from numpy.linalg import norm
 from pyhgs.parser import (
     parse,
     parse_coordinates_pm,
@@ -476,6 +477,83 @@ class HGSGrid():
 
         return func(dd)
 
+    def _pm_V(self):
+
+        def _rect_V():
+            (nx,ny,nz) = self.elshape
+            gl = self.get_grid_lines()
+            dx = gl[0][1:]-gl[0][:-1]
+            dy = gl[1][1:]-gl[1][:-1]
+            dz = gl[2][1:]-gl[2][:-1]
+
+            return np.dot(
+                    np.dot(dx.reshape((nx,1)),
+                           dy.reshape((1,ny))).reshape((nx,ny,1)),
+                    dz.reshape((1,nz))).reshape((nx,ny,nz),order='F')
+
+        def _tet_V(ia,ib,ic,id):
+            return 0
+
+
+        # is a regular grid
+        if 3 == sum(1 for gla in self.get_grid_lines() if gla is not None):
+            return _rect_V()
+            
+
+        # decompose to 6 tetrahedra per brick
+
+        N = self.hgs_fx_elems['nfe']
+        c = self.hgs_pm_nodes['ncoords']
+
+        breakpoint()
+
+        for i,(inc, izn) in enumerate(self.iter_elements(Domain.PM)):
+            pass
+
+        return 0
+
+    def _fx_V(self):
+        """Compute fracture volumes.
+
+        Computed as aperture times the area of each fracture element. The area
+        is the sum of the area of two triangles in R3 (3D cartesian plane of
+        real values).
+
+        """
+        
+        N = self.hgs_fx_elems['nfe']
+        c = self.hgs_pm_nodes['ncoords']
+        fxap = self.hgs_fx_elems['ap'] #alias
+
+        # temporary arrays
+        fxsz = np.zeros((N,3,3), dtype=np.float32)
+
+        
+        for i,(inc, izn, ap) in enumerate(
+                self.iter_elements(Domain.FRAC)):
+
+            fxsz[i,0,:] = c[inc[1]]-c[inc[0]]
+            fxsz[i,1,:] = c[inc[2]]-c[inc[0]]
+            fxsz[i,2,:] = c[inc[3]]-c[inc[0]]
+
+        # with help from...
+        # https://math.stackexchange.com/questions/128991/
+        #   how-to-calculate-the-area-of-a-3d-triangle
+        # where this is aperture * 0.5 ( 2S_1 + 2S_2 ), where S_{1,2] are the
+        # two triangle parts
+        return fxap * 0.5 * \
+            (norm(np.cross(fxsz[:,0,:],fxsz[:,1,:]), axis=1) +
+                          norm(np.cross(fxsz[:,1,:],fxsz[:,2,:]), axis=1))
+
+    def get_element_volumes(self, dom=Domain.PM):
+        """Return element volumes for the requested domain"""
+        if dom == Domain.PM:
+            return self._pm_V()
+        elif dom == Domain.FRAC:
+            return self._fx_V()
+        else:
+            raise ValueError(
+                f'Cannot calculate volume for requested zone {dom}')
 
     def find_grid_index(self, *args):
         """Get a grid index (ix,iy,iz) given coordinate or node number
