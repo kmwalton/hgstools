@@ -1167,17 +1167,24 @@ $!ThreeDAxis
     }
 $!View Fit
 $!ThreeDAxis 
-  AxisMode = XYDependent
+  AxisMode = Independent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
   DepXToZRatio = 0.06
+  GridArea
+    {
+    IsFilled = No
+    }
 $!ThreeDAxis 
   XDetail
     {
-    ShowAxis = No
-    RangeMin = -2.5
-    RangeMax = 52.5
+    RangeMin = -1
+    RangeMax = 51
     GRSpacing = 10
+    Gridlines
+      {
+      Show = No
+      }
     AxisLine
       {
       Edge = 1
@@ -1186,10 +1193,13 @@ $!ThreeDAxis
 $!ThreeDAxis 
   YDetail
     {
-    ShowAxis = No
-    RangeMin = -1.25
-    RangeMax = 26.25
+    RangeMin = -1
+    RangeMax = 26
     GRSpacing = 5
+    Gridlines
+      {
+      Show = No
+      }
     AxisLine
       {
       Edge = 4
@@ -1439,14 +1449,14 @@ $!StreamAttributes
 $!GlobalThreeD 
   AxisScaleFact
     {
-    X = 1
-    Y = 1
+    X = 1.057692307692308
+    Y = 1.018518518518519
     Z = 16.66666666666667
     }
   RotateOrigin
     {
-    X = 25
-    Y = 12.5
+    X = 13.3
+    Y = 26
     Z = 0.75
     }
   LightSource
@@ -1472,11 +1482,11 @@ $!ThreeDView
   ThetaAngle = 0
   ViewerPosition
     {
-    X = 25.00000000000003
-    Y = 12.50000000000011
+    X = 25.97151011679005
+    Y = 14.29093269086511
     Z = 22.64711431702996
     }
-  ViewWidth = 55.7452
+  ViewWidth = 61.0608
 $!FieldLayers 
   ShowEdge = No
 $!StreamtraceLayers 
@@ -2897,5 +2907,5 @@ $!FieldLayers
 $!StreamtraceLayers 
   Show = No
 $!FrameControl ActivateByNumber
-  Frame = 3
+  Frame = 2
 $!SetStyleBase Config
