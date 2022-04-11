@@ -505,8 +505,6 @@ class HGSGrid():
         N = self.hgs_fx_elems['nfe']
         c = self.hgs_pm_nodes['ncoords']
 
-        breakpoint()
-
         for i,(inc, izn) in enumerate(self.iter_elements(Domain.PM)):
             pass
 
