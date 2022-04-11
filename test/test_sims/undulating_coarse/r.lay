@@ -419,6 +419,8 @@ $!GlobalScatter
   DataLabels
     {
     ShowNodeLabels = Yes
+    CellLabelType = VarValue
+    CellLabelVar = 1
     }
 $!FieldMap  [1]
   Mesh
@@ -548,7 +550,7 @@ $!ThreeDAxis
     GRSpacing = 10
     AxisLine
       {
-      Edge = 2
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -557,10 +559,10 @@ $!ThreeDAxis
     ShowAxis = No
     RangeMin = -1.25
     RangeMax = 26.25
-    GRSpacing = 5
+    GRSpacing = 10
     AxisLine
       {
-      Edge = 3
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -572,7 +574,7 @@ $!ThreeDAxis
     GRSpacing = 0.5
     AxisLine
       {
-      Edge = 2
+      Edge = 3
       }
     }
 $!IsoSurfaceAttributes  1
@@ -836,20 +838,38 @@ $!GlobalThreeD
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
 $!ThreeDView 
-  PSIAngle = 59.5966
-  ThetaAngle = -146.622
+  PSIAngle = 50.8069
+  ThetaAngle = 47.3007
+  AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = 198.1719452813361
-    Y = 275.3470864241252
-    Z = 11.83178717112229
+    X = -183.0793317969548
+    Y = -181.3855218014733
+    Z = 14.47273561904525
     }
-  ViewWidth = 55.7452
+  ViewWidth = 64.7274
 $!FieldLayers 
   ShowShade = Yes
   ShowEdge = No
 $!StreamtraceLayers 
   Show = No
+$!Linking 
+  BetweenFrames
+    {
+    Link3DView = Yes
+    }
+$!AttachText 
+  AnchorPos
+    {
+    X = 2.298521697663329
+    Y = 96.56652360515019
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Anchor = HeadLeft
+  Text = 'PM Node Numbers\n1-based'
 ### Frame Number 2 ###
 $!CreateNewFrame 
 $!FrameLayout 
@@ -1695,6 +1715,7 @@ $!FieldMap  [2]
   Mesh
     {
     Color = Black
+    LineThickness = 0.8
     }
   Contour
     {
@@ -1773,7 +1794,7 @@ $!ThreeDAxis
     GRSpacing = 10
     AxisLine
       {
-      Edge = 2
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -1782,10 +1803,10 @@ $!ThreeDAxis
     ShowAxis = No
     RangeMin = -1.25
     RangeMax = 26.25
-    GRSpacing = 5
+    GRSpacing = 10
     AxisLine
       {
-      Edge = 3
+      Edge = 1
       }
     }
 $!ThreeDAxis 
@@ -1797,7 +1818,7 @@ $!ThreeDAxis
     GRSpacing = 0.5
     AxisLine
       {
-      Edge = 2
+      Edge = 3
       }
     }
 $!IsoSurfaceAttributes  1
@@ -2061,19 +2082,37 @@ $!GlobalThreeD
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
 $!ThreeDView 
-  PSIAngle = 59.5966
-  ThetaAngle = -146.622
+  PSIAngle = 50.8069
+  ThetaAngle = 47.3007
+  AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = 198.1719452813361
-    Y = 275.3470864241252
-    Z = 11.83178717112229
+    X = -183.0793317969548
+    Y = -181.3855218014733
+    Z = 14.47273561904525
     }
-  ViewWidth = 55.7452
+  ViewWidth = 64.7274
 $!FieldLayers 
   ShowEdge = No
 $!StreamtraceLayers 
   Show = No
+$!Linking 
+  BetweenFrames
+    {
+    Link3DView = Yes
+    }
+$!AttachText 
+  AnchorPos
+    {
+    X = 2.298521697663329
+    Y = 96.56652360515019
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Anchor = HeadLeft
+  Text = 'Fracture Node Numbers\n1-based'
 ### Frame Number 4 ###
 $!CreateNewFrame 
 $!FrameLayout 
@@ -2858,5 +2897,5 @@ $!FieldLayers
 $!StreamtraceLayers 
   Show = No
 $!FrameControl ActivateByNumber
-  Frame = 4
+  Frame = 3
 $!SetStyleBase Config
