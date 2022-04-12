@@ -397,9 +397,6 @@ class Test_Module04bCoarse(unittest.TestCase):
 
         pm_vol = self.g.get_element_volumes()
 
-        pm_conc = \
-            self.g.get_element_vals(f'{SIM_PREFIX}o.conc_pm.salt.0013')
-
         nptest.assert_allclose(pm_vol[:,0,:], exp)
 
 
