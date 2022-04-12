@@ -491,24 +491,55 @@ class HGSGrid():
                            dy.reshape((1,ny))).reshape((nx,ny,1)),
                     dz.reshape((1,nz))).reshape((nx,ny,nz),order='F')
 
-        def _tet_V(ia,ib,ic,id):
-            return 0
-
-
         # is a regular grid
+        # ... early exit
         if 3 == sum(1 for gla in self.get_grid_lines() if gla is not None):
             return _rect_V()
             
-
+        #
         # decompose to 6 tetrahedra per brick
+        #
 
+        # some helper index slices
+        #       iz
+        #        ^
+        #        | 7-----6
+        #        |/|    /|
+        #        4-+---5 |
+        #        | 3-- +-2
+        #        |/    |/
+        #        0-----1------>ix
+        #
+        sl = [
+            np.s_[:-1,:-1,:-1],
+            np.s_[1:,:-1,:-1],
+            np.s_[1:,1:,:-1],
+            np.s_[:-1,1:,:-1],
+            np.s_[:-1,:-1,1:],
+            np.s_[1:,:-1,1:],
+            np.s_[1:,1:,1:],
+            np.s_[:-1,1:,1:], ]
+
+        (nx,ny,nz) = self.shape
         N = self.hgs_fx_elems['nfe']
-        c = self.hgs_pm_nodes['ncoords']
+        p = self.hgs_pm_nodes['ncoords'].reshape(nx,ny,nz,3, order='F')
 
-        for i,(inc, izn) in enumerate(self.iter_elements(Domain.PM)):
-            pass
+        ret = np.zeros(self.elshape)
 
-        return 0
+        # for each of the six tetrahedra
+        for (a,b,c,d) in [
+                (0,1,3,5), (0,4,5,7), (0,3,5,7),
+                (2,3,1,5), (2,3,5,7), (2,5,6,7),
+            ]:
+
+            # https://en.wikipedia.org/wiki/Tetrahedron#Volume
+            ad = p[sl[d]] - p[sl[a]]
+            abxac = np.cross(p[sl[b]]-p[sl[a]], p[sl[c]]-p[sl[a]])
+
+            # V = 1/3 * B * h
+            ret += 1./6 * norm(ad[:,:,:]*abxac[:,:,:], axis=3)
+
+        return ret
 
     def _fx_V(self):
         """Compute fracture volumes.
@@ -525,7 +556,6 @@ class HGSGrid():
 
         # temporary arrays
         fxsz = np.zeros((N,3,3), dtype=np.float32)
-
         
         for i,(inc, izn, ap) in enumerate(
                 self.iter_elements(Domain.FRAC)):
@@ -540,8 +570,7 @@ class HGSGrid():
         # where this is aperture * 0.5 ( 2S_1 + 2S_2 ), where S_{1,2] are the
         # two triangle parts
         return fxap * 0.5 * \
-            (norm(np.cross(fxsz[:,0,:],fxsz[:,1,:]), axis=1) +
-                          norm(np.cross(fxsz[:,1,:],fxsz[:,2,:]), axis=1))
+            (_pa(fxsz[:,0,:], fxsz[:,1,:]) + _pa(fxsz[:,1,:], fxsz[:,2,:]))
 
     def get_element_volumes(self, dom=Domain.PM):
         """Return element volumes for the requested domain"""
@@ -995,3 +1024,16 @@ def supersample( groups, d, *more_d, weights=None ):
         raise NotImplementedError(f'Not implemented for # axes > 3.')
 
     return r
+
+def _pa(a, b):
+    """Return the parallelogram area of the R^3 vectors in a and b
+
+    Arguments
+    ---------
+    a, b, : arrays of R^3 triples 
+        i.e. shape is (N,3), where (x,y,z) is in axis 1
+
+    Multiply this by 0.5 to get area of triangle.
+    """
+    return norm(np.cross(a,b), axis=1)
+
