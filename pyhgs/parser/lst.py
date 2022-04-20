@@ -257,6 +257,10 @@ class LSTFileParser:
             r'TOTAL\S+(?P<total>(?:\s+'+_NUM_RE+'){3}).*\n',
             flags=re.M)
 
+        # some steady state simulations have no timesteps
+        if self.get_n_ts() == 0:
+            itimestep = 0
+
         m = fbre.search(self._txt,
                 self._tsloc[itimestep],
                 self._tsloc[itimestep+1])
