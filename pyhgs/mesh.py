@@ -1,5 +1,6 @@
 '''Inspect Hydrogeosphere meshes; interperet binary files'''
 
+import os
 from itertools import count,repeat,product
 from collections import defaultdict
 from bisect import bisect,bisect_left,bisect_right
@@ -46,64 +47,40 @@ class HGSGrid():
         `pyhgs.parser.parse_elements_frac`
         """
 
+        self.nn = 0
+        """Number of PM nodes"""
+        self.ne = 0
+        """Number of PM elements"""
+        self.nfn = 0
+        """Number of fracture nodes"""
+        self.nfe = 0
+        """Number of fracture elements"""
+
         def _my_call(*args,**kwargs):
             return args[0](*args[1:],**kwargs)
         def _my_call_2(a):
             return a[0](a[1:])
 
-        if False:
-            # failed implementation
-            with Pool(processes=4) as pool:
-                res = pool.map(
-                    _my_call_2,
-                    zip( [ parse_coordinates_pm,
-                        parse_elements_pm,
-                        parse_coordinates_frac,
-                        parse_elements_frac,
-                       ],
-                       4*[prefix,]
-                    ) )
+        self.hgs_pm_nodes = parse_coordinates_pm(prefix)
+        self.hgs_pm_elems = parse_elements_pm(prefix)
+        self.nn = self.hgs_pm_nodes['nn'] # aliases
+        self.ne = self.hgs_pm_elems['ne']
 
-                self.hgs_pm_nodes = res[0]
-                self.hgs_pm_elems = res[1]
-                self.hgs_fx_nodes = res[2]
-                self.hgs_fx_elems = res[3]
-        elif False:
-            # failed implementation
-            with ThreadPoolExecutor(max_workers=4) as e:
-                r0 = e.submit(parse_coordinates_pm,prefix)
-                r1 = e.submit(parse_elements_pm,prefix)
-                r2 = e.submit(parse_coordinates_frac,prefix)
-                r3 = e.submit(parse_elements_frac,prefix)
-
-                self.hgs_pm_nodes = r0.result()
-                self.hgs_pm_elems = r1.result()
-                self.hgs_fx_nodes = r2.result()
-                self.hgs_fx_elems = r3.result()
-
-        else:
-            self.hgs_pm_nodes = parse_coordinates_pm(prefix)
-            self.hgs_pm_elems = parse_elements_pm(prefix)
+        if os.path.exists(prefix+'o.coordinates_frac'):
             self.hgs_fx_nodes = parse_coordinates_frac(prefix)
             self.hgs_fx_elems = parse_elements_frac(prefix)
-
-        if self.hgs_pm_nodes['tetramesh'] or self.hgs_pm_nodes['nb2d']>0:
-            raise ValueError(
-                f'Simulation {prefix} does not have a rectilinear grid')
-
-        self.nn = self.hgs_pm_nodes['nn'] # aliases
-        """Number of PM nodes"""
-        self.ne = self.hgs_pm_elems['ne']
-        """Number of PM elements"""
-        self.nfn = self.hgs_fx_nodes['nnfrac']
-        """Number of fracture nodes"""
-        self.nfe = self.hgs_fx_elems['nfe']
-        """Number of fracture elements"""
+            self.nfn = self.hgs_fx_nodes['nnfrac']
+            self.nfe = self.hgs_fx_elems['nfe']
 
         self.shape = tuple(self.hgs_pm_nodes[a] for a in ['nx','ny','nz'])
         """Shape of the PM node grid"""
         self.elshape = tuple(self.hgs_pm_nodes[a]-1 for a in ['nx','ny','nz'])
         """Shape of the PM element grid"""
+
+        if self.hgs_pm_nodes['tetramesh'] or self.hgs_pm_nodes['nb2d']>0:
+            raise ValueError(
+                f'Simulation {prefix} does not have a rectilinear grid')
+
 
     @staticmethod
     def _to_index_nocheck(t,shp):
