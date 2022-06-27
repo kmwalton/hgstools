@@ -103,13 +103,6 @@ $!GlobalContour  1
       X = 97.383
       Y = 89.284
       }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
-      }
     NumberTextShape
       {
       Height = 4.5
@@ -157,13 +150,6 @@ $!GlobalContour  2
       {
       X = 93.759
       Y = 76.03
-      }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
       }
     NumberTextShape
       {
@@ -1020,13 +1006,6 @@ $!GlobalContour  1
       X = 97.383
       Y = 89.284
       }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
-      }
     NumberTextShape
       {
       Height = 4.5
@@ -1066,6 +1045,7 @@ $!ContourLevels New
 1
 $!GlobalContour  2
   Var = 5
+  DefNumLevels = 19
   Legend
     {
     XYPos
@@ -1106,6 +1086,7 @@ $!ContourLevels New
 49.5
 $!GlobalContour  3
   Var = 4
+  DefNumLevels = 19
   Legend
     {
     XYPos
@@ -1151,6 +1132,7 @@ $!ContourLevels New
 2.9
 $!GlobalContour  4
   Var = 6
+  DefNumLevels = 1
   Legend
     {
     XYPos
@@ -1173,6 +1155,7 @@ $!ContourLevels New
 0
 $!GlobalContour  5
   Var = 7
+  DefNumLevels = 11
   Legend
     {
     XYPos
@@ -1205,6 +1188,7 @@ $!ContourLevels New
 0.0011
 $!GlobalContour  6
   Var = 8
+  DefNumLevels = 16
   Legend
     {
     XYPos
@@ -1242,6 +1226,7 @@ $!ContourLevels New
 5E-16
 $!GlobalContour  7
   Var = 9
+  DefNumLevels = 10
   Legend
     {
     XYPos
@@ -1273,6 +1258,7 @@ $!ContourLevels New
 -0.0001
 $!GlobalContour  8
   Var = 11
+  DefNumLevels = 11
   Legend
     {
     XYPos
@@ -1880,13 +1866,6 @@ $!GlobalContour  1
       X = 97.383
       Y = 89.284
       }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
-      }
     NumberTextShape
       {
       Height = 4.5
@@ -1925,6 +1904,7 @@ $!ContourLevels New
 0.95
 $!GlobalContour  2
   Var = 4
+  DefNumLevels = 19
   Legend
     {
     XYPos
@@ -1966,24 +1946,16 @@ $!ContourLevels New
 $!GlobalContour  3
   Var = 5
   ColorMapName = 'Sequential - Yellow/Green/Blue'
-  DefNumLevels = 7
+  DefNumLevels = 11
   Legend
     {
     Show = Yes
-    RowSpacing = 1.2
     XYPos
       {
       X = 97.923
       Y = 100
       }
     OverlayBarGrid = No
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
-      }
     NumberTextShape
       {
       Height = 4.5
@@ -2023,6 +1995,7 @@ $!ContourLevels New
 50
 $!GlobalContour  4
   Var = 6
+  DefNumLevels = 1
   Legend
     {
     XYPos
@@ -2045,6 +2018,7 @@ $!ContourLevels New
 0
 $!GlobalContour  5
   Var = 7
+  DefNumLevels = 11
   Legend
     {
     XYPos
@@ -2077,6 +2051,7 @@ $!ContourLevels New
 0.0011
 $!GlobalContour  6
   Var = 8
+  DefNumLevels = 16
   Legend
     {
     XYPos
@@ -2114,6 +2089,7 @@ $!ContourLevels New
 5E-16
 $!GlobalContour  7
   Var = 9
+  DefNumLevels = 10
   Legend
     {
     XYPos
@@ -2145,6 +2121,7 @@ $!ContourLevels New
 -0.0001
 $!GlobalContour  8
   Var = 11
+  DefNumLevels = 11
   Legend
     {
     XYPos
@@ -2767,13 +2744,6 @@ $!GlobalContour  1
       X = 97.383
       Y = 89.284
       }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
-      }
     NumberTextShape
       {
       Height = 4.5
@@ -2821,13 +2791,6 @@ $!GlobalContour  2
       {
       X = 93.759
       Y = 76.03
-      }
-    Header
-      {
-      TextShape
-        {
-        Height = 4.5
-        }
       }
     NumberTextShape
       {
