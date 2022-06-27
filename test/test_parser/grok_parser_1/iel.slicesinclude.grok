@@ -1,0 +1,78 @@
+! Slice locations made by D:\ssfl-2020-dfm-swath-modeling\lib\scripts\makeMesh.py
+! on 2022-06-27 13:29:23.123670
+
+make observation well
+slice x0001.0
+	     1.000      0.000        1.0
+	     1.000     50.000        1.0
+
+make observation well
+slice x0045.0
+	    45.000      0.000        1.0
+	    45.000     50.000        1.0
+
+make observation well
+slice x0050.0
+	    50.000      0.000      1.224
+	    50.000     50.000      1.224
+
+make observation well
+slice x0051.0
+	    51.000      0.000      1.224
+	    51.000     50.000      1.224
+
+make observation well
+slice x0056.0
+	    56.000      0.000      1.192
+	    56.000     50.000      1.192
+
+make observation well
+slice x0099.0
+	    99.000      0.000      1.192
+	    99.000     50.000      1.192
+
+make observation well
+slice x0100.0
+	   100.000      0.000      1.364
+	   100.000     50.000      1.364
+
+make observation well
+slice x0101.0
+	   101.000      0.000      1.364
+	   101.000     50.000      1.364
+
+make observation well
+slice x0104.0
+	   104.000      0.000      1.364
+	   104.000     50.000      1.364
+
+make observation well
+slice x0105.0
+	   105.000      0.000      1.364
+	   105.000     50.000      1.364
+
+make observation well
+slice x0106.0
+	   106.000      0.000       0.12
+	   106.000     50.000       0.12
+
+make observation well
+slice x0109.0
+	   109.000      0.000       0.12
+	   109.000     50.000       0.12
+
+make observation well
+slice x0110.0
+	   110.000      0.000      2.296
+	   110.000     50.000      2.296
+
+make observation well
+slice x0111.0
+	   111.000      0.000      2.296
+	   111.000     50.000      2.296
+
+make observation well
+slice x0149.0
+	   149.000      0.000      2.296
+	   149.000     50.000      2.296
+

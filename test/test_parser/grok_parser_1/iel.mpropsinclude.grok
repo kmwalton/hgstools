@@ -1,0 +1,132 @@
+! new zone and definitions and read properties
+! made by D:\ssfl-2020-dfm-swath-modeling\lib\scripts\makeMesh.py
+! on 2022-06-27 13:29:23.122674
+
+clear chosen elements
+choose elements block
+	       0.0       45.0
+	       0.0       50.0
+	       0.0        1.0
+new zone
+	1
+
+clear chosen elements
+choose elements block
+	      45.0       50.0
+	       0.0       50.0
+	       0.0        1.0
+new zone
+	2
+
+clear chosen elements
+choose elements block
+	      50.0       51.0
+	       0.0       50.0
+	       0.0        1.2
+new zone
+	3
+
+clear chosen elements
+choose elements block
+	      51.0       56.0
+	       0.0       50.0
+	       0.0        1.2
+new zone
+	4
+
+clear chosen elements
+choose elements block
+	      56.0      100.0
+	       0.0       50.0
+	       0.0        1.2
+new zone
+	5
+
+clear chosen elements
+choose elements block
+	     100.0      105.0
+	       0.0       50.0
+	       0.0        1.4
+new zone
+	6
+
+clear chosen elements
+choose elements block
+	     105.0      110.0
+	       0.0       50.0
+	       0.0        0.1
+new zone
+	7
+
+clear chosen elements
+choose elements block
+	     110.0      150.0
+	       0.0       50.0
+	       0.0        2.3
+new zone
+	8
+
+clear chosen zones
+choose zone number
+	1
+read properties
+	sandstone
+read properties
+	canyon-member
+
+clear chosen zones
+choose zone number
+	2
+read properties
+	sandstone
+read properties
+	canyon-member
+
+clear chosen zones
+choose zone number
+	3
+read properties
+	sandstone
+read properties
+	canyon-member
+
+clear chosen zones
+choose zone number
+	4
+read properties
+	sandstone
+read properties
+	canyon-member
+
+clear chosen zones
+choose zone number
+	5
+read properties
+	sandstone
+read properties
+	canyon-member
+
+clear chosen zones
+choose zone number
+	6
+read properties
+	siltstone
+read properties
+	woolsey-member
+
+clear chosen zones
+choose zone number
+	7
+read properties
+	siltstone
+read properties
+	woolsey-member
+
+clear chosen zones
+choose zone number
+	8
+read properties
+	sandstone
+read properties
+	canyon-member
+

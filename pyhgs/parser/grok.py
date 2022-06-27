@@ -38,8 +38,33 @@ _tags = {
             re.search(f'zoned distribution coefficient((?:\\s{_NUM_RE})+)',
                 txt, flags=re.M|re.I).group(1).strip().split())
         )),
+    'solute':(lambda txt:
+        dict(
+            map(_parse_solute,
+                re.findall(r'^solute$(.*?)^end solute$',
+                txt, flags=re.M|re.I|re.S)
+           )
+        )),
 
 }
+
+def _parse_solute(txt):
+    """Parse simple name\\nvalue pairs and return a dict"""
+    d = dict()
+
+    txt = txt.strip()
+
+    # find name
+    name_match = re.search(r'name[\s\n]+(\S+)[\s\n]*', txt,flags=re.I|re.M)
+    n = name_match.group(1)
+    nsp = name_match.span()
+    txt = (txt[:nsp[0]]+txt[nsp[1]:]).strip()
+
+    for k,v in re.findall(r'^(.+)$[\s\n]+('+_NUM_RE+')$',txt,flags=re.I|re.M):
+        d[k.lower()] = float(v)
+
+    return (n,d)
+
 
 def _get_as_stream(file, mode='r'):
     if type(file) is str:

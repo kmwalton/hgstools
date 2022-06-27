@@ -1,0 +1,230 @@
+!--------------------------  Problem description
+Test grok
+end
+
+!--------------------------  Grid generation
+
+!----- PM Grid
+
+include iel.gridinclude.grok
+
+
+!--------------------------  General simulation parameters
+
+units: kilogram-metre-day
+
+!transient flow
+!do transport
+
+finite difference mode
+
+control volume
+
+upstream weighting of velocities
+   1.0 1.0 1.0
+
+flow solver maximum iterations
+   100000
+
+auto save on
+   1800    ! autosaves every 30 minutes as a test
+
+!-------------------------- Porous Media Properties
+use domain type
+porous media
+
+properties file
+D:\ssfl-2020-dfm-swath-modeling\pLithUnits\ssfl.4.0.mprops
+
+include iel.mpropsinclude.grok
+
+!----- Fracture network
+
+use domain type
+fracture
+
+properties file
+   iel.fprops
+
+include iel.fracsinclude.grok
+
+choose zones all
+read properties
+   fracture-generic
+
+!-------------------------- Fracture media properties
+! done above
+
+!-------------------------- Transport solute details
+
+solute
+name
+TCE
+
+free-solution diffusion coefficient
+   3.64583e-9
+
+include iel.Kdinclude.grok
+
+fracture retardation factor
+   1.0
+
+fracture decay constant
+   0.0
+
+skip on
+Koc
+    0.094
+skip off
+
+end solute
+
+!----------------------- Transport properties
+
+!------------------------ Initial conditions
+
+use domain type
+porous media
+
+clear chosen nodes
+choose nodes block
+ -0.01  50.0
+  0.0  50.01  
+ -0.01  1.01
+
+Function x initial head
+	   0.000  500.00
+	 50.000  499.96
+
+clear chosen nodes
+choose nodes block
+  50.0 51.0
+  0.0  50.01  
+ -0.01  1.23
+
+Function x initial head
+	 50.000  499.96
+	 51.000  499.69
+
+clear chosen nodes
+choose nodes block
+  51.0  100.0
+  0.0   50.01  
+ -0.01  1.20
+
+Function x initial head
+	 51.000  499.69
+	 100.000  499.39
+
+clear chosen nodes
+choose nodes block
+  100.0  105.0
+  0.0  50.01  
+ -0.01  1.37
+
+Function x initial head
+	 100.0  499.39
+	 105.0  498.54
+
+clear chosen nodes
+choose nodes block
+  105.0  110.0
+  0.0   50.01  
+ -0.01  0.13
+
+Function x initial head
+	 105.00  498.54
+	 110.00  496.14
+
+clear chosen nodes
+choose nodes block
+ 110.0  150.0
+  0.0  50.01  
+ -0.01  2.30
+
+Function x initial head
+	 110.0  496.14
+	 150.0  495.38
+
+!--------------------------  Boundary condtions
+
+use domain type
+   fracture
+
+clear chosen nodes
+choose nodes x plane
+   0.0
+   1.e-5
+create node set
+   lhs-frac
+
+clear chosen nodes
+choose nodes x plane
+   150.0
+   1.e-5
+create node set
+   rhs-frac
+
+
+!--------------------------  Flow system
+!--------------------------  LHS BC boundary condition assignment
+use domain type
+   fracture
+
+include iel.upstream.bcinclude.grok
+
+!-------------------------- RHS BC
+
+include iel.downstream.bcinclude.grok
+
+!-------------------------- LHS BC concentration (Source zone)
+!----- PM source concentration
+
+!----- Frac source concentration
+skip on !TRANSP_SOURCE_BC
+use domain type
+   fracture
+
+clear chosen nodes
+
+choose nodes list
+   iel.sourcezonenodelist.grok
+
+specified concentration
+   1
+   36500 43800 1.0       ! 1948-1968
+
+skip off !TRANSP_SOURCE_BC
+
+   
+!----------------------- Time step control
+transport time weighting
+1.0
+
+concentration control
+1e-2
+
+
+!-----------------------  Output controls
+
+output times
+        0.01   ! 1848+0.01d
+!TRANSPORT_OUTPUT_TIMES
+end
+
+
+
+! - flux is reported as -999.0 for internal nodes in observation wells
+! must get Q from ielo.lst
+
+! omitting make observation well
+! slice y0100
+!    0.00  100.0   0.0
+! 1000.00  100.0   0.0
+! 
+!! omitting include iel.slicesinclude.grok
+
+skip on
+Compute statistical properties of plume
+skip off
+

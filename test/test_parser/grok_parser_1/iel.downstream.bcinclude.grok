@@ -1,0 +1,16 @@
+! from df_dict_1960_selected_from_all_years.dat
+! Upd Feb 3, 2022 /kw
+boundary condition
+    type
+    head
+
+    node set
+    rhs-frac
+
+    time value table
+      0          495.38 ! length3d_m = 1000.991487
+    end
+
+    ! interpolate
+
+end !specified head

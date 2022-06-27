@@ -1,0 +1,59 @@
+! units: kilogram-metre-second
+!-------------------------
+! property set
+
+sandstone-generic
+
+! ballpark k=1e-15 m^2 -> K=1e-8 m/s
+!                      -> K=8.64e-4 m/day
+! Note this is only 1/50 of K_mob
+k isotropic
+   8.64e-5
+
+porosity
+   0.13
+
+! used in hgs_fractran_replicate, as converted from CFBio param 
+! very little basis for this value
+! should look to use something more reasonable here.
+specific storage
+   4.8e-6
+
+end material
+!------------------------------------------
+
+!-DUMMY MATERIALS--------------------------
+fm1_sandstone
+k isotropic
+   8.64e-5
+
+porosity
+   0.13
+
+specific storage
+   1e-6
+end material
+
+
+fm2_shale
+k isotropic
+   8.64e-7
+
+porosity
+   0.06
+
+specific storage
+   1e-6
+end material
+
+
+fm3_sandstone
+k isotropic
+   8.64e-4
+
+porosity
+   0.13
+
+specific storage
+   1e-6
+end material
