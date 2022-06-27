@@ -67,10 +67,11 @@ def _parse_solute(txt):
 
 
 def _get_as_stream(file, mode='r'):
+    """Return an open file and a flag for whether it needs closing"""
     if type(file) is str:
-        return open(file,mode)
+        return (open(file,mode), True)
     elif isinstance(file,io.IOBase):
-        return file
+        return (file, False)
     else:
         raise ValueError(f'Unhandled type {type(file)}')
 
@@ -92,10 +93,13 @@ def parse(file, do_includes=False, do_skips=False):
 
     d = {}
 
-    file = _get_as_stream(file)
+    (file, must_close) = _get_as_stream(file)
     file_name = file.name # hope the underlying stream has this attribute
     file_text = file.read()
     file_text = _clean(file_text)
+
+    if must_close:
+        file.close()
 
     original_includes = _tags['files_include'](file_text)
     if do_includes and original_includes:
