@@ -123,24 +123,7 @@ class HGSGrid():
         """
         # store
         if not hasattr(self,'gl'):
-            (nx,ny,nz) = self.shape
-
-            # check whether the grid spacing consistent along the grid
-            n_unique = [ np.unique(self.hgs_pm_nodes['ncoords'][:,a]).size
-                            for a in range(3) ]
-            _gl = 3*[None,]
-
-            # replace flag 'None' with grid line list
-            if nx == n_unique[0]:
-                _gl[0] = self.hgs_pm_nodes['ncoords'][0:nx,0]
-
-            if ny == n_unique[1]:
-                _gl[1] = self.hgs_pm_nodes['ncoords'][0:nx*ny:nx,1]
-
-            if nz == n_unique[2]:
-                _gl[2] = self.hgs_pm_nodes['ncoords'][0::nx*ny,2]
-
-            self.gl = tuple(_gl)
+            self.gl = determine_grid_lines(self.hgs_pm_nodes)
 
         return self.gl
 
@@ -1014,3 +997,32 @@ def _pa(a, b):
     """
     return norm(np.cross(a,b), axis=1)
 
+
+def determine_grid_lines(hgs_coordinates_pm):
+    """Return the ([x-],[y-],[z-grid lines]) in this rectilinear grid.
+
+    If the grid is not rectilinear, one or more sets of gridlines will be
+    returned as `None`.
+    """
+
+    (nx,ny,nz) = tuple(hgs_coordinates_pm['n'+a] for a in 'xyz')
+    coords = hgs_coordinates_pm['ncoords']
+
+    # check whether the grid spacing consistent along the grid
+    n_unique = [ np.unique(coords[:,a]).size for a in range(3) ]
+    _gl = 3*[None,]
+
+    # replace flag 'None' with grid line list
+    if nx == n_unique[0]:
+        _gl[0] = coords[0:nx,0]
+
+    if ny == n_unique[1]:
+        _gl[1] = coords[0:nx*ny:nx,1]
+
+    if nz == n_unique[2]:
+        _gl[2] = coords[0::nx*ny,2]
+
+
+    return tuple(_gl)
+
+  
