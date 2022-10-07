@@ -7,6 +7,98 @@ class NotValidRFGenInputError(Exception):
     """Exception raised if input file is not valid"""
     pass
 
+class RFGenFracListParser:
+
+    def __init__(self, fnin):
+        
+        with open(fnin,'r') as fin:
+            fracsHere = RFGenFracListParser.read_fracs(fin)
+
+        self.fxnet = OFracGrid(
+            fx=list( f[0][:7] for f in fracsHere ) )
+
+    def getOFracGrid(self):
+        return copy.deepcopy( self.fxnet )
+
+
+    @staticmethod
+    def read_fracs(fin):
+        """Read a list of fractures with an 'xfrom xto ...'-style header and list
+
+
+        Arguments:
+            fin : file-like object
+                An open file pointing near where the header should be
+        """
+
+        line = fin.readline()
+
+        # read through to header definition
+        # the (first) index column, 'i', is optional
+        # the (last) type column 'ifractyp' or 'type' is optional
+        fracListHdr = re.compile(
+           '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?')
+        while fin:
+           m = fracListHdr.search( line.lower() )
+           if m:
+              break
+           line = fin.readline()
+
+        if not m:
+           raise NotValidRFGenInputError(
+              "Could not find the required fracture list header line in "+fnin)
+
+        # see if there's a column for fracture index number
+        _readI = m.groups()[0] == 'i'
+        _readType = m.groups()[-1] == 'type' or m.groups()[-1] == 'ifractyp'
+
+        #
+        #  Read the axis-aligned, 2d fractures in this data file
+        #  Store them in a list of tuples:
+        #
+        # fracsHere =
+        #    [ ...
+        #      ( [ Xfrom,Xto, Yfrom,Yto, Zfrom,Zto, Aperture ], type ),
+        #      ... ]
+        #
+        fracsHere = []
+
+        # TODO:
+        #  Use REs for reading fracture lines.
+        #  break when !fin or no match ... more robust for different invocations
+        #  of RFGen (RFGen vs HGS embedded)
+
+        for line in fin.readlines():
+           line = line.strip()
+
+           # strip out comments
+           COMMENT = ['//', '!'] # c-style, and HGS-style
+           for COM in COMMENT:
+               if COM in line:
+                  line = line.partition(COMMENT)[0].strip()
+
+           # skip blank lines
+           if line == "" : continue
+
+           # a hack to exit when reading a HGS eco file
+           if line.startswith('GRID'): break   
+
+           # split up the coordinate strings into an array
+           t = line.split()
+           
+           if _readI: t = t[1:] # junk the fracture index
+
+           o = -1 # set to invalid value
+           if _readType:
+               o = int(t[-1]) 
+               t = t[:-1]
+
+           fracsHere.append( ( tuple( map(float, t) ), o, ) )
+
+        return fracsHere
+
+
+
 class RFGenOutFileParser:
 
    def __init__(self, fnin):
@@ -61,69 +153,7 @@ class RFGenOutFileParser:
                break
          gridlines[xyz] = gridlines[xyz][0:listEndIndex]
 
-      # read through to header definition
-      # the (first) index column, 'i', is optional
-      # the (last) type column 'ifractyp' or 'type' is optional
-      fracListHdr = re.compile(
-         '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?')
-      while fin:
-         m = fracListHdr.search( line.lower() )
-         if m:
-            self.originalHeader = line
-            break
-         line = fin.readline()
-
-      if not m:
-         raise NotValidRFGenInputError(
-            "Could not find the required fracture list header line in "+fnin)
-
-      # see if there's a column for fracture index number
-      _readI = m.groups()[0] == 'i'
-      _readType = m.groups()[-1] == 'type' or m.groups()[-1] == 'ifractyp'
-
-      #
-      #  Read the axis-aligned, 2d fractures in this data file
-      #  Store them in a list of tuples:
-      #
-      # fracsHere =
-      #    [ ...
-      #      ( [ Xfrom,Xto, Yfrom,Yto, Zfrom,Zto, Aperture ], type ),
-      #      ... ]
-      #
-      fracsHere = []
-
-      # TODO:
-      #  Use REs for reading fracture lines.
-      #  break when !fin or no match ... more robust for different invocations
-      #  of RFGen (RFGen vs HGS embedded)
-
-      for line in fin.readlines():
-         line = line.strip()
-
-         # strip out comments
-         COMMENT = ['//', '!'] # c-style, and HGS-style
-         for COM in COMMENT:
-             if COM in line:
-                line = line.partition(COMMENT)[0].strip()
-
-         # skip blank lines
-         if line == "" : continue
-
-         # a hack to exit when reading a HGS eco file
-         if line.startswith('GRID'): break   
-
-         # split up the coordinate strings into an array
-         t = line.split()
-         
-         if _readI: t = t[1:] # junk the fracture index
-
-         o = -1 # set to invalid value
-         if _readType:
-             o = int(t[-1]) 
-             t = t[:-1]
-
-         fracsHere.append( ( tuple( map(float, t) ), o, ) )
-
+      fracsHere = RFGenFracListParser.read_fracs(fin)
 
       fin.close()
 
