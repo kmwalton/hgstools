@@ -32,25 +32,32 @@ class RFGenFracListParser:
         """
 
         line = fin.readline()
+        header_match = None
 
         # read through to header definition
         # the (first) index column, 'i', is optional
         # the (last) type column 'ifractyp' or 'type' is optional
         fracListHdr = re.compile(
-           '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?')
-        while fin:
-           m = fracListHdr.search( line.lower() )
-           if m:
+         '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?',
+         flags=re.I)
+
+        while True:
+           header_match = fracListHdr.search(line)
+           if header_match:
               break
            line = fin.readline()
+           if line == '':
+              break
 
-        if not m:
+        if not header_match:
            raise NotValidRFGenInputError(
-              "Could not find the required fracture list header line in "+fnin)
+              "Could not find the required fracture list header line in "
+              +fin.name)
 
         # see if there's a column for fracture index number
-        _readI = m.groups()[0] == 'i'
-        _readType = m.groups()[-1] == 'type' or m.groups()[-1] == 'ifractyp'
+        _readI = header_match.groups()[0] == 'i'
+        _readType = header_match.groups()[-1] == 'type' \
+                    or header_match.groups()[-1] == 'ifractyp'
 
         #
         #  Read the axis-aligned, 2d fractures in this data file
@@ -131,17 +138,23 @@ class RFGenOutFileParser:
          if m:
             break
          line = fin.readline()
+         if line == '':
+            break
 
       if not m:
          raise NotValidRFGenInputError("Could not find the grid line list in "+fnin)
 
       # read grid lines until the end of the list (signified by any line that
       # doesn't match the re pattern
+      spot = 0
       while fin and m:
          for xyz in range(3):
             gridlines[xyz].append(float(m.group(xyz+1)))
+         spot = fin.tell()
          line = fin.readline().strip()
          m = gridEntry.match(line)
+
+      fin.seek(spot) # rewind to the line that did not match the pattern
 
       # fix the lists of gridlines (remove the zero values that pad the end of
       # two of the three lists)
