@@ -785,6 +785,10 @@ def make_supersample_distance_groups(dx, maxd):
             List of distances that represent "cell" widths, or increments
             between grid lines.
 
+        maxd : float
+            A value representing the maximum distance/size of the group along
+            this dx-axis set.
+
     Returns:
         The list [ (istart,iend], ... ] where no istart,end chunk is contained
         in any other. Each of the original increments is represented one or more
