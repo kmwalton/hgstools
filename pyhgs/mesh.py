@@ -1,4 +1,40 @@
-'''Inspect Hydrogeosphere meshes; interperet binary files'''
+"""Inspect Hydrogeosphere meshes; interperet binary files.
+
+
+*Example 1:* Get data from your HGS simulations in as easy as three lines...
+
+    # imports
+    from pyhgs.mesh import HGSGrid, Domain
+
+    # get the required grid information
+    grid = HGSGrid('pfx')
+
+    # read data!
+    head_n = grid.get_nodal_vals('pfxo.head_pm.0001')
+    conc_fx_el = grid.get_element_vals('pfxo.conc_pm.salt.0009', Domain.FRAC)
+
+
+Notes
+-----
+
+- Log messages (for a smattering of functions herein) are available using the
+    standard `logging` interface. For example, to see `DEBUG`-level messages,
+    in the console  use:
+    
+        meshlogger = logging.getLogger('pyhgs.mesh')
+        meshlogger.addHandler(logging.StreamHandler())
+        meshlogger.setLevel(logging.DEBUG)
+
+    Logging output can be distinguished from the caller's log output using
+    `Formatter`:
+
+        meshlogger = logging.getLogger('pyhgs.mesh')
+        meshlogger.setLevel(logging.DEBUG)
+        meshhandler = logging.StreamHandler()
+        meshhandler.setFormatter(logging.Formatter('HGSGrid - %(message)s'))
+        meshlogger.addHandler(meshhandler)
+
+"""
 
 import os
 from itertools import count,repeat,product
@@ -18,6 +54,9 @@ from pyhgs.parser import (
     HGS_DATATYPE,
     get_datatype,
     )
+
+import logging
+logger = logging.getLogger(__name__)
 
 __docformat__ = 'numpy'
 
@@ -81,6 +120,7 @@ class HGSGrid():
             raise ValueError(
                 f'Simulation {prefix} does not have a rectilinear grid')
 
+        logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
 
     @staticmethod
     def _to_index_nocheck(t,shp):
@@ -224,13 +264,17 @@ class HGSGrid():
 
         d = data
         if type(data) == str:
+            logger.debug(f'Nodal value read requested from file {data}')
             d = parse(data)['data']
 
         if dom == Domain.PM:
+            logger.debug(f'Nodal values being reshaped to {self.shape}')
             # hope we get a view instead of a copy
             ret = d.reshape(self.shape,order='F')
 
         elif dom == Domain.FRAC:
+            logger.debug('Nodal values being reshaped to '
+                    + f'{self.hgs_fx_nodes["link_frac2pm"].shape}')
             ret = d.flatten(order='F')[self.hgs_fx_nodes['link_frac2pm']]
 
         else:
@@ -293,6 +337,7 @@ class HGSGrid():
         # data, format unspecified
         d = data
         if type(data) == str:
+            logger.debug(f'Element value read requested from file {data}')
             _count = None
             _dt = get_datatype(data)
             if _dt is HGS_DATATYPE.NODAL:
