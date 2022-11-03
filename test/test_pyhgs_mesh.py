@@ -21,10 +21,10 @@ class TestPYHGSMesh(unittest.TestCase):
     def test_Domain(self):
         Domain.FRAC
         Domain.PM
-        self.assertEquals( Domain.a2D('pm'), Domain.PM)
-        self.assertEquals( Domain.a2D('PM'), Domain.PM)
-        self.assertEquals( Domain.a2D('frac'), Domain.FRAC)
-        self.assertEquals( Domain.a2D('FRAC'), Domain.FRAC)
+        self.assertEqual(Domain.a2D('pm'), Domain.PM)
+        self.assertEqual(Domain.a2D('PM'), Domain.PM)
+        self.assertEqual(Domain.a2D('frac'), Domain.FRAC)
+        self.assertEqual(Domain.a2D('FRAC'), Domain.FRAC)
 
         with self.assertRaises(ValueError):
             Domain.a2D('junk')
