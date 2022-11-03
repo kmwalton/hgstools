@@ -78,7 +78,10 @@ class Domain(IntEnum):
         if type(a) == Domain:
             return a
         elif type(a) == str:
-            return Domain[dom.upper()]
+            try:
+                return Domain[a.upper()]
+            except KeyError:
+                pass # flow through to final 'raise'
 
         raise ValueError(f'Cannot build a Domain from {a}')
 

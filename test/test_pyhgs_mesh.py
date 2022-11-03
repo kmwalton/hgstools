@@ -7,7 +7,7 @@ from collections import defaultdict
 from decimal import Decimal
 import numpy as np
 
-from pyhgs.mesh import make_supersample_distance_groups, HGSGrid
+from pyhgs.mesh import make_supersample_distance_groups, HGSGrid, Domain
 
 PLACES = Decimal('0.001')
 def D_CO(v, pl=PLACES):
@@ -18,6 +18,19 @@ def D_CO(v, pl=PLACES):
 
 class TestPYHGSMesh(unittest.TestCase):
 
+    def test_Domain(self):
+        Domain.FRAC
+        Domain.PM
+        self.assertEquals( Domain.a2D('pm'), Domain.PM)
+        self.assertEquals( Domain.a2D('PM'), Domain.PM)
+        self.assertEquals( Domain.a2D('frac'), Domain.FRAC)
+        self.assertEquals( Domain.a2D('FRAC'), Domain.FRAC)
+
+        with self.assertRaises(ValueError):
+            Domain.a2D('junk')
+
+        with self.assertRaises(AttributeError):
+            Domain.JUNK
 
     def test_supersample_groupings_grid(self):
 
