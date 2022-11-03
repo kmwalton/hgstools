@@ -66,6 +66,23 @@ class Domain(IntEnum):
     FRAC = auto()
     NODES_PM = auto()
 
+    @staticmethod
+    def a2D(a):
+        """Convert "any" object to a Domain
+
+        ...where "any" can be a string, or a `Domain`
+
+        Raises:
+            ValueError : When a Domain cannot be build from `a`.
+        """
+        if type(a) == Domain:
+            return a
+        elif type(a) == str:
+            return Domain[dom.upper()]
+
+        raise ValueError(f'Cannot build a Domain from {a}')
+
+
 class HGSGrid():
     '''Inspect a Hydrogeosphere rectilinear grid'''
 
@@ -170,6 +187,7 @@ class HGSGrid():
 
     def get_n_elements(self,dom=Domain.PM):
         """Return the number of elements in the specified domain"""
+        dom = Domain.a2D(dom)
 
         n = -1
 
@@ -193,6 +211,7 @@ class HGSGrid():
                 for <code>dom == Domain.PM</code>, nothing;
                 for <code>dom == Domain.FRAC</code>, ap.
         """
+        dom = Domain.a2D(dom)
 
         if dom == Domain.PM:
             raise NotImplementedError()
@@ -222,6 +241,7 @@ class HGSGrid():
                 Tuple of bounding nodal coordinates
                     `( (x0,y0,z0), (x1,y1,z1), ... )` that bound the element
         """
+        dom = Domain.a2D(dom)
 
         if dom == Domain.PM:
             if type(iel) == tuple:
@@ -260,6 +280,8 @@ class HGSGrid():
                 Default: n-point average, where n is the number of nodes per
                 element.
         """
+        dom = Domain.a2D(dom)
+
         ret = None
 
         d = data
@@ -300,6 +322,8 @@ class HGSGrid():
                 "zone zero" is applied), so the normal use case is to pad
                 index zero of the input zonedata array with a junk data value.
         """
+        dom = Domain.a2D(dom)
+
         ret = None
 
         if dom==Domain.PM:
@@ -330,6 +354,7 @@ class HGSGrid():
                 Default: n-point average, where n is the number of nodes per
                 element.
         """
+        dom = Domain.a2D(dom)
 
         if method:
             raise NotImplementedError('Cannot [yet] specify method')
@@ -579,6 +604,8 @@ class HGSGrid():
 
     def get_element_volumes(self, dom=Domain.PM):
         """Return element volumes for the requested domain"""
+        dom = Domain.a2D(dom)
+
         if dom == Domain.PM:
             return self._pm_V()
         elif dom == Domain.FRAC:
@@ -620,6 +647,7 @@ class HGSGrid():
 
     def find_node_index(self, x,y,z, dom=Domain.PM):
         """Find the node index closest to coordinate (x,y,z)"""
+        dom = Domain.a2D(dom)
 
         if dom != Domain.PM:
             raise NotImplementedError(f'Not implemented for {dom}')
