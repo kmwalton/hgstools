@@ -41,11 +41,18 @@ Have RFG inherit from the OFracGrid object (or don't have an RFG class at all)
 """
 
 # handy REs
-_numberREStr = r'[+-]?(?:\d*\.)?\d+(?:[dDeE][+-]?\d+)?'
-_numRE = re.compile(_numberREStr)
-_gl_val_RE = re.compile(
-    r';?\s*(?:(?P<axis>[xyzXYZ])\s*=\s*)?(?P<vals>(?:,?\s*'
-            +_numberREStr+'){1,})')
+_num_re_str = \
+        r'[+-]?' \
+        r'(?:(?:\d+\.\d*)|(?:\d*\.\d+)|(?:\d+))' \
+        r'(?:[dDeE][+-]?\d+)?'
+
+_num_re = re.compile(_num_re_str)
+
+_gl_list_re_str = \
+    r'\s*(?:(?P<axis>[xyzXYZ])\s*=\s*)?' \
+    r'(?P<vals>(?:\s*'+_num_re_str+'\s*,?){1,})\s*;?'
+
+_gl_list_re = re.compile(_gl_list_re_str)
 
 def apQuantize(v,n_sig):
     """Determine the aperture to n_sig significant figures."""
@@ -562,7 +569,7 @@ class _Triple_List(argparse.Action):
                 ell[i] = d
 
         def _as_ax_eq_val(s, ell=ell):
-            m=re.match(r'([xyz])\s*=\s*('+_numberREStr+')',s)
+            m=re.match(r'([xyz])\s*=\s*('+_num_re_str+')',s)
             ax, val = (m.group(1),Decimal(m.group(2)),)
             iax = 'xyz'.index(ax.lower())
             if ell[iax] is not None:
@@ -712,9 +719,9 @@ if __name__ == "__main__":
     fglvals = {'x':set(), 'y':set(), 'z':set()}
 
     for fglarg in args.force_extra_grid_lines:
-        for m in _gl_val_RE.finditer(fglarg):
+        for m in _gl_list_re.finditer(fglarg):
 
-            vals = list(float(x) for x in _numRE.findall(m.group('vals')))
+            vals = list(float(x) for x in _num_re.findall(m.group('vals')))
 
             if m.group('axis'):
                 fglvals[ m.group('axis').lower() ].update(vals)
