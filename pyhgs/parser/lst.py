@@ -247,29 +247,55 @@ class LSTFileParser:
                     yield (itime, m.group('name'), m.group('message'),)
 
 
+    _fluid_balance_regex = [
+        # revision ~1827 steady-state simulation
+        re.compile(
+            r'RATE OF FLUID EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
+            r'(?s:(?P<bc_data>.*))\n'\
+            r'TOTAL\S+(?P<total>(?:\s+'+_NUM_RE+'){3}).*\n',
+            flags=re.M),
+
+        # revision ~2469 transient flow simulation
+        re.compile(
+            r'RATE OF FLUID EXCHANGE.*\n' \
+            r'Boundary condition name\s+IN\s+OUT\s+NET.*' \
+            #r'(?P<bc_data>(?:\n\S.+\s+(?:+'+_NUM_RE+'\s+){3}\S.*){1,})'\
+            r'(?s:(?P<bc_data>.*?))\n'\
+            r'TOTAL:\[[^\]]+\]\s+(?P<total>(?:\s+'+_NUM_RE+'){3})\s*\n',
+            flags=re.M)
+    ]
+
     def get_fluid_balance(self, itimestep=1):
         """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
         """
 
-        fbre = re.compile(
-            r'RATE OF FLUID EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
-            r'(?s:(?P<bc_data>.*))\n'\
-            r'TOTAL\S+(?P<total>(?:\s+'+_NUM_RE+'){3}).*\n',
-            flags=re.M)
 
         # some steady state simulations have no timesteps
         if self.get_n_ts() == 0:
             itimestep = 0
 
-        m = fbre.search(self._txt,
-                self._tsloc[itimestep],
-                self._tsloc[itimestep+1])
+        m = None
+        for fbregex in LSTFileParser._fluid_balance_regex:
+            m = list( fbregex.finditer(self._txt,
+                    self._tsloc[itimestep],
+                    self._tsloc[itimestep+1]) )
+
+            if m:
+                # Return the final fluid balance block within the timestep.
+                # There may be more than one such block if the flow or
+                # transport solution breaks the "multiplier" criterion and the
+                # step is repeated with a reduced step size
+                m = m[-1]
+                break
+
+        if not m:
+            raise RuntimeError(f'No fluid balance match found at ts={itimestep}')
 
         ret = {}
 
         # get BCs
-        for l in m.group(1).split('\n'):
-            l = l.strip().split()
+        for l in m.group(1).strip().split('\n'):
+            l = l.strip().split(maxsplit=4)
             ret[l[0]] = (float(l[1]), float(l[2]), float(l[3]), l[4],)
 
         # get total

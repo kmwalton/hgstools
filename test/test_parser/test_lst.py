@@ -68,6 +68,13 @@ class Test_LST_Parser(unittest.TestCase):
         self.assertEqual(fbdata['Hinit_1'][3],'porous_media')
         self.assertTrue(abs(fbdata['TOTAL'][2]-(0.0000002241) < 1e-6))
 
+    def test_fluid_balance_trans(self):
+        """Test parsing of fluid balance in transient flow and transport"""
+        p = LSTFileParser(DATDIR+'tflow_ttransport_pm_frac_well')
+        fbdata = p.get_fluid_balance(12)
+        self.assertTrue(abs(fbdata['Hinit_6'][1]+1.1862877408) < 1e-6)
+
+
     def test_iter_errors(self):
 
         with self.subTest('no errors, goodo.lst'):
