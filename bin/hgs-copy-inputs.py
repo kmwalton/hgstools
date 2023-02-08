@@ -86,6 +86,10 @@ p.add_argument('dest', type=str, help='The destination directory')
 
 args = p.parse_args()
 
+# do check on source directory
+if not os.path.isdir(args.src):
+	p.error(f'Not a valid directory for source simulation: "{args.src}"')
+
 # set up exclusion patterns
 exclude_regex = [r'^\..*', f'.*\~$', ]
 excludePatterns = list( map( lambda s: re.compile(s,re.IGNORECASE), exclude_regex ) )
