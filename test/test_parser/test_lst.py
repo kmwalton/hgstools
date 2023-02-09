@@ -74,6 +74,16 @@ class Test_LST_Parser(unittest.TestCase):
         fbdata = p.get_fluid_balance(12)
         self.assertTrue(abs(fbdata['Hinit_6'][1]+1.1862877408) < 1e-6)
 
+    def test_mass_balance_trans(self):
+        """Test parsing of mass balance in transient flow and transport
+
+        Simulation has only one tracer.
+        """
+        p = LSTFileParser(DATDIR+'tflow_ttransport_pm_frac_well')
+        mbdata = p.get_mass_balance(13)
+
+        self.assertAlmostEqual(
+                mbdata['Fixed concentration nodes'][0], 6.4463364331)
 
     def test_iter_errors(self):
 

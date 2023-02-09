@@ -39,6 +39,12 @@ FILTER = {
         r'^-{9} SIMULATION TIME REPORT\s*\n(?P<report>(?ms:.*?))\n-{58}',
         flags=re.M),
 
+    'mass_balance': re.compile(
+        r'^RATE OF MASS EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
+        r'(?s:(?P<bc_data>.*?))\n' \
+        r'   (?P<tot>NET1 EXCHANGE RATE.*?)\s+(?P<totval>(?:'+_NUM_RE+'))\s*$',
+        flags=re.M),
+
 }
 """Dictionary of compiled re objects for various chunks of a .lst file"""
 
@@ -338,6 +344,34 @@ class LSTFileParser:
 
         return ret
 
+    def get_mass_balance(self, itimestep=1):
+        """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
+        """
+
+        m = list( FILTER['mass_balance'].finditer(self._txt,
+                self._tsloc[itimestep],
+                self._tsloc[itimestep+1]) )
+
+        if not m:
+            raise RuntimeError(f'No fluid balance match found at ts={itimestep}')
+
+        # Return the final fluid balance block within the timestep.
+        # There may be more than one such block if the flow or
+        # transport solution breaks the "multiplier" criterion and the
+        # step is repeated with a reduced step size
+        m = m[-1]
+
+        ret = {}
+
+        # get BCs
+        for l in m['bc_data'].strip().split('\n'):
+            mm = re.match(r'\s*(.*?)'+2*('\s+('+_NUM_RE+')') +'\s*', l)
+            ret[mm[1]] = (float(mm[2]), float(mm[3]),)
+
+        # get total
+        ret[m['tot']] = float(m['totval'])
+
+        return ret
 
     def get_flow_solver_iterations(self, itimestep=1):
 
