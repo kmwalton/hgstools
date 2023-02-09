@@ -117,6 +117,19 @@ class Test_LST_Parser(unittest.TestCase):
         ts_list = list( p.get_ts_time() )
         self.assertEqual(len(ts_list),1082+1)
 
+
+        self.assertAlmostEqual(p.get_ts_dtime(1), 9.9999997e-3)
+        self.assertAlmostEqual(p.get_ts_dtime(1072), 229.357142421641)
+
+    def test_ts_solution_times_trans(self):
+        p = LSTFileParser(DATDIR+'tflow_ttransport_pm_frac_well')
+
+        self.assertAlmostEqual(p.get_ts_time(12), 10.00078125)
+        self.assertAlmostEqual(p.get_ts_dtime(12), 0.00078125)
+
+        self.assertAlmostEqual(p.get_ts_dtime(0), 10.00078125)
+
+
     def test_gtt(self):
         """Test global target times harvesting"""
         p = LSTFileParser(DATDIR+'good')

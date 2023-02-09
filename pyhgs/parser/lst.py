@@ -27,7 +27,7 @@ FILTER = {
         r'(?ms:^Global target time.*Tnext)' \
         r'(^(?:\s+'+_NUM_RE+'){3}(?:\s+.*)$)+'),
     'accepted_solution_time':re.compile(
-        r'^ Accepted solution at time\s+('+_NUM_RE+')',
+        r'^ Accepted solution at time:?\s+('+_NUM_RE+')',
         flags=re.M),
     'initial_time':re.compile(
         r'Initial time =\s+('+_NUM_RE+')',
@@ -217,6 +217,40 @@ class LSTFileParser:
                     yield float(match.group(1))
 
             return _gen_times()
+
+    def get_ts_dtime(self, itime='all'):
+        """Return the time delta of this step
+
+        Arguments:
+            itime : int or 'all'
+                A specific timestep index or the keyword 'all' to signify
+                all simulation solution times are desired.
+
+        Returns
+            A singleton float value.
+            Or, a generator of time deltas over all timesteps. (The
+            initial time delta in this sequence is the time between the 'Initial
+            time' of the simulation and the result of `get_ts_time(1)`.
+        """
+
+        if itime <= 0:
+            raise ValueError('itime must be >= 1')
+
+        elif not itime == 'all':
+            return float(self.get_ts_time(itime)-self.get_ts_time(itime-1))
+
+        else:
+
+            def _gen_dt():
+
+                itime = self.get_ts_time('all')
+                itm1 = next(itime)
+
+                for it in itime:
+                    yield(it-itm1)
+                    itm1 = it
+
+            return _gen_dt()
 
 
     def get_ec(self):
