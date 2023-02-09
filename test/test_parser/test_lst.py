@@ -127,7 +127,8 @@ class Test_LST_Parser(unittest.TestCase):
         self.assertAlmostEqual(p.get_ts_time(12), 10.00078125)
         self.assertAlmostEqual(p.get_ts_dtime(12), 0.00078125)
 
-        self.assertAlmostEqual(p.get_ts_dtime(0), 10.00078125)
+        with self.assertRaises(ValueError):
+            self.assertAlmostEqual(p.get_ts_dtime(0), 10.00078125)
 
 
     def test_gtt(self):
