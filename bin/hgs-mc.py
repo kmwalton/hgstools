@@ -345,7 +345,9 @@ class HGS_MCRunner():
                             self.tc_command,
                             self.keep_file_list,
                             self._inst_status.shm.name,
-                            self._inst_ec.shm.name,))
+                            self._inst_ec.shm.name,
+                            logger.getEffectiveLevel(),
+                        ))
 
         return all( r==0 for r in results )
 
