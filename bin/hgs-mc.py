@@ -30,10 +30,15 @@ from pyhgs.runner import PyPowerShellRunner
 
 import logging
 
+
+def _logger_setup(l):
+    l.verbose1 = lambda msg : l.log(logging.INFO-1,msg)
+    l.verbose2 = lambda msg : l.log(logging.INFO-2,msg)
+    l.verbose3 = lambda msg : l.log(logging.INFO-3,msg)
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
-logger.verbose2 = lambda msg : logger.log(logging.INFO-2,msg)
-logger.verbose3 = lambda msg : logger.log(logging.INFO-3,msg)
+_logger_setup(logger)
 
 # Useful:
 #https://wiseodd.github.io/techblog/2016/06/13/parallel-monte-carlo/
@@ -213,7 +218,7 @@ class HGS_MCRunner():
 
     @staticmethod
     def _run_instance(d, copy_command, base_temp_dirn, tc_command,
-            keep_file_list, isnam, iecnam):
+            keep_file_list, isnam, iecnam, log_level,):
         """Launch an HGS Run instance.
 
         Returns the exit code of the copy command if copying was unsuccessful.
@@ -238,27 +243,46 @@ class HGS_MCRunner():
             isnam : str
                 name of the `multiprocessing.shared_memory.ShareableList`
                 block
+                Status of this instance is stored at index `d`
 
             iecnam : str
                 name of the `multiprocessing.shared_memory.ShareableList`
                 block
-        """
-        HGS_MCRunner._setup_instance(d, copy_command, base_temp_dirn, isnam,
-                iecnam)
+                Exit code of this instance is stored at index `d`
 
+            log_level : int
+                Logging level for this instance's subprocess
+        """
+
+        # Local variables for shared memory
         inst_status = ShareableList(name=isnam)
         inst_ec = ShareableList(name=iecnam)
 
+        # instance index
         ii = int(re.search(r'_(\d+)$',d).group(1))
+
+        # remake logger object in this thread
+        mylogger = logging.getLogger(__name__)
+        _logger_setup(mylogger)
+        mylogger.setLevel(log_level)
+
+        # send feedback to user
+        mylogger.info(f'Launching instance {ii+1}')
+        mylogger.verbose1(f'Setting up {d}')
+
+        HGS_MCRunner._setup_instance(d, copy_command, base_temp_dirn, isnam,
+                iecnam)
+
+        mylogger.verbose2(
+            f'Set up status for {d}: ' \
+            f'{InstanceStatusEnum(inst_status[ii]).name}')
 
         if inst_status[ii] != InstanceStatusEnum.SET_UP_SUCCESS.value:
             return inst_ec[ii]
         
+        mylogger.verbose1(f'Running {d}')
         inst_status[ii] = InstanceStatusEnum.RUNNING.value
 
-        logger.verbose2(f'Running {d}')
-
-        #import pdb ; pdb.set_trace()
         runner = PyPowerShellRunner(
                 tc_command,
                 simdir=d,
@@ -275,6 +299,10 @@ class HGS_MCRunner():
 
         inst_ec[ii] = returncode
 
+        mylogger.verbose2(
+            f'Run exit status for {d}: '\
+            f'{InstanceStatusEnum(inst_status[ii]).name}')
+
         inst_status.shm.close()
         inst_ec.shm.close()
 
@@ -289,14 +317,16 @@ class HGS_MCRunner():
             with Pool(num_processes) as pool:
                 results_objs = []
                 for ii,inst in enumerate(mc.gen_mc_instances()):
-                    logger.info(f'Launching instance {ii+1} of {_N}')
+                    logger.info(f'Enqueuing instance {ii+1} of {_N}')
                     results_objs.append(pool.apply_async(
                             HGS_MCRunner._run_instance, (inst,
                                 self.copy_command, self.base_temp_dirn,
                                 self.tc_command,
                                 self.keep_file_list,
                                 self._inst_status.shm.name,
-                                self._inst_ec.shm.name,)))
+                                self._inst_ec.shm.name,
+                                logger.getEffectiveLevel(),
+                            )))
 
                     # There is some unknown issue that occurs (in powershell 'batch
                     # file cannot be found') when many (>=4) processes are launced
