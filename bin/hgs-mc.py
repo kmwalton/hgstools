@@ -132,12 +132,11 @@ class HGS_MCRunner():
             logger.warn('No keep file specified. Most simulation outputs '\
                     'will be discarded')
 
-        _bdn = os.path.split(base_dir)[1]
+        _bdn = os.path.split(os.path.abspath(base_dir))[1]
         self._bd_tmp = tempfile.TemporaryDirectory(
             prefix=f'{self._make_mc_run_tag()}_{_bdn}_',
-            dir=os.path.dirname(os.path.abspath(self.base_sim_dirn)))
-        """tempfile.TemporaryDirectory, adjacent to base_dir, that is a copy of
-        base_dir"""
+            dir=os.getcwd(),)
+        """tempfile.TemporaryDirectory, a copy of base_dir in the CWD"""
 
         self.base_temp_dirn = self._bd_tmp.name
         """alias to temporary dir name"""
