@@ -464,6 +464,10 @@ if __name__ == '__main__':
             file=sys.stderr)
         sys.exit(-1)
 
+    # check for keep file
+    if args.keep_file and not os.path.isfile(args.keep_file):
+        ap.error(f'Could not find keep file {args.keep_file}')
+
     # Check if other executable files exist
     # May need posix=False here, if retaining quotes in individual
     # parameters is important
