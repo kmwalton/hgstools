@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import re
+import regex as re
 
 from itertools import count
 
@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-ERRORS_FILTER = [
+_ERRORS_FILTER = [
     re.compile(r'^(?P<name>W0SOLV): (?P<message>.*)$', flags=re.M),
 ]
 """A list of regular expressions for error messages found in the .lst output
@@ -19,7 +19,7 @@ ERRORS_FILTER = [
 _NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
 """RegEx for a floating point number"""
 
-FILTER = {
+_FILTER = {
     'timestep_start':re.compile(
         r'^-{82}\n\s+SOLUTION FOR TIMESTEP\s+(\d+)',
         flags=re.M),
@@ -39,11 +39,29 @@ FILTER = {
         r'^-{9} SIMULATION TIME REPORT\s*\n(?P<report>(?ms:.*?))\n-{58}',
         flags=re.M),
 
-    'mass_balance': re.compile(
+    'mass_exchange': re.compile(
         r'^RATE OF MASS EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
         r'(?s:(?P<bc_data>.*?))\n' \
         r'   (?P<tot>NET1 EXCHANGE RATE.*?)\s+(?P<totval>(?:'+_NUM_RE+'))\s*$',
         flags=re.M),
+
+    'mass_storage': re.compile(
+        r'^MASS STORAGE COMPONENTS\s*\n'\
+        r'(?P<domains>(?s:.*?))' \
+        r'^\s+------+\s?\n' \
+        r'^(?P<totalchange>(?s:.*?))\s*' \
+        r'^\s+------+\s*\n' \
+        r'^(?P<masschange>(?s:.*?))\s*' \
+        r'^\s+(?P<netchange>NET2.*?)\s*$',
+        flags=re.M),
+
+    'mass_storage_domains': re.compile(
+        r'(?:\s*(?P<dname>.*?):\s*\n?)?' \
+        r'^(?P<indent>\s+)(?P<phase>\S.*?)\s+(?P<val>'+_NUM_RE+r')\s*\n' \
+        r'^(?:(?P=indent)(?P<phase>\S.*?)\s+(?P<val>'+_NUM_RE+r')\s*\n)*',
+        flags=re.M),
+
+    'kv': re.compile(r'\s*(?P<k>\S.*?)\s+(?P<v>'+_NUM_RE+')\s*')
 
 }
 """Dictionary of compiled re objects for various chunks of a .lst file"""
@@ -84,7 +102,7 @@ class LSTFileParser:
         self._has_sim_report = False
 
         _ts = {}
-        for m in FILTER['timestep_start'].finditer(self._txt):
+        for m in _FILTER['timestep_start'].finditer(self._txt):
             itime = int(m.group(1))
 
             if itime in _ts:
@@ -105,7 +123,7 @@ class LSTFileParser:
         self._tsloc = [0,] + list( v for k,v in sorted(_ts.items()) )
 
         # find the simulation report
-        sim_rpt = FILTER['simulation_time_report'].search(
+        sim_rpt = _FILTER['simulation_time_report'].search(
                 self._txt[self._tsloc[-1]:])
         if sim_rpt:
             self._tsloc.append(self._tsloc[-1]+sim_rpt.span()[0])
@@ -160,7 +178,7 @@ class LSTFileParser:
 
         for i, tss, tse in self._iter_timestep_text_bounds():
             # look in last 256 chars of a timestep for this regex
-            m = FILTER['met_global_target'].search(self._txt[tse-256:tse])
+            m = _FILTER['met_global_target'].search(self._txt[tse-256:tse])
 
             if m:
                 ret.append((float(m.group(1)), i,))
@@ -199,10 +217,10 @@ class LSTFileParser:
             tse = self._tsloc[its+1]
 
             if its == 0:
-                match = FILTER['initial_time'].search(
+                match = _FILTER['initial_time'].search(
                         self._txt[tss:tse])
             else:
-                match = FILTER['accepted_solution_time'].search(
+                match = _FILTER['accepted_solution_time'].search(
                         self._txt[tss:tse])
 
             return float(match.group(1))
@@ -210,12 +228,12 @@ class LSTFileParser:
         else:
             def _gen_times():
 
-                match = FILTER['initial_time'].search(
+                match = _FILTER['initial_time'].search(
                         self._txt[:self._tsloc[1]])
                 yield float(match.group(1))
 
                 for i, tss, tse in self._iter_timestep_text_bounds():
-                    match = FILTER['accepted_solution_time'].search(
+                    match = _FILTER['accepted_solution_time'].search(
                             self._txt[tss:tse])
                     if not match:
                         raise RuntimeError(
@@ -281,7 +299,7 @@ class LSTFileParser:
         """
 
         for itime,tss,tse in self._iter_timestep_text_bounds(itimestep):
-            for err_re in ERRORS_FILTER:
+            for err_re in _ERRORS_FILTER:
                 m = err_re.search(self._txt,tss,tse)
                 if m:
                     yield (itime, m.group('name'), m.group('message'),)
@@ -344,11 +362,49 @@ class LSTFileParser:
 
         return ret
 
-    def get_mass_balance(self, itimestep=1):
-        """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
+    def get_mass_storage(self, itimestep=1):
+        """Return a dictionary of { DOMAIN:(value1, value2, ...), OTHER:value, .. }
+
+        DOMAIN is Porous medium, etc.
+        value1, value2, etc. hold the values of Dissolved, Decay (dissolved),
+        etc. as seen in the .lst file.
+
+        OTHER can be 'TOTAL MASS', etc., as per the other lines within the block
+
         """
 
-        m = list( FILTER['mass_balance'].finditer(self._txt,
+        ret = {}
+
+        m = _FILTER['mass_storage'].search(self._txt,
+                self._tsloc[itimestep],
+                self._tsloc[itimestep+1])
+
+        if not m:
+            raise RuntimeError(f'No mass storage match found at ts={itimestep}')
+
+        for mm in _FILTER['mass_storage_domains'].finditer(m['domains']):
+            if mm['dname']:
+                ret[mm['dname']] = tuple(map(float, mm.captures('val')))
+            else:
+                # assume only one
+                ret[mm['phase']] = tuple(map(float, mm.captures('val')))
+        
+        def _foo(kv):
+            return (kv[0], float(kv[1]))
+
+        ret.update(map(_foo, _FILTER['kv'].findall(m['totalchange'])))
+        ret.update(map(_foo, _FILTER['kv'].findall(m['masschange'])))
+        ret.update(map(_foo, _FILTER['kv'].findall(m['netchange'])))
+
+        return ret
+
+    def get_mass_balance(self, itimestep=1):
+        """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
+
+        The rates of mass exchange
+        """
+
+        m = list( _FILTER['mass_exchange'].finditer(self._txt,
                 self._tsloc[itimestep],
                 self._tsloc[itimestep+1]) )
 

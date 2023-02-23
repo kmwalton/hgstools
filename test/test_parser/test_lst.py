@@ -158,5 +158,36 @@ class Test_LST_Parser(unittest.TestCase):
         self.assertAlmostEqual(gtt_actual[i][0],tgt_desired)
         self.assertEqual(gtt_actual[i][1],tgt_idesired)
 
+
+    def test_mass_storage(self):
+
+        p = LSTFileParser(DATDIR+'tflow_ttransport_pm_frac_wello.lst')
+        ms = p.get_mass_storage(18)
+        self.assertEqual(len(ms),8)
+        self.assertAlmostEqual(p.get_ts_time(18), 10.0040609323282)
+        self.assertEqual(len(ms['Porous medium']),4)
+        self.assertAlmostEqual(ms['Porous medium'][0], 0.5389514566)
+        self.assertAlmostEqual(ms['Porous medium'][1], 0.0)
+        self.assertAlmostEqual(ms['Porous medium'][2], 0.0)
+        self.assertAlmostEqual(ms['Porous medium'][3], 0.0)
+        self.assertAlmostEqual(ms['Discrete fractures'][0], 0.0038146)
+        self.assertAlmostEqual(ms['Discrete fractures'][2], 0.0)
+        self.assertAlmostEqual(ms['Wells'][0], 0.0)
+        self.assertEqual(len(ms['Wells']),1)
+
+        # find the key instead of using whole string
+        k = next( k for k in ms.keys() if k.startswith('NET2'))
+        self.assertAlmostEqual( ms[k], 6.4313503119)
+
+
+        
+        p = LSTFileParser(DATDIR+'steady_flow_transient_transporto.lst')
+        ms = p.get_mass_storage(10)
+        self.assertEqual(len(ms),7)
+        self.assertAlmostEqual(ms['Porous medium'][0], 0.0)
+        self.assertAlmostEqual(ms['Porous medium'][2], 0.0)
+        with self.assertRaises(KeyError):
+            ms['Wells']
+
 if __name__ == '__main__':
     unittest.main()
