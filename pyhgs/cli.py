@@ -1,6 +1,7 @@
 """Miscellaneous tools to useful in command line interfaces (CLI)."""
 import argparse
 import os
+import re
 
 class PathToPrefix(argparse.Action):
     """Custom `argparse.Action` to find `PATH_TO_PREFIX` for a HGS problem
@@ -41,40 +42,80 @@ class PathToPrefix(argparse.Action):
         super().__init__(*args, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        (pth, pfx) = PathToPrefix.parse_path_to_prefix(values)
+        (pth, pfx, more) = PathToPrefix.parse_path_to_prefix(values)
 
         # TODO What if nargs != 1? This should be able to return either a string
         # value or a list, per the convention of nargs
 
-        setattr(namespace, self.dest, os.path.join(pth,pfx))
+        setattr(namespace, self.dest, os.path.join(pth,pfx+more))
 
 
     @staticmethod
     def parse_path_to_prefix(s):
-        """Determine the path_to and prefix for any given string.
+        """Determine the `(path_to, prefix, leftovers)` for any given string.
 
-        Assume the current directory if no path is apparent in `s`.
-        Look for *batch.pfx* if no problem prefix is apparent in `s`.
+        Assume the current directory if no path is apparent in `s`, which will
+        returned as `path_to`.
+
+        `(prefx, leftovers)` are determined by one of the following ways:
+        1) If *batch.pfx* exists, then its contents appears in `prefix` and the
+           balance of `s` in `leftovers`
+        2) if `o.` appears in `s`, then what precedes `o.` is returned in
+           `prefix` and the balance is in `leftovers`
+        3) If a `.` appears in s, then all non-directory parts of `s` are
+           `leftovers` and `prefix` is the empty string `''`.
+        4) if the non-directory part of `s` is a single word, that word is
+           returned in `prefix` and `leftovers is the empty string `''`.
+
+
+        If the contents of batch.pfx appears in s, then return it and the
+        leftovers separately. 
+        If `o.` appears in s, then assume that prefix is the part before the
+        `o.` and `o.` to the end of the string is returned as leftovers.
         """
 
-        (pth, pfx) = (None,None)
+        (pth, pfx, more) = ('', '', '')
 
         if os.path.isdir(s):
             # look for '.' or '..', which will get path.split into the tail
-            (pth, pfx) = (s, None)
+            pth = s
         else:
-            (pth, pfx) = os.path.split(s)
+            (pth, more) = os.path.split(s)
 
         if not pth:
             pth = '.'
 
-        if not pfx:
-            batchfn = pth+os.path.sep+'batch.pfx'
-            try:
-                with open(batchfn,'r') as fin:
-                    pfx = fin.read().strip()
-            except FileNotFoundError:
-                parser.error( f'Could not find {batchfn}; '\
-                    'cannot auto-detect problem prefix')
+        batchpfx = ''
+        batchfn = pth+os.path.sep+'batch.pfx'
+        try:
+            with open(batchfn,'r') as fin:
+                batchpfx = fin.read().strip()
+        except FileNotFoundError:
+            # should this halt the program?!
+            #parser.error( f'Could not find {batchfn}; '\
+            #        'cannot auto-detect problem prefix')
+            pass
 
-        return (pth, pfx)
+        if batchpfx and more.startswith(batchpfx):
+            pfx = batchpfx
+            more = more[len(batchpfx):]
+        else:
+        
+            pats = [
+                r'(.*?)(o\..*)', # break at 'o.'
+                r'()(.*\..*)', # find nothing as the prefix
+                r'([^.]*)()', # find everything as the prefix
+            ]
+
+            for p in pats:
+                m = re.match(p, more)
+                if m:
+                    pfx, more = m.groups()
+                    break
+
+        return (pth, pfx, more)
+
+    @staticmethod
+    def split(s):
+        '''Alias for `pyhgs.parser.PathToPrefix.parse_path_to_prefix`'''
+        return PathToPrefix.parse_path_to_prefix(s)
