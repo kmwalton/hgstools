@@ -95,16 +95,18 @@ class PathToPrefix(argparse.Action):
             #parser.error( f'Could not find {batchfn}; '\
             #        'cannot auto-detect problem prefix')
             pass
-
-        if batchpfx and more.startswith(batchpfx):
-            pfx = batchpfx
-            more = more[len(batchpfx):]
         else:
+            pfx = batchpfx
         
+        if not batchpfx:
             pats = [
-                r'(.*?)(o\..*)', # break at 'o.'
-                r'()(.*\..*)', # find nothing as the prefix
-                r'([^.]*)()', # find everything as the prefix
+                # Probable hgs output file: break at 'o.'
+                r'(.*?)(o\..*)',
+                # filename with a dot extension: find nothing as the prefix
+                # and find everything as 'more'
+                r'()(.*\..*)',
+                # No dot extension: find everything as the prefix
+                r'([^.]*)()',
             ]
 
             for p in pats:
@@ -112,6 +114,8 @@ class PathToPrefix(argparse.Action):
                 if m:
                     pfx, more = m.groups()
                     break
+        elif more.startswith(batchpfx):
+            more = more[len(batchpfx):]
 
         return (pth, pfx, more)
 
