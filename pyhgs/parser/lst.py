@@ -409,7 +409,7 @@ class LSTFileParser:
                 self._tsloc[itimestep+1]) )
 
         if not m:
-            raise RuntimeError(f'No fluid balance match found at ts={itimestep}')
+            raise RuntimeError(f'No mass balance match found at ts={itimestep}')
 
         # Return the final fluid balance block within the timestep.
         # There may be more than one such block if the flow or
