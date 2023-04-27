@@ -110,6 +110,9 @@ def toDTuple(s):
 
     return tuple( D_CO(v) for v in ivals )
 
+# helpful type
+_BoundingBox = namedtuple('_BoundingBox', 'x1 x2 y1 y2 z1 z2'.split(), )
+
 class Domain(IntEnum):
     """Types of domains in Hydrogeosphere"""
     PM = auto()
@@ -902,15 +905,7 @@ class HGSGrid():
 
     def choose_nodes_block(self, blockspec, dom=Domain.PM):
         """Return a list of nodes contained in a 3D block"""
-
-        if dom != Domain.PM:
-            raise NotImplementedError()
-
-        #if type(blockspec) == str:
-        #    blockspec = re.sub(',',' ',blockspec).strip().split()
-        
-        # helpful type
-        _BoundingBox = namedtuple('BoundingBox', 'x1 x2 y1 y2 z1 z2'.split(), )
+        dom = Domain.a2D(dom)
 
         # zone 3D block bounds
         bb = _BoundingBox(*toDTuple(blockspec))
@@ -928,9 +923,11 @@ class HGSGrid():
         # set of nodes to return
         _n = np.zeros(ibb[1::2]-ibb[0::2], dtype=int)
 
+        # early exit!
         if _n.size == 0:
             return []
 
+        # calculate indices based on a regular grid
         _n[0,0,0] = HGSGrid._to_index_nocheck(ibb[0::2], self.shape)
         if _n.shape[0] > 1:
             _n[1:,0,0] = _n[0,0,0] + np.arange(1, _n.shape[0])
@@ -943,7 +940,21 @@ class HGSGrid():
                     np.prod(self.shape[0:2]) * np.arange(1,_n.shape[2])
                   )[np.newaxis,np.newaxis,:]
 
-        return list(_n.ravel(order='F'))
+        if dom == Domain.PM:
+            return list(_n.ravel(order='F'))
+
+        elif dom == Domain.FRAC:
+            pm2fx = self.hgs_fx_nodes['link_pm2frac']
+            _nn = pm2fx[_n.ravel()]
+
+            # the fracture indices listed in the link_pm2frac array are valued
+            # sequentially after the PM nodes' block of index numbers.
+            # So the link_frac2pm array will work, we must subtract the number
+            # of PM nodes.
+            return list(np.sort(_nn-self.nn))
+
+        else:
+            raise NotImplementedError()
 
 
 def make_supersample_distance_groups(dx, maxd):

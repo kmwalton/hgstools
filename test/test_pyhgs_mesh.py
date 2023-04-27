@@ -140,13 +140,13 @@ class Test_HGSGrid(unittest.TestCase):
         skip_if_no_sim_output(
             TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
         'HGS output missing')
-    def test_choose_nodes_block(self):
+    def test_choose_nodes_block_pm(self):
 
         g = HGSGrid(
                 TESTP+'test_sims/04b_very_coarse_mesh/module4b')
 
         self.assertEqual(
-            g.choose_nodes_block_pm('0,0,0,0,0,0'),
+            g.choose_nodes_block('0,0,0,0,0,0'),
             [0,]
             )
 
@@ -174,6 +174,20 @@ class Test_HGSGrid(unittest.TestCase):
             g.choose_nodes_block('1,9,0,1,0,6'),
             []
             )
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_choose_nodes_block_fx(self):
+
+        g = HGSGrid(
+                TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+
+        fx_nodes = g.choose_nodes_block('0,10,0,1,19.9,20.1', dom='FRAC')
+        pm_nodes = g.hgs_fx_nodes['link_frac2pm'][fx_nodes]
+        self.assertEqual(list(pm_nodes), [36,37,42,43])
 
 
 if __name__ == '__main__':
