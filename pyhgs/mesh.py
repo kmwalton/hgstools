@@ -37,9 +37,12 @@ Notes
 """
 
 import os
+import re
 from itertools import count,repeat,product
-from collections import defaultdict
+from collections import (defaultdict, namedtuple)
 from bisect import bisect,bisect_left,bisect_right
+import decimal
+from decimal import Decimal
 from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
@@ -59,6 +62,53 @@ import logging
 logger = logging.getLogger(__name__)
 
 __docformat__ = 'numpy'
+
+decimal.getcontext().prec = 12
+N_COORD_DIG = Decimal('0.001')
+N_APERT_DIG = Decimal('0.000001')
+
+def D(v,new_prec):
+    """Return a decimal with the specified quantization/precision"""
+
+    try:
+        return Decimal(v).quantize(new_prec)
+    except decimal.InvalidOperation as e:
+        if not v.is_finite():
+            return v
+        else:
+            raise ValueError(f'Cannot re-quantize {v}') from e
+    except Exception as e:
+        raise ValueError(f'Argument {v} of type {type(v)}.') from e
+
+def D_CO(v):
+    """Return a decimal with the required number of digits for coordinates"""
+    return D(v,N_COORD_DIG)
+
+def D_AP(v):
+    """Return a decimal with the required number of digits for apertures"""
+    return D(v,N_APERT_DIG)
+
+def toDTuple(s):
+    """Return a tuple of coordinate precision Decimals
+
+    Arguments:
+        s : str or list-like
+            strs must look like a list of numbers tuple, like '(x,y,z)',
+            'x y z', 'x,y z', or '[u, v, w x y z'
+            list-likes must be a sequence of number-like things.
+    """
+
+    ivals = iter([0,0,0,])
+
+    if type(s) is str:
+        ivals = iter(re.sub("[(),]",' ',s).strip().split())
+    elif hasattr(s,'__iter__'):
+        ivals = iter(s)
+    else:
+        raise ValueError(f'"toDTuple" expected string or list-like, but got '
+                '{type(s)}.')
+
+    return tuple( D_CO(v) for v in ivals )
 
 class Domain(IntEnum):
     """Types of domains in Hydrogeosphere"""
@@ -848,6 +898,53 @@ class HGSGrid():
         # might be a significant improvement.
         for elindlohi in product(*ss_ranges):
             yield self._find_fx_in_single_ssgrp(elindlohi,pm2fxadj)
+
+
+    def choose_nodes_block(self, blockspec, dom=Domain.PM):
+        """Return a list of nodes contained in a 3D block"""
+
+        if dom != Domain.PM:
+            raise NotImplementedError()
+
+        #if type(blockspec) == str:
+        #    blockspec = re.sub(',',' ',blockspec).strip().split()
+        
+        # helpful type
+        _BoundingBox = namedtuple('BoundingBox', 'x1 x2 y1 y2 z1 z2'.split(), )
+
+        # zone 3D block bounds
+        bb = _BoundingBox(*toDTuple(blockspec))
+
+        gl = self.get_grid_lines()
+
+        # grid line indices [inclusive, exclusive) for the bounding box
+        ibb = -np.ones(6,dtype=int)
+
+        icoord = iter(bb)
+        for axis in range(3):
+            ibb[2*axis  ]= bisect_left(gl[axis],next(icoord))
+            ibb[2*axis+1]= bisect_right(gl[axis],next(icoord),lo=ibb[2*axis])
+
+        # set of nodes to return
+        _n = np.zeros(ibb[1::2]-ibb[0::2], dtype=int)
+
+        if _n.size == 0:
+            return []
+
+        _n[0,0,0] = HGSGrid._to_index_nocheck(ibb[0::2], self.shape)
+        if _n.shape[0] > 1:
+            _n[1:,0,0] = _n[0,0,0] + np.arange(1, _n.shape[0])
+        if _n.shape[1] > 1:
+            _n[:,1:,0] = _n[:,0,0][:,np.newaxis] \
+                + (self.shape[0]*np.arange(1, _n.shape[1]))[np.newaxis,:]
+        if _n.shape[2] > 1:
+            _n[:,:,1:] = _n[:,:,0][:,:,np.newaxis] \
+                + ( 
+                    np.prod(self.shape[0:2]) * np.arange(1,_n.shape[2])
+                  )[np.newaxis,np.newaxis,:]
+
+        return list(_n.ravel(order='F'))
+
 
 def make_supersample_distance_groups(dx, maxd):
     """Return indices of unique, overlapping chunks of combined size <= maxd.

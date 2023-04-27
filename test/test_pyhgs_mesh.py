@@ -3,11 +3,16 @@
 
 import unittest
 
+import os
 from collections import defaultdict
 from decimal import Decimal
 import numpy as np
 
+from pyhgs._test import skip_if_no_sim_output
 from pyhgs.mesh import make_supersample_distance_groups, HGSGrid, Domain
+
+TESTP = os.path.dirname(__file__)+os.sep
+'Path to this testing file'
 
 PLACES = Decimal('0.001')
 def D_CO(v, pl=PLACES):
@@ -126,6 +131,50 @@ class TestPYHGSMesh(unittest.TestCase):
 
         act = g._yield_fx_in_ssgrp(ssranges, adj)
         self.assertEqual([*act],des)
+
+
+
+class Test_HGSGrid(unittest.TestCase):
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_choose_nodes_block(self):
+
+        g = HGSGrid(
+                TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        self.assertEqual(
+            g.choose_nodes_block_pm('0,0,0,0,0,0'),
+            [0,]
+            )
+
+        self.assertEqual(
+            g.choose_nodes_block('0,10,0,0,0,0'),
+            [0,1]
+            )
+
+        self.assertEqual(
+            g.choose_nodes_block('0,10,0,1,0,0'),
+            [0,1,6,7]
+            )
+
+        self.assertEqual(
+            g.choose_nodes_block('0,10,0,0,0,13'),
+            [0,1,12,13,24,25]
+            )
+
+        self.assertEqual(
+            g.choose_nodes_block('0,10,0,1,0,6'),
+            [0,1,6,7,12,13,18,19]
+            )
+
+        self.assertEqual(
+            g.choose_nodes_block('1,9,0,1,0,6'),
+            []
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
