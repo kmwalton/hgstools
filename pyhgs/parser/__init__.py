@@ -66,8 +66,9 @@ A `dict` with the following keywords
 
 nn: int
     Total number of nodes (int4).
-ncoords: x(i), y(i), z(i), i=1,nn
-    Nodal xyz-coordinates for each node (real8).
+ncoords: array
+    Nodal xyz-coordinates for each node, i (real8).
+    i=[0..nn) of [x_i, y_i, z_i]
 nx, ny, nz, nsptot: int
     Number of grid lines in the x-, y-, and z-coordinates and the number species
     for transport (int4).
@@ -129,11 +130,14 @@ nln: int
     Number of nodes per element (6: triangular prism, 8: hexahedron) (int4).
 ne: int
     Total number of elements (int4).
-inc(i, j) i=1,nln, j=1,ne: numpy.ndarray
+inc(i, j): numpy.ndarray
+    i=[0..ne), j=[0..nln)
     Node numbers of elemental incidences for each element (int4). *Node numbers
     are returned with 0-based indicies.*
-zone(i), i=1,ne: numpy.ndarray
-    Element ID (zone number) for each element (int4).
+zone(i): numpy.ndarray
+    i=[0..ne)
+    Element ID (zone number) for each element (int4). Zone numbers retain their
+    1-based indexing.
     """
 
     if not os.path.exists(fn):
@@ -170,6 +174,12 @@ link_frac2pm(i), i=1,nnfrac : int
     Fracture node to PM node mapping (int4) *0-based indices returned.*
 link_pm2frac(i), i=1,nn : int
     PM node to fracture node mapping (int4) *0-based indices returned.*
+
+Note that Fracture index values (in the link_pm2frac array) reflect all-domain
+node ordering. For meshes that involve only porous media and fracture domains,
+subtracting the number of porous media nodes from these fracture indices
+will yield the index relative to only the fracture domain (like the indices
+needed in the link_frac2pm array).
     """
 
     if not os.path.exists(fn):
@@ -202,7 +212,7 @@ nln: int
     number of nodes per frac element (int4)
 nfe: int
     total number of fracture elements (int4)
-inc(i,j), i=1,nln, j=1,nfe: numpy.ndarray
+inc(i,j), i=1,nfe, j=1,nln: numpy.ndarray
     node numbers of fracture element incidences (int4) *0-based indices
     returned.*
 zone(i), i=1,nfe: numpy.ndarray
