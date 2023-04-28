@@ -190,5 +190,102 @@ class Test_HGSGrid(unittest.TestCase):
         self.assertEqual(list(pm_nodes), [36,37,42,43])
 
 
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_node2el_pm(self):
+
+        g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        with self.subTest('PM basic check'):
+            _r =g._node2el()
+
+            self.assertEqual(len(_r), 60, 'incidence for all nodes')
+
+            self.assertEqual(_r[0], {0,}) 
+            self.assertEqual(_r[13], {0,1,5,6}) 
+
+        with self.subTest('PM basic check with set'):
+            self.assertEqual(g._node2el(0)[0], {0,}) 
+            self.assertEqual(g._node2el([0,])[0], {0,})
+
+            _r = g._node2el([0,6,])
+            self.assertEqual(len(_r), 2, 'incidence for only two nodes')
+            self.assertEqual(_r[0], {0,})
+            self.assertEqual(_r[6], {0,})
+            self.assertEqual(_r[6], {0,})
+            with self.assertRaises(KeyError):
+                _r[2]
+
+            self.assertEqual(g._node2el(59)[59], {19,}) 
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_node2el_fx(self):
+
+        g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        pm2fx = g._ipm2ifrac
+        fx2pm = lambda i : g.hgs_fx_nodes['link_frac2pm'][i]
+
+        with self.subTest('Frac basic check'):
+            _r =g._node2el(dom='FRAC')
+            self.assertEqual(_r[pm2fx(3)], {4,})
+            self.assertEqual(_r[pm2fx(15)], {4,5,8,9})
+
+        with self.subTest('Frac basic check with set'):
+            _r =g._node2el([pm2fx(3),], dom='FRAC')
+            self.assertEqual(_r[pm2fx(3)], {4,})
+
+        with self.subTest('Frac basic check with set'):
+            _pmi = list(map(pm2fx, [15,0,]))
+            _r =g._node2el(_pmi, dom='FRAC')
+
+
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_choose_elements_block_pm(self):
+
+        g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        with self.subTest('full capture'):
+            got = g.choose_elements_block('0,0,0,0,0,0')
+            self.assertEqual(got, [], 'capture nothing')
+
+            got = g.choose_elements_block('9,21,0,0,11,21')
+            self.assertEqual(got, [], 'capture nothing')
+
+            got = g.choose_elements_block('9,21,0,1,11,21')
+            self.assertEqual(got, [11,], 'strict inside capture')
+
+        with self.subTest('partial capture'):
+            got = g.choose_elements_block('10,20,0,1,12,20', True)
+            self.assertEqual(got, [5,6,7,10,11,12,15,16,17,]) 
+
+            got = g.choose_elements_block('10,20,0,1,12,20', True)
+            self.assertEqual(got, [5,6,7,10,11,12,15,16,17,])
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_choose_elements_block_fx(self):
+
+        g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        with self.subTest('full capture'):
+            got = g.choose_elements_block('25,25,0,1,0,6', dom='FRAC')
+            self.assertEqual(got, [4,])
+
+        with self.subTest('partial capture'):
+            got = g.choose_elements_block('25,25,0,1,0,6', True, 'FRAC')
+            self.assertEqual(got, [4,5,8,9,])
+
 if __name__ == '__main__':
     unittest.main()

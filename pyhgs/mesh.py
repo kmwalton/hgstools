@@ -38,7 +38,7 @@ Notes
 
 import os
 import re
-from itertools import count,repeat,product
+from itertools import count,repeat,product,chain
 from collections import (defaultdict, namedtuple)
 from bisect import bisect,bisect_left,bisect_right
 import decimal
@@ -46,8 +46,11 @@ from decimal import Decimal
 from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from numpy.linalg import norm
+from scipy.sparse import lil_array
+
 from pyhgs.parser import (
     parse,
     parse_coordinates_pm,
@@ -945,16 +948,144 @@ class HGSGrid():
 
         elif dom == Domain.FRAC:
             pm2fx = self.hgs_fx_nodes['link_pm2frac']
-            _nn = pm2fx[_n.ravel()]
-
-            # the fracture indices listed in the link_pm2frac array are valued
-            # sequentially after the PM nodes' block of index numbers.
-            # So the link_frac2pm array will work, we must subtract the number
-            # of PM nodes.
-            return list(np.sort(_nn-self.nn))
+            _nn = pm2fx[_n.ravel()] # do conversion for this node set
+            _nn = _nn[ _nn > -1 ] # cull out nodes that don't map
+            _nn -= self.nn # shift indices to frac domain range
+            return list(np.sort(_nn))
 
         else:
             raise NotImplementedError()
+
+    def _get_inc(self, dom, do_conversion=False):
+        """Return the element->node incidence for the give domain"""
+        if dom == Domain.PM:
+            return self.hgs_pm_elems['inc']
+        elif dom == Domain.FRAC:
+            if do_conversion:
+                _inc_fx = np.vectorize(self._ipm2ifrac)(self.hgs_fx_elems['inc'])
+                return _inc_fx
+            else:
+                return self.hgs_fx_elems['inc']
+
+    def choose_elements_block(self, blockspec, allow_partial=False,
+            dom=Domain.PM):
+        """Return a list of elements contained in a 3D block
+
+
+        Arguments
+        ---------
+        blockspec : str
+            Some specification of a 3D block: 1) As a string, "x1 x2 y1 y2 z1
+            z2".
+
+        allow_partial : bool
+            If False, the element must be fully contained within the block. If
+            True, interseciton of an element's corner, edge, face, or some
+            partial volume with the block is sufficient for it to be included
+            within the returned set
+        """
+        dom = Domain.a2D(dom)
+
+        _nodes = self.choose_nodes_block(blockspec, dom)
+        _n2el = self._node2el(_nodes, dom)
+        _els = set(chain.from_iterable(_n2el[_] for _ in _n2el))
+        _inc = self._get_inc(dom, True)
+
+        # early exit
+        if allow_partial:
+            return list(sorted(_els))
+
+        ret = set()
+
+        for iel in _els:
+            _elinc = _inc[iel]
+            if _elinc.size == np.intersect1d(_elinc,_nodes,True).size:
+                ret.add(iel)
+
+        return list(sorted(ret))
+
+    def _ipm2ifrac(self,i):
+        """Return the fracture index coincident with the given index to PM
+
+        Note that the link_pm2frac array lists fracture index values
+        sequentially after all pm node indices. Values in this array that are
+        less than zero indicate that there is no fracture coincident with the
+        given pm node.
+        """
+        return self.hgs_fx_nodes['link_pm2frac'][i]-self.nn
+
+    def _node2el(self, nodes=None, dom=Domain.PM):
+        """Return a mapping of nodes to incident elements
+
+        Arguments
+        ---------
+        nodes : array-like
+            Return a mapping for the given subset of nodes. Assumes that node
+            indicies are given relative to the given domain (i.e., not the total
+            node ordering or "3DNode#").
+
+        Return
+        ------
+        A dict-like representation of the node->element mapping for the given
+        domain and subset of node indices.
+        """
+        dom = Domain.a2D(dom)
+
+        # "source" nodes and incidence
+        _sn = None
+        _sinc = self._get_inc(dom)
+        _nn = -1
+        _ne = -1
+
+        #  a conversion function for the node number that comes out of the
+        #  incidence array to the node number in the given domain
+        n2n = lambda i : i
+
+        # return object
+        ret = None
+ 
+
+        # choose the nodes and elements sets
+        if dom == Domain.PM:
+            _nn = self.nn
+            _ne = self.ne
+        elif dom == Domain.FRAC:
+            # incidence array stores pm node index values, must convert
+            # these to fracture domain values with this definition of n2n
+            n2n = self._ipm2ifrac
+            _nn = self.nfn
+            _ne = self.nfe
+        else:
+            raise NotImplementedError(f'Domain {dom} not implemented')
+
+        # If given, reformat the `nodes` data to a sorted array
+        # Specify `ret` to hold all or just a subset of rows
+        if type(nodes) is int:
+            _sn = np.array([nodes,],dtype=int)
+            ret = {nodes:set(),}
+        elif nodes is not None:
+            _sn = np.array(sorted(set(nodes)), dtype=int)
+            ret = dict((i,set()) for i in _sn)
+        else:
+            ret = [set() for _ in range(_nn)]
+
+
+        if _sn is not None:
+            for iel,row in enumerate(_sinc):
+                elnodes = n2n(row)
+                # use numpy for vectorized searching of node indices within
+                # target set
+                for ileft,inode in zip(np.searchsorted(_sn,elnodes), elnodes):
+                    if ileft < _sn.size and ileft >=0 and _sn[ileft]==inode:
+                        ret[inode].add(iel)
+        else:
+            for iel,row in enumerate(_sinc):
+                for inode in row:
+                    ret[n2n(inode)].add(iel)
+
+        return ret
+
+
 
 
 def make_supersample_distance_groups(dx, maxd):
