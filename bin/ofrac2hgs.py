@@ -730,7 +730,8 @@ if __name__ == "__main__":
                     axSet.update(vals)
 
     # get parse grid and make modifications
-    rfg = RFG(
+    try:
+        rfg = RFG(
             args.filename,
             domainSize=list(
                 Decimal(v) for v in
@@ -741,6 +742,10 @@ if __name__ == "__main__":
             regGlSpacing=args.reg_grid_space,
             pmRefNearFx=args.refine_near_fx_plane,
         )
+
+    except BaseException as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
     def quoteMultipartParam(s):
         if any(specialChar in s for specialChar in '$(), '):
