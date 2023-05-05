@@ -3,6 +3,7 @@
 
 import os
 import tempfile
+import argparse
 import unittest
 
 from pyhgs import cli
@@ -10,9 +11,12 @@ from pyhgs import cli
 
 class TestCLI(unittest.TestCase):
 
-
-
-
+    def test_path_to_prefix_alternative_methods(self):
+        """Test aliases to main parsing method"""
+        
+        pth, pfx, oth = cli.PathToPrefix.split('foo')
+        pth, pfx, oth = cli.parse_path_to_prefix('foo')
+ 
     def test_path_to_prefix_strings(self):
         """Test parsing of strings"""
         
@@ -99,8 +103,23 @@ class TestCLI(unittest.TestCase):
 
 
     def test_argparse_action(self):
-        """Test use of this as an argument action"""
-        pass
+        """Test use of this as an argparse.Action derived class"""
+        argp = argparse.ArgumentParser()
+        argp.add_argument('PATH_TO_PREFIX',
+            metavar='path/to/prefix',
+            action=cli.PathToPrefix,
+            help='path/to/prefix of the HGS simulation',
+            )
+        args = argp.parse_args(['some_path/prefixo.lst',])
+
+        pth, filename = os.path.split(args.PATH_TO_PREFIX)
+        self.assertEqual(pth,'some_path')
+        self.assertEqual(filename,'prefixo.lst')
+
+        pth, pfx, oth = cli.parse_path_to_prefix(args.PATH_TO_PREFIX)
+        self.assertEqual(pth,'some_path')
+        self.assertEqual(pfx,'prefix')
+        self.assertEqual(oth,'o.lst')
         
 
 if __name__ == '__main__':

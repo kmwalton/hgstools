@@ -2,6 +2,80 @@
 import argparse
 import os
 import re
+import warnings
+
+def parse_path_to_prefix(s):
+    """Determine the `(path_to, prefix, leftovers)` for any given string.
+
+        path_to, prefix, leftovers = \
+                        pyhgs.cli.parse_path_to_prefix(args.PATH_TO_PREFIX)
+
+    Assume the current directory if no path is apparent in `s`, which will
+    returned as `path_to`.
+
+    `(prefx, leftovers)` are determined by one of the following ways:
+    1) If *batch.pfx* exists, then its contents appears in `prefix` and the
+       balance of `s` in `leftovers`
+    2) if `o.` appears in `s`, then what precedes `o.` is returned in
+       `prefix` and the balance is in `leftovers`
+    3) If a `.` appears in s, then all non-directory parts of `s` are
+       `leftovers` and `prefix` is the empty string `''`.
+    4) if the non-directory part of `s` is a single word, that word is
+       returned in `prefix` and `leftovers is the empty string `''`.
+
+
+    If the contents of batch.pfx appears in s, then return it and the
+    leftovers separately. 
+    If `o.` appears in s, then assume that prefix is the part before the
+    `o.` and `o.` to the end of the string is returned as leftovers.
+    """
+
+    (pth, pfx, more) = ('', '', '')
+
+    if os.path.isdir(s):
+        # look for '.' or '..', which will get path.split into the tail
+        pth = s
+    else:
+        (pth, more) = os.path.split(s)
+
+    if not pth:
+        pth = '.'
+
+    batchpfx = ''
+    batchfn = pth+os.path.sep+'batch.pfx'
+    try:
+        with open(batchfn,'r') as fin:
+            batchpfx = fin.read().strip()
+    except FileNotFoundError:
+        # should this halt the program?!
+        #parser.error( f'Could not find {batchfn}; '\
+        #        'cannot auto-detect problem prefix')
+        pass
+    else:
+        pfx = batchpfx
+    
+    if not batchpfx:
+        pats = [
+            # Probable hgs output file: break at 'o.'
+            r'(.*?)(o\..*)',
+            # filename with a dot extension: find nothing as the prefix
+            # and find everything as 'more'
+            r'()(.*\..*)',
+            # No dot extension: find everything as the prefix
+            r'([^.]*)()',
+        ]
+
+        for p in pats:
+            m = re.match(p, more)
+            if m:
+                pfx, more = m.groups()
+                break
+    elif more.startswith(batchpfx):
+        more = more[len(batchpfx):]
+
+    return (pth, pfx, more)
+
+
 
 class PathToPrefix(argparse.Action):
     """Custom `argparse.Action` to find `PATH_TO_PREFIX` for a HGS problem
@@ -28,13 +102,9 @@ class PathToPrefix(argparse.Action):
 
         args = argp.parse_args()
 
-        path_to, prefix = os.path.split(args.PATH_TO_PREFIX)
+        path_to, filename = os.path.split(args.PATH_TO_PREFIX)
+        path_to, prefix, leftovers = PathToPrefix.split(args.PATH_TO_PREFIX)
         
-    Alternatively, the static method `parse_path_to_prefix` may be used to
-    extract the same as above from any string (and outside the task of parsing
-    command line arguments).
-    
-        path_to, prefix = PathToPrefix.parse_path_to_prefix('path/to/pfx')
     """
 
     def __init__(self, *args, **kwargs):
@@ -42,7 +112,7 @@ class PathToPrefix(argparse.Action):
         super().__init__(*args, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        (pth, pfx, more) = PathToPrefix.parse_path_to_prefix(values)
+        (pth, pfx, more) = parse_path_to_prefix(values)
 
         # TODO What if nargs != 1? This should be able to return either a string
         # value or a list, per the convention of nargs
@@ -52,74 +122,12 @@ class PathToPrefix(argparse.Action):
 
     @staticmethod
     def parse_path_to_prefix(s):
-        """Determine the `(path_to, prefix, leftovers)` for any given string.
+        '''Alias for `pyhgs.cli.parse_path_to_prefix`'''
+        warnings.warn('Use pyhgs.cli.parse_path_to_prefix', DeprecationWarning)
+        return parse_path_to_prefix(s)
 
-        Assume the current directory if no path is apparent in `s`, which will
-        returned as `path_to`.
-
-        `(prefx, leftovers)` are determined by one of the following ways:
-        1) If *batch.pfx* exists, then its contents appears in `prefix` and the
-           balance of `s` in `leftovers`
-        2) if `o.` appears in `s`, then what precedes `o.` is returned in
-           `prefix` and the balance is in `leftovers`
-        3) If a `.` appears in s, then all non-directory parts of `s` are
-           `leftovers` and `prefix` is the empty string `''`.
-        4) if the non-directory part of `s` is a single word, that word is
-           returned in `prefix` and `leftovers is the empty string `''`.
-
-
-        If the contents of batch.pfx appears in s, then return it and the
-        leftovers separately. 
-        If `o.` appears in s, then assume that prefix is the part before the
-        `o.` and `o.` to the end of the string is returned as leftovers.
-        """
-
-        (pth, pfx, more) = ('', '', '')
-
-        if os.path.isdir(s):
-            # look for '.' or '..', which will get path.split into the tail
-            pth = s
-        else:
-            (pth, more) = os.path.split(s)
-
-        if not pth:
-            pth = '.'
-
-        batchpfx = ''
-        batchfn = pth+os.path.sep+'batch.pfx'
-        try:
-            with open(batchfn,'r') as fin:
-                batchpfx = fin.read().strip()
-        except FileNotFoundError:
-            # should this halt the program?!
-            #parser.error( f'Could not find {batchfn}; '\
-            #        'cannot auto-detect problem prefix')
-            pass
-        else:
-            pfx = batchpfx
-        
-        if not batchpfx:
-            pats = [
-                # Probable hgs output file: break at 'o.'
-                r'(.*?)(o\..*)',
-                # filename with a dot extension: find nothing as the prefix
-                # and find everything as 'more'
-                r'()(.*\..*)',
-                # No dot extension: find everything as the prefix
-                r'([^.]*)()',
-            ]
-
-            for p in pats:
-                m = re.match(p, more)
-                if m:
-                    pfx, more = m.groups()
-                    break
-        elif more.startswith(batchpfx):
-            more = more[len(batchpfx):]
-
-        return (pth, pfx, more)
 
     @staticmethod
     def split(s):
-        '''Alias for `pyhgs.parser.PathToPrefix.parse_path_to_prefix`'''
-        return PathToPrefix.parse_path_to_prefix(s)
+        '''Alias for `pyhgs.cli.parse_path_to_prefix`'''
+        return parse_path_to_prefix(s)
