@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import warnings
 import regex as re
 
 from itertools import count
@@ -39,6 +40,13 @@ _FILTER = {
         r'^-{9} SIMULATION TIME REPORT\s*\n(?P<report>(?ms:.*?))\n-{58}',
         flags=re.M),
 
+    'mass_balance_species': re.compile(
+        r'^MASS.BALANCE.SPECIES\s+(?P<ispecies>\d+).-.(?P<species>\w+)\s*' \
+        r'^-+\n' \
+        r'(?s:.*?)' \
+        r'^-+\n',
+        flags=re.M),
+
     'mass_exchange': re.compile(
         r'^RATE OF MASS EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
         r'(?s:(?P<bc_data>.*?))\n' \
@@ -67,9 +75,8 @@ _FILTER = {
 """Dictionary of compiled re objects for various chunks of a .lst file"""
 
 
-class LSTFileParser:
+class LSTFile:
     """Parse and return (select) data from phgs output, the .lst file"""
-
     def __init__(self, fnin):
         """Load the .lst file text, given file name or HGS prefix"""
 
@@ -333,7 +340,7 @@ class LSTFileParser:
             itimestep = 0
 
         m = None
-        for fbregex in LSTFileParser._fluid_balance_regex:
+        for fbregex in LSTFile._fluid_balance_regex:
             m = list( fbregex.finditer(self._txt,
                     self._tsloc[itimestep],
                     self._tsloc[itimestep+1]) )
@@ -362,7 +369,23 @@ class LSTFileParser:
 
         return ret
 
-    def get_mass_storage(self, itimestep=1):
+    def _find_mass_balance_species(self, itimestep, ispecies):
+        # TODO check if ispecies is valid
+        # TODO
+        # Return the final fluid balance block within the timestep.
+        # There may be more than one such block if the flow or
+        # transport solution breaks the "multiplier" criterion and the
+        # step is repeated with a reduced step size
+        _tstxt = self._txt[self._tsloc[itimestep]:self._tsloc[itimestep+1]]
+        for block in _FILTER['mass_balance_species'].finditer(_tstxt):
+            if ispecies != int(block.group('ispecies')):
+                continue
+
+            return block.group(0)
+        raise RuntimeError(f'No mass storage match for species {ispecies} '\
+                f'found at ts={itimestep}')
+
+    def get_mass_storage(self, itimestep=1, ispecies=1):
         """Return a dictionary of { DOMAIN:(value1, value2, ...), OTHER:value, .. }
 
         DOMAIN is Porous medium, etc.
@@ -371,16 +394,23 @@ class LSTFileParser:
 
         OTHER can be 'TOTAL MASS', etc., as per the other lines within the block
 
+
+        Arguments
+        ---------
+        itimestep : int
+            The timestep index (1-based, same as appears in file).
+
+        ispecies : int
+            The solute species index (1-based, same as appears in file).
         """
 
         ret = {}
 
-        m = _FILTER['mass_storage'].search(self._txt,
-                self._tsloc[itimestep],
-                self._tsloc[itimestep+1])
-
-        if not m:
-            raise RuntimeError(f'No mass storage match found at ts={itimestep}')
+        massbalblock = self._find_mass_balance_species(itimestep, ispecies)
+        m = _FILTER['mass_storage'].search(massbalblock)
+        if m is None:
+            raise RuntimeError(f'No mass storage match for species {ispecies} '\
+                    f'found at ts={itimestep}')
 
         for mm in _FILTER['mass_storage_domains'].finditer(m['domains']):
             if mm['dname']:
@@ -398,24 +428,24 @@ class LSTFileParser:
 
         return ret
 
-    def get_mass_balance(self, itimestep=1):
+    def get_mass_exchange(self, itimestep=1, ispecies=1):
         """Return a dictionary of { BC_name:(Q_in, Q_out, Q_net, Domain), .. }
 
         The rates of mass exchange
+
+        Arguments
+        ---------
+        itimestep : int
+            The timestep index (1-based, same as appears in file).
+
+        ispecies : int
+            The solute species index (1-based, same as appears in file).
         """
 
-        m = list( _FILTER['mass_exchange'].finditer(self._txt,
-                self._tsloc[itimestep],
-                self._tsloc[itimestep+1]) )
-
+        massbalblock = self._find_mass_balance_species(itimestep, ispecies)
+        m = _FILTER['mass_exchange'].search(massbalblock)
         if not m:
-            raise RuntimeError(f'No mass balance match found at ts={itimestep}')
-
-        # Return the final fluid balance block within the timestep.
-        # There may be more than one such block if the flow or
-        # transport solution breaks the "multiplier" criterion and the
-        # step is repeated with a reduced step size
-        m = m[-1]
+            raise RuntimeError(f'No mass exchange match found at ts={itimestep}')
 
         ret = {}
 
@@ -428,6 +458,11 @@ class LSTFileParser:
         ret[m['tot']] = float(m['totval'])
 
         return ret
+
+    def get_mass_balance(self, itimestep=1):
+        warnings.warn('Use get_mass_exchange. This method will dissapear soon.',
+            FutureWarning, stacklevel=2)
+        return self.get_mass_exchange(itimestep)
 
     def get_flow_solver_iterations(self, itimestep=1):
 
@@ -469,3 +504,11 @@ class LSTFileParser:
         if m:
             return int(m.group(1))
         return 0
+
+class LSTFileParser(LSTFile):
+    """Same as `LSTFile`, but deprecated"""
+    def __init__(self, *args, **kwargs):
+        _msg = 'Use pyhgs.parser.LSTFile. This class will disappear soon!'
+        warnings.warn(_msg, FutureWarning, stacklevel=2)
+        super().__init__(*args, **kwargs)
+
