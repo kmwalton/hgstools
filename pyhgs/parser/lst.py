@@ -9,7 +9,7 @@ from itertools import count
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
 
 _ERRORS_FILTER = [
     re.compile(r'^(?P<name>W0SOLV): (?P<message>.*)$', flags=re.M),
