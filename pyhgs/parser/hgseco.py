@@ -1,12 +1,33 @@
 """A parser for RFGen grids from a grok .eco file"""
 
-import re,sys,copy
-from ofracs import *
+import os
+import re
+import copy
+from decimal import Decimal as D
+from ofracs import OFracGrid
 
 class NotValidHGSEcoInputError(Exception):
     """Exception raised if input file is not valid"""
     pass
 
+
+_tags = {
+    'zones_pm_prop':(
+        lambda txt:
+           list( map( 
+             lambda v: (int(v[0]), v[1].strip(),),
+             re.findall(
+              r'Porous media zone\s+(\d+)\s+' +
+              r'has properties of(?ms:\s)+(\S.*)',
+              txt, flags=re.I)
+           ))
+        ),
+    'zones_pm':(lambda txt:
+        max([1,] + list(map(int, re.findall(
+            r'Total number of porous media zones now\s+(\d+)',
+            txt, flags=re.I))))
+        ),
+}
 
 class HGSEcoFileParser:
 
@@ -15,12 +36,41 @@ class HGSEcoFileParser:
       #data file given on command line
       if not fnin.endswith('o.eco'):
             fnin += 'o.eco'
-      fin = None
-      try:
-          fin = open( fnin, 'r' )
-      except FileNotFoundError:
-          raise NotValidHGSEcoInputError(f'Could not open {fnin}')
+
+      if not os.path.isfile(fnin):
+         raise NotValidHGSEcoInputError(f'Could not open {fnin}')
+
       self._fnin = fnin
+
+      # load whole file into memory
+      with open(self._fnin) as fin:
+         self.txt = fin.read()
+
+   def get_n_zones(self):
+      '''Return the number of 'new zone's created.'''
+      return _tags['zones_pm'](self.txt)
+
+   def get_pm_zone_properties(self):
+      '''Return a list of (zone id#, material name)'''
+      return _tags['zones_pm_prop'](self.txt)
+
+   def get_output_times(self):
+      '''Return a list of output times'''
+
+      reOTimes = re.compile(r'OUTPUT TIME:\s+([0-9.]+)')
+      # TODO add lookahead assertion that 'e' is not part of 'end'
+      #reOTimes = re.compile(r'^OUTPUT TIME: *([0-9.eEdD+-]+)')
+
+      times_raw = reOTimes.findall(self.txt)
+
+      self.outputTimes = list(map(D, times_raw))
+
+      return self.outputTimes
+
+
+   def getOFracGrid(self):
+
+      fin = open(self._fnin, 'r')
 
       m = None    # re match object
       line = fin.readline()
@@ -136,6 +186,4 @@ class HGSEcoFileParser:
 
       # make the OFracGrid object
       self.fxnet = OFracGrid( gl=gridlines, fx=fracsHere )
-
-   def getOFracGrid(self):
       return copy.deepcopy( self.fxnet )
