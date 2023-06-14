@@ -99,7 +99,7 @@ class TestCLI(unittest.TestCase):
                 self.assertEqual(oth,'.blahblah')
 
 
-        os.chdir(owd)
+            os.chdir(owd)
 
 
     def test_argparse_action(self):
