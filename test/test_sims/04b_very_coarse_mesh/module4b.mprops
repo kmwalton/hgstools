@@ -13,7 +13,7 @@ porosity
 
 end material
 !------------------------------------------
-porous medium 2
+Porous Medium 2
 
 k isotropic
 8e-10
@@ -21,7 +21,7 @@ k isotropic
 specific storage                
 0.0008
 
-porosity
+Porosity
 0.2     
 
 end material

@@ -18,22 +18,48 @@ import io
 import pprint
 import argparse
 import pickle
+import copy
 from more_itertools import grouper
 
+# idea from
+# https://stackoverflow.com/questions/3296499/case-insensitive-dictionary-search
+class CaseInsensitiveDict(dict):
+    def __init__(self, d=dict()):
+        self._d = d
+        self._s = dict((k.lower(), k) for k in d.keys())
+        if len(self._s) != len(self._d):
+            raise ValueError('>=2 keys in d map to the same value')
+    def __contains__(self, k):
+        return k.lower() in self._s
+    def __len__(self):
+        return len(self._s)
+    def __iter__(self):
+        return iter(self._s)
+    def __getitem__(self, k):
+        return self._d[self._s[k.lower()]]
+    def actual_key_case(self, k):
+        return self._s.get(k.lower())
+    def __setitem__(self, k, v):
+        self._d[k] = v
+        self._s[k.lower()] = k
+    def __str__(self):
+        return str(self._d)
+
 def _parse_mat(mat_str):
-   """Parse simple name\\nvalue pairs"""
+   """Parse simple name-value pairs"""
    d = dict()
 
    for k,v in grouper(mat_str.strip().split('\n'),2):
-      d[k.lower()] = float(v)
+      d[k] = float(v)
 
-   return d
+   return CaseInsensitiveDict(d)
+   #return d
 
 def parse(file, do_skips=False):
    """Return a dict of material types with dicts of properties
 
-
-   Material types dict is keyed by material name
+   Material types dict is keyed by material name, (and delivered in a case
+           insensitive, dictionary-like datatructure)
    Properties dicts are keyed by property name, where property names are
    converted to lowercase and spaces are turned into underscores.
 
@@ -41,7 +67,7 @@ def parse(file, do_skips=False):
       file : str or file-like
 
       do_skips : bool
-         Ignore lines in skip on/skip off blocks, as HGS would
+         Ignore lines in skip on/skip off blocks, as HGS would.
 
    """
 
@@ -69,12 +95,14 @@ def parse(file, do_skips=False):
    else:
        file_text = re.sub(r'\s*skip\s+(on|off)\s*','\n',file_text)
 
-   mats = dict( map(
-         lambda t: (t[0],_parse_mat(t[1]),),
+   mats = dict(map(
+         lambda t: (t[0].strip(),_parse_mat(t[1]),),
          re.findall(
-            r'^(?P<name>\S+)\n(?P<body>.*?)end material$',
+            r'^(?P<name>\S.*)\n(?ms:(?P<body>.*?))^\s*(?i:end material)$',
             file_text,
-            re.MULTILINE|re.DOTALL) ) )
+            re.MULTILINE) ) )
+
+   mats = CaseInsensitiveDict(mats)
 
    return mats
 
