@@ -196,6 +196,9 @@ class HGSGrid():
             raise ValueError(
                 f'Simulation {prefix} does not have a rectilinear grid')
 
+        self._n2e = dict()
+        """dict with eapping of node index to element index for each domain"""
+
         logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
 
     @staticmethod
@@ -726,6 +729,12 @@ class HGSGrid():
         """Element index (PM only, as `int`) to element grid index"""
         return HGSGrid._to_grid_index(i, self.elshape)
 
+    def ni2eli(self, dom=Domain.PM):
+        """Return map of node index to incident element indices"""
+        if dom not in self._n2e:
+            self._n2e[dom] = self._node2el(dom=dom)
+        return self._n2e[dom]
+
     def make_pm_to_fx_adjacency(self):
         """Return a mapping of PM elements to adjacent fracture elements.
 
@@ -968,6 +977,7 @@ class HGSGrid():
                 return self.hgs_fx_elems['inc']
 
     def choose_elements_block(self, blockspec, allow_partial=False,
+            return_nodes=False,
             dom=Domain.PM):
         """Return a list of elements contained in a 3D block
 
@@ -983,7 +993,18 @@ class HGSGrid():
             True, interseciton of an element's corner, edge, face, or some
             partial volume with the block is sufficient for it to be included
             within the returned set
+
+        Returns a list of elements in ascending order. If `return_nodes` is
+        `True`, then return a 2-tuple of the list of elements and the list of
+        nodes, each in increasing order.
         """
+        # guard against old code specifying a domain as a positional parameter
+        # (where return_nodes is omitted) which gets interpreted as a bool for
+        # return_nodes
+        if type(return_nodes) != bool:
+            raise ValueError(
+                f'return_nodes must be a bool, not {type(return_nodes)}')
+
         dom = Domain.a2D(dom)
 
         _nodes = self.choose_nodes_block(blockspec, dom)
@@ -991,18 +1012,23 @@ class HGSGrid():
         _els = set(chain.from_iterable(_n2el[_] for _ in _n2el))
         _inc = self._get_inc(dom, True)
 
+        def make_ret(n,e):
+            if return_nodes:
+                return (list(sorted(e)),list(sorted(n)))
+            return list(sorted(e))
+
         # early exit
         if allow_partial:
-            return list(sorted(_els))
+            return make_ret(_nodes,_els)
 
+        # cull out elements who's node set is not fully in the block
         ret = set()
-
         for iel in _els:
             _elinc = _inc[iel]
             if _elinc.size == np.intersect1d(_elinc,_nodes,True).size:
                 ret.add(iel)
 
-        return list(sorted(ret))
+        return make_ret(_nodes,ret)
 
     def _ipm2ifrac(self,i):
         """Return the fracture index coincident with the given index to PM

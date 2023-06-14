@@ -220,6 +220,13 @@ class Test_HGSGrid(unittest.TestCase):
 
             self.assertEqual(g._node2el(59)[59], {19,}) 
 
+        with self.subTest('Public method'):
+            n2e = g.ni2eli('PM')
+            self.assertEqual(n2e[53], {19,})
+            self.assertEqual(n2e[59], {19,})
+            self.assertEqual(n2e[13], {0,1,6,5})
+            self.assertEqual(n2e[17], {4,9})
+
     @unittest.skipIf(
         skip_if_no_sim_output(
             TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
@@ -244,6 +251,13 @@ class Test_HGSGrid(unittest.TestCase):
             _pmi = list(map(pm2fx, [15,0,]))
             _r =g._node2el(_pmi, dom='FRAC')
 
+        with self.subTest('Public method'):
+            n2e = g.ni2eli('FRAC')
+            self.assertEqual(n2e[pm2fx(3)], {4,})
+            self.assertEqual(n2e[pm2fx(36)], {0,})
+            self.assertEqual(n2e[pm2fx(37)], {0,1,})
+            self.assertEqual(n2e[pm2fx(15)], {4,5,8,9})
+            self.assertEqual(n2e[pm2fx(21)], {4,5,8,9})
 
 
     @unittest.skipIf(
@@ -264,12 +278,24 @@ class Test_HGSGrid(unittest.TestCase):
             got = g.choose_elements_block('9,21,0,1,11,21')
             self.assertEqual(got, [11,], 'strict inside capture')
 
+            got = g.choose_elements_block('10,20,0,1,12,20', False, True)
+            self.assertEqual(
+                    got,
+                    ([11,],
+                     [25,26,31,32,37,38,43,44,]))
+
         with self.subTest('partial capture'):
             got = g.choose_elements_block('10,20,0,1,12,20', True)
             self.assertEqual(got, [5,6,7,10,11,12,15,16,17,]) 
 
             got = g.choose_elements_block('10,20,0,1,12,20', True)
             self.assertEqual(got, [5,6,7,10,11,12,15,16,17,])
+
+            got = g.choose_elements_block('10,20,0,1,12,20', True, True)
+            self.assertEqual(
+                    got,
+                    ([5,6,7,10,11,12,15,16,17,],
+                     [25,26,31,32,37,38,43,44,]))
 
     @unittest.skipIf(
         skip_if_no_sim_output(
@@ -278,14 +304,28 @@ class Test_HGSGrid(unittest.TestCase):
     def test_choose_elements_block_fx(self):
 
         g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+        pm2fx = g._ipm2ifrac
 
         with self.subTest('full capture'):
             got = g.choose_elements_block('25,25,0,1,0,6', dom='FRAC')
             self.assertEqual(got, [4,])
 
+            got = g.choose_elements_block('10,20,0,1,20,20', False, True,
+                    dom='FRAC')
+            self.assertEqual(got,
+                    ([1,], sorted(list(map(pm2fx, [37,38,43,44,])))))
+
         with self.subTest('partial capture'):
-            got = g.choose_elements_block('25,25,0,1,0,6', True, 'FRAC')
+            got = g.choose_elements_block('25,25,0,1,0,6', True, dom='FRAC')
             self.assertEqual(got, [4,5,8,9,])
+
+            got = g.choose_elements_block('10,20,0,1,20,20', True, True,
+                    dom='FRAC')
+            self.assertEqual(got,
+                    ([0,1,2,], sorted(list(map(pm2fx, [37,38,43,44,])))))
+
+        with self.assertRaises(ValueError):
+            g.choose_elements_block('10,20,0,1,20,20', True, 'FRAC')
 
 if __name__ == '__main__':
     unittest.main()
