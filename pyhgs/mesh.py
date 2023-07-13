@@ -94,11 +94,12 @@ def D_AP(v):
 def toDTuple(s):
     """Return a tuple of coordinate precision Decimals
 
-    Arguments:
-        s : str or list-like
-            strs must look like a list of numbers tuple, like '(x,y,z)',
-            'x y z', 'x,y z', or '[u, v, w x y z'
-            list-likes must be a sequence of number-like things.
+    Parameters
+    ----------
+    s : `str` or list-like
+        strs must look like a list of numbers tuple, like '(x,y,z)',
+        'x y z', 'x,y z', or '[u, v, w x y z'
+        list-likes must be a sequence of number-like things.
     """
 
     ivals = iter([0,0,0,])
@@ -291,17 +292,18 @@ class HGSGrid():
 
     def get_coords(self, iel, dom=Domain.PM):
         """
-            Arguments:
+            Parameters
+            ----------
+            iel : int or tuple
+                Scalar index, or
+                Grid index triple, (ix, iy, iz), for appropriate
+                domain types.
 
-                iel : int or tuple
-                    Scalar index, or
-                    Grid index triple, (ix, iy, iz), for appropriate
-                    domain types.
-
-            Returns:
-                Nodal coordinates (x0,y0,z0), or
-                Tuple of bounding nodal coordinates
-                    `( (x0,y0,z0), (x1,y1,z1), ... )` that bound the element
+            Returns
+            -------
+            Nodal coordinates (x0,y0,z0), or
+            Tuple of bounding nodal coordinates
+                `( (x0,y0,z0), (x1,y1,z1), ... )` that bound the element
         """
         dom = Domain.a2D(dom)
 
@@ -327,20 +329,19 @@ class HGSGrid():
     def get_nodal_vals(self, data, dom=Domain.PM):
         """Return an array with nodal data values.
 
-        Arguments:
-            data : str or `numpy.ndarray`
-                1) Datafile name (str) that will be read by
-                   `pyghs.parser.parse()`
-                2) Data in numpy.ndarray indexed by node.
-
-            dom : pyhgs.mesh.Domain
-                Domain on which to operate
-
-            method : function (optional)
-                A function that accepts n values from the incident nodes of an
-                element to compute the combined value.
-                Default: n-point average, where n is the number of nodes per
-                element.
+        Parameters
+        ----------
+        data : `str` or `numpy.ndarray`
+            1) Datafile name (str) that will be read by
+               `pyghs.parser.parse()`
+            2) Data in numpy.ndarray indexed by node.
+        dom : {`Domain.PM`, `Domain.FRAC`, "pm", "frac"}
+            Domain on which to operate
+        method : function (optional)
+            A function that accepts n values from the incident nodes of an
+            element to compute the combined value.
+            Default: n-point average, where n is the number of nodes per
+            element.
         """
         dom = Domain.a2D(dom)
 
@@ -374,15 +375,16 @@ class HGSGrid():
         array (of the same shape as the elements in the requested domain)
         with each entry being one of those three zonedata values.
 
-        Arguments:
-            zonedata : 1D array
-                Array, where index is equal to the zone number, of the datum for
-                each zone.
+        Parameters
+        ----------
+        zonedata : 1D array
+            Array, where index is equal to the zone number, of the datum for
+            each zone.
 
-            .. Note::
-                Zone indices typically start at index 1 (unless HGS' special
-                "zone zero" is applied), so the normal use case is to pad
-                index zero of the input zonedata array with a junk data value.
+        .. Note::
+            Zone indices typically start at index 1 (unless HGS' special
+            "zone zero" is applied), so the normal use case is to pad
+            index zero of the input zonedata array with a junk data value.
         """
         dom = Domain.a2D(dom)
 
@@ -401,20 +403,19 @@ class HGSGrid():
     def get_element_vals(self, data, dom=Domain.PM, method=None):
         """Return an array with nodal data values calculated per element.
 
-        Arguments:
-            data :
-                1) Datafile name (str) that will be read by
-                   `pyghs.parser.parse()`
-                2) Data in numpy.ndarray indexed by node.
-
-            dom : pyhgs.mesh.Domain
-                Domain on which to operate
-
-            method : function (optional)
-                A function that accepts n values from the incident nodes of an
-                element to compute the combined value.
-                Default: n-point average, where n is the number of nodes per
-                element.
+        Parameters
+        ----------
+        data :
+            1) Datafile name (str) that will be read by
+               `pyghs.parser.parse()`
+            2) Data in numpy.ndarray indexed by node.
+        dom : `pyhgs.mesh.Domain`
+            Domain on which to operate
+        method : function, optional
+            A function that accepts n values from the incident nodes of an
+            element to compute the combined value.
+            Default: n-point average, where n is the number of nodes per
+            element.
         """
         dom = Domain.a2D(dom)
 
@@ -679,14 +680,17 @@ class HGSGrid():
     def find_grid_index(self, *args):
         """Get a grid index (ix,iy,iz) given coordinate or node number
 
-        Arguments:
-            x, y, z : float
-                The (x,y,z) coordinate to find, or
-            inode : int
-                The node index number (0-based).
+        Parameters
+        ----------
+        x, y, z : float
+            The (x,y,z) coordinate to find, or
+        inode : int
+            The node index number (0-based).
 
-        Returns:
-            numpy.array([ix,iy,iz],int32), the grid-line triple (0-based).
+        Returns
+        -------
+        numpy.array([ix,iy,iz],int32)
+            the grid-line triple (0-based).
         """
         i = [-1,-1,-1,]
         gl = self.get_grid_lines()
@@ -740,13 +744,15 @@ class HGSGrid():
 
         Returns
         -------
-        A `defaultdict`-like object, where keys are PM element indices and
-        values are `list`s of fracture element indices. The dictionary does not
-        hold entries for PM elements that have no neighbouring fractures; when
-        such an element is requested, an empty `list` is returned as the value.
 
-        PM element indices can be a 0-based integer index, or a `tuple` of
-        0-based element grid indices.
+        A `defaultdict`-like object
+            Keys are PM element indices and
+            values are `list`s of fracture element indices. The dictionary does not
+            hold entries for PM elements that have no neighbouring fractures; when
+            such an element is requested, an empty `list` is returned as the value.
+            <br><br>
+            PM element indices can be a 0-based integer index, or a `tuple` of
+            0-based element grid indices.
         """
 
         if hasattr(self, '_pme2fxe'):
@@ -797,28 +803,27 @@ class HGSGrid():
             domains=(Domain.PM,)):
         """Generate supersample groups for the requested domains
 
-        Arguments
-        ---------
-
-        maxd : `float` or list_like, optional
+        Parameters
+        ----------
+        maxd : `float` or list-like, optional
             The supersampling distance, or 3-tuple of distances to be applied to
             the x- y- and z- domains respectively
-
-        groups : list_like, optional
+        groups : list-like, optional
             A 3-tuple, one entry for each dimension of the grid, of lists of
             (lo,hi PM-grid element index)-tuples of ready-made supersample
             groups. If groups are not specified, then they will be created
             according to the `maxd` argument.
-
         domains : list-like of `pyhgs.mesh.Domain`, optional
             List of domains to create supersample groups
 
         Returns
         -------
-        A generator over tuples of distance groups.
+        A generator over tuples of 'distance groups'.
 
+
+        Notes
+        -----
         'Distance groups' are:
-
         - for `Domain.PM`, tuples of `((ixlo, ixhi), (iylo, iyhi), (izlo, izhi),)`,
             which are lo (inclusive) and hi (exclusive) indicies into the PM element
             grid in the respective directions, thus defining a block of space;
@@ -981,22 +986,26 @@ class HGSGrid():
             dom=Domain.PM):
         """Return a list of elements contained in a 3D block
 
-
-        Arguments
-        ---------
+        Parameters
+        ----------
         blockspec : str
             Some specification of a 3D block: 1) As a string, "x1 x2 y1 y2 z1
             z2".
-
         allow_partial : bool
             If False, the element must be fully contained within the block. If
             True, interseciton of an element's corner, edge, face, or some
             partial volume with the block is sufficient for it to be included
             within the returned set
+        dom : {`Domain.PM`, `Domain.FRAC`, 'pm', 'frac'}
 
-        Returns a list of elements in ascending order. If `return_nodes` is
-        `True`, then return a 2-tuple of the list of elements and the list of
-        nodes, each in increasing order.
+        Returns
+        -------
+        `[element indices...]`, sorted in ascending order, or
+        `([element indices...], [node indices...])`
+            If `return_nodes` is `True`, then return a 2-tuple of the list of
+            elements and the list of nodes, each in increasing order. The nodes
+            returned here are within or on the edge of `blocspec` (i.e., _not_
+            a the full set of nodes adjacent to the elements).
         """
         # guard against old code specifying a domain as a positional parameter
         # (where return_nodes is omitted) which gets interpreted as a bool for
@@ -1043,8 +1052,8 @@ class HGSGrid():
     def _node2el(self, nodes=None, dom=Domain.PM):
         """Return a mapping of nodes to incident elements
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         nodes : array-like
             Return a mapping for the given subset of nodes. Assumes that node
             indicies are given relative to the given domain (i.e., not the total
@@ -1121,17 +1130,19 @@ def make_supersample_distance_groups(dx, maxd):
     creating a new spatial regions that are greater in size than each original
     cell by combining neigboring cells.
 
-    Arguments:
-        dx : list
-            List of distances that represent "cell" widths, or increments
-            between grid lines.
+    Parameters
+    ----------
+    dx : list
+        List of distances that represent "cell" widths, or increments
+        between grid lines.
+    maxd : float
+        A value representing the maximum distance/size of the group along
+        this dx-axis set.
 
-        maxd : float
-            A value representing the maximum distance/size of the group along
-            this dx-axis set.
-
-    Returns:
-        The list [ (istart,iend], ... ] where no istart,end chunk is contained
+    Returns
+    -------
+    [ (istart,iend], ... ]
+        where no istart,end chunk is contained
         in any other. Each of the original increments is represented one or more
         times. In cases where an increment, idx, exceeds maxd, it will be
         represented in a zero-length chunk (idx,idx).
@@ -1209,8 +1220,8 @@ def supersample( groups, d, *more_d, weights=None ):
     in **groups**, where it assumed that the dimension and size of **d** is in
     accord with the number of groupings in **groups**.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     groups : list_like
         Length of list must be equal to the number of axes in **d**; entries in
         the list must be list-likes of 3D element-grid start and end indices that
@@ -1333,8 +1344,8 @@ def supersample( groups, d, *more_d, weights=None ):
 def _pa(a, b):
     """Return the parallelogram area of the R^3 vectors in a and b
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     a, b, : arrays of R^3 triples 
         i.e. shape is (N,3), where (x,y,z) is in axis 1
 
