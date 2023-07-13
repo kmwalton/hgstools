@@ -1004,7 +1004,7 @@ $!GlobalContour  1
     XYPos
       {
       X = 97.383
-      Y = 89.284
+      Y = 89.567
       }
     NumberTextShape
       {
@@ -1820,6 +1820,18 @@ $!Linking
     LinkSolutionTime = Yes
     Link3DView = Yes
     }
+$!AttachText 
+  AnchorPos
+    {
+    X = 99.00779588944013
+    Y = 98.86605244507444
+    }
+  TextShape
+    {
+    IsBold = No
+    }
+  Anchor = HeadRight
+  Text = '<i>t</i> = &(SolutionTime)'
 ### Frame Number 3 ###
 $!CreateNewFrame 
 $!FrameLayout 
@@ -3589,5 +3601,5 @@ $!AttachText
     }
   Text = '(1-based)'
 $!FrameControl ActivateByNumber
-  Frame = 4
+  Frame = 2
 $!SetStyleBase Config
