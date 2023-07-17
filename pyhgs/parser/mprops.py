@@ -24,6 +24,7 @@ from more_itertools import grouper
 # idea from
 # https://stackoverflow.com/questions/3296499/case-insensitive-dictionary-search
 class CaseInsensitiveDict(dict):
+    _printnesting = 0
     def __init__(self, d=dict()):
         self._d = d
         self._s = dict((k.lower(), k) for k in d.keys())
@@ -43,7 +44,24 @@ class CaseInsensitiveDict(dict):
         self._d[k] = v
         self._s[k.lower()] = k
     def __str__(self):
-        return str(self._d)
+
+        _lev = CaseInsensitiveDict._printnesting
+        _sep = '\n' + _lev*'\t'
+
+        CaseInsensitiveDict._printnesting += 1
+
+        ret = ''
+        if _lev > 0:
+            ret += _sep
+
+        ret += _sep.join(f'{k}: {v}' for k,v in self._d.items())
+
+        CaseInsensitiveDict._printnesting -= 1
+
+        return ret
+
+    def __repr__(self):
+        return f'<CaseInsensitiveDict object at {hex(id(self))}>'
 
 def _parse_mat(mat_str):
    """Parse simple name-value pairs"""
@@ -74,9 +92,9 @@ def parse(file, do_skips=False):
    file_text = ''
    if type(file) is str:
       with open(file,'r') as fin:
-         file_text = fin.read().strip()
+         file_text = fin.read()
    elif isinstance(file, io.TextIOBase):
-      file_text = file.read().strip()
+      file_text = file.read()
    else:
       raise ValueError('Expecting string or text stream in "file",'\
               f' not {type(file)}')
@@ -85,7 +103,7 @@ def parse(file, do_skips=False):
    file_text = re.sub('\!.*?\n','\n',file_text)
 
    # get rid of trailing whitespace, leading space, multiple newlines
-   file_text = re.sub(r'\s*\n\s*','\n',file_text)
+   file_text = re.sub(r'\s*\n\s*','\n',file_text).strip()
 
    # parse-out skip on/skip off lines so non-standard definitions prevail
    if do_skips:
