@@ -5,7 +5,6 @@ import re
 import copy
 from decimal import Decimal as D
 from ofracs import OFracGrid
-import warnings
 
 class NotValidHGSEcoInputError(Exception):
     """Exception raised if input file is not valid"""
@@ -187,10 +186,4 @@ class EcoFile:
       # make the OFracGrid object
       self.fxnet = OFracGrid( gl=gridlines, fx=fracsHere )
       return copy.deepcopy( self.fxnet )
-
-class HGSEcoFileParser(EcoFile):
-    def __init__(self, *args, **kwargs):
-        warnings.warn('This class is deprecated and will be removed soon. '\
-            'Use EcoFile instead')
-        super().__init__(*args, **kwargs)
 
