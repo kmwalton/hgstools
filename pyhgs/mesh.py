@@ -3,16 +3,19 @@
 
 *Example 1:* Get data from your HGS simulations in as easy as three lines...
 
-    # imports
+    # Imports
     from pyhgs.mesh import HGSGrid, Domain
 
     # get the required grid information
     grid = HGSGrid('pfx')
 
-    # read data!
+    # Read data!
     head_n = grid.get_nodal_vals('pfxo.head_pm.0001')
     conc_fx_el = grid.get_element_vals('pfxo.conc_pm.salt.0009', Domain.FRAC)
 
+    # Find out which fracture node is incident with a pm node
+    # Fracture nodes are indexed starting at zero (whereas the orginal datafile
+    # o.coordinates_frac starts indexing at the number of PM nodes + 1).
 
 Notes
 -----
@@ -46,6 +49,9 @@ from decimal import Decimal
 from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
+
+
+import warnings
 
 import numpy as np
 from numpy.linalg import norm
@@ -142,6 +148,23 @@ class Domain(IntEnum):
 
         raise ValueError(f'Cannot build a Domain from {a}')
 
+class _WarningDict(dict):
+    def __init__(self, *args, **kwargs):
+        self.warn_on = dict()
+        """
+        dict of key:param_list that will produce warnings when key is retrieved
+
+        param_list must be valid argument to the call
+        `warnings.warn(*param_list)`
+        """
+        super().__init__(*args, **kwargs)
+
+    def __getitem__(self, k):
+        if k in self.warn_on:
+            warnings.warn(*self.warn_on[k])
+        return super().__getitem__(k)
+
+
 
 class HGSGrid():
     '''Inspect a Hydrogeosphere rectilinear grid'''
@@ -187,6 +210,34 @@ class HGSGrid():
             self.hgs_fx_elems = parse_elements_frac(prefix)
             self.nfn = self.hgs_fx_nodes['nnfrac']
             self.nfe = self.hgs_fx_elems['nfe']
+
+            # ..Notes::
+            #
+            # hgs_fx_nodes['link_pm2frac'] holds index values > the number of pm
+            # nodes, i.e., the "global ordering" range.
+            #
+            self.hgs_fx_nodes['link_pm2frac'] -= self.nn
+
+            # hgs_fx_elems['inc'] holds index values of PM nodes. Modify this to
+            # hold fracture node indices
+            _link = self.hgs_fx_nodes['link_pm2frac'] #alias
+            _new_inc = np.fromiter(
+                (_link[i] for i in self.hgs_fx_elems['inc'].flatten()),
+                count=self.nfe*self.hgs_fx_elems['nln'],
+                dtype=np.int32,
+                )
+            self.hgs_fx_elems['inc'] = \
+                _new_inc.reshape(-1,self.hgs_fx_elems['nln'])
+
+            # turn on warnings
+            self.hgs_fx_nodes = _WarningDict(self.hgs_fx_nodes)
+            self.hgs_fx_nodes.warn_on['link_pm2frac'] = [
+                '0-based, fracture node indicies held here', UserWarning, 2,]
+
+            self.hgs_fx_elems = _WarningDict(self.hgs_fx_elems)
+            self.hgs_fx_elems.warn_on['inc'] = [
+                '0-based, fracture node indicies held here', UserWarning, 3,]
+
 
         self.shape = tuple(self.hgs_pm_nodes[a] for a in ['nx','ny','nz'])
         """Shape of the PM node grid"""
@@ -280,8 +331,13 @@ class HGSGrid():
             raise NotImplementedError()
 
         elif dom == Domain.FRAC:
+            with warnings.catch_warnings():
+                #targeting the warning of the 0-based fracture node indices
+                warnings.simplefilter('ignore')
+                _inc = self.hgs_fx_elems['inc']
+
             for inc,ap,zn in zip(
-                self.hgs_fx_elems['inc'],
+                _inc,
                 self.hgs_fx_elems['ap'],
                 self.hgs_fx_elems['zone'] ):
 
@@ -289,6 +345,20 @@ class HGSGrid():
 
         else:
             raise NotImplementedError(f'Not implemented for {dom}')
+
+
+    def get_elements_data(self, dom):
+        """
+        """
+        dom = Domain.a2D(dom)
+
+        if dom == Domain.PM:
+            return self.hgs_pm_elems
+        elif dom == Domain.FRAC:
+            return self.hgs_fx_elems
+        else:
+            raise ValueError(f'Domain {dom} not allowed')
+
 
     def get_coords(self, iel, dom=Domain.PM):
         """
@@ -326,6 +396,57 @@ class HGSGrid():
             raise NotImplementedError(f'Not implemented for {dom}')
         
 
+    #
+    # Several helper methods to determine the type of data in an array and its
+    # domain
+    #
+    def _is_PM_grid(self, dd):
+        return dd.ndim > 2
+    def _is_FRAC_scalar(self, dd, n):
+        return dd.ndim == 1 and dd.size == n # 1D, scalar
+    def _is_FRAC_vector(self, dd, n):
+        return dd.ndim == 2 and dd.shape[-1] == 3 and dd.size == 3*n # 1D, vector
+    def _is_PM_scalar(self, dd, n):
+        return any([dd.ndim == 3 and dd.size == n, # 3D, scalar
+                dd.ndim == 1 and dd.size == n, # 1D, scalar
+        ])
+    def _is_PM_vector(self, dd, n):
+        return any([
+            dd.ndim == 4 and dd.shape[-1] == 3 and dd.size == 3*n, # 3D, vector
+            dd.ndim == 2 and dd.shape[-1] == 3 and dd.size == 3*n, # 1D, vector
+        ])
+    def _is_PM_nodal_scalar(self, dd):
+        return self._is_PM_scalar(dd,self.nn)
+    def _is_PM_nodal_vector(self, dd):
+        return self._is_PM_vector(dd,self.nn)
+    def _is_PM_nodal(self, dd):
+        return self._is_PM_nodal_scalar(dd) or self._is_PM_nodal_vector(dd)
+
+    def _is_PM_elemental_scalar(self, dd):
+        return self._is_PM_scalar(dd,self.ne)
+    def _is_PM_elemental_vector(self, dd):
+        return self._is_PM_vector(dd,self.ne)
+    def _is_PM_elemental(self, dd):
+        return self._is_PM_elemental_scalar(dd) \
+            or self._is_PM_elemental_vector(dd)
+              
+
+    def _is_FRAC_nodal_scalar(self, dd):
+        return self._is_FRAC_scalar(dd,self.nfn)
+    def _is_FRAC_nodal_vector(self, dd):
+        return self._is_FRAC_vector(dd,self.nfn)
+    def _is_FRAC_nodal(self, dd):
+        return self._is_FRAC_nodal_scalar(dd) \
+            or self._is_FRAC_nodal_vector(dd)
+    def _is_FRAC_elemental_scalar(self, dd):
+        return self._is_FRAC_scalar(dd,self.nfe)
+    def _is_FRAC_elemental_vector(self, dd):
+        return self._is_FRAC_vector(dd,self.nfe)
+    def _is_FRAC_elemental(self, dd):
+        return self._is_FRAC_elemental_scalar(dd) \
+            or self._is_PM_elemental_vector(dd)
+
+
     def get_nodal_vals(self, data, dom=Domain.PM):
         """Return an array with nodal data values.
 
@@ -337,11 +458,6 @@ class HGSGrid():
             2) Data in numpy.ndarray indexed by node.
         dom : {`Domain.PM`, `Domain.FRAC`, "pm", "frac"}
             Domain on which to operate
-        method : function (optional)
-            A function that accepts n values from the incident nodes of an
-            element to compute the combined value.
-            Default: n-point average, where n is the number of nodes per
-            element.
         """
         dom = Domain.a2D(dom)
 
@@ -355,15 +471,25 @@ class HGSGrid():
         if dom == Domain.PM:
             logger.debug(f'Nodal values being reshaped to {self.shape}')
             # hope we get a view instead of a copy
+            if not self._is_PM_nodal(d):
+                raise ValueError(
+                    'data is incompatible wiht PM nodal data shape/size')
             ret = d.reshape(self.shape,order='F')
 
         elif dom == Domain.FRAC:
             logger.debug('Nodal values being reshaped to '
                     + f'{self.hgs_fx_nodes["link_frac2pm"].shape}')
-            ret = d.flatten(order='F')[self.hgs_fx_nodes['link_frac2pm']]
+
+            if self._is_PM_nodal(d):
+                ret = d.flatten(order='F')[self.hgs_fx_nodes['link_frac2pm']]
+            elif self._is_FRAC_nodal(d):
+                ret = data
+            else:
+                raise ValueError(
+                    'data is incompatible with fracture nodal data size/shape')
 
         else:
-            raise NotImplementedError(f'Not implemented for {dom!s}')
+            raise NotImplementedError(f'Not implemented for domain {dom.name}')
 
         return ret
 
@@ -446,11 +572,15 @@ class HGSGrid():
         # data, reshaped for sole argument to func, or error flag if None
         dd = None
 
+
         if dom == Domain.PM:
 
             def _grid_8pt_avg(a):
                 """Do a non-weighted 8 point average of 3D array a"""
-                return ( a[:-1,:-1,:-1]
+                if not self._is_PM_grid(a):
+                    raise ValueError('Must be passed in 3D or 4D')
+                if a.ndim == 3:
+                  return ( a[:-1,:-1,:-1]
                     + a[ 1:,:-1,:-1]
                     + a[:-1, 1:,:-1]
                     + a[ 1:, 1:,:-1]
@@ -458,64 +588,66 @@ class HGSGrid():
                     + a[ 1:,:-1, 1:]
                     + a[:-1, 1:, 1:]
                     + a[ 1:, 1:, 1:] ) / 8.
+                elif a.ndim == 4:
+                  return ( a[:-1,:-1,:-1,:]
+                    + a[ 1:,:-1,:-1,:]
+                    + a[:-1, 1:,:-1,:]
+                    + a[ 1:, 1:,:-1,:]
+                    + a[:-1,:-1, 1:,:]
+                    + a[ 1:,:-1, 1:,:]
+                    + a[:-1, 1:, 1:,:]
+                    + a[ 1:, 1:, 1:,:] ) / 8.
 
 
-            if len(d.shape) == 1:
-                # flat ordering
+            if self._is_PM_nodal_scalar(d):
+                # 1D array of nodal values passed
+                # Transform to 3D
+                dd = d.reshape(self.shape,order='F')
+                func = _grid_8pt_avg
 
-                if d.size == self.nn:
-                    # 1D array of nodal values passed
-                    # Transform to 3D
-                    dd = d.reshape(self.shape,order='F')
-                    func = _grid_8pt_avg
+            elif self._is_PM_elemental_scalar(d):
+                # 1D array of elemental values passed
+                # Transform to 3D
+                # set method to Identity
+                dd = d.reshape(self.elshape,order='F')
 
-                elif d.size == self.ne:
-                    # 1D array of elemental values passed
-                    # Transform to 3D
-                    # set method to Identity
-                    dd = d.reshape(self.elshape,order='F')
+            elif self._is_PM_nodal_vector(d):
+                # Assume that a flat list of triples have been passed
+                # Transform this to 4-dimensional data and perform 'method' for
+                # each index in the 4th dimension
+                dd = d.reshape(self.shape+(3,), order='F')
+                func = _grid_8pt_avg
 
-            elif len(d.shape) == 2:
-                # flat ordering of tuples
-
-                if d.size == d.shape[1]*self.nn:
-                    # Assume that a flat list of triples have been passed
-                    # Transform this to 4-dimensional data and perform 'method' for
-                    # each index in the 4th dimension
-                    dd = np.ndarray(self.shape+(3,))
-                    for idim in range(d.shape[1]):
-                        dd[:,:,:,idim] = d[:,idim].reshape(self.shape, order='F')
-                    func = _grid_8pt_avg
-
-                elif d.size == d.shape[1]*self.ne:
-                    # Transform this to 4-dimensional data and perform 'method' for
-                    # each index in the 4th dimension
-                    dd = np.ndarray(self.elshape+(3,),dtype=np.float32)
-                    for idim in range(d.shape[1]):
-                        dd[:,:,:,idim] = d[:,idim].reshape(self.elshape, order='F')
-
-            elif len(d.shape) == 3:
-                # 3D grid ordering
-
-                if d.shape == self.shape:
-                    # 3D array of nodal values passed in
-                    # Assume this is already in the correct shape
-                    dd = d
-                    func = _grid_8pt_avg
-
-                elif d.shape == self.elshape:
-                    # Assume already in elemental format
-                    # set method to Identity
-                    dd = d
+            elif self._is_PM_elemental_vector(d):
+                # Transform this to 4-dimensional data and perform 'method' for
+                # each index in the 4th dimension
+                dd = d.reshape((self.elshape+(3,)), order='F')
 
         elif dom == Domain.FRAC:
 
+            with warnings.catch_warnings():
+                #targeting the warning of the 0-based fracture node indices
+                warnings.simplefilter('ignore')
+                _f2p = self.hgs_fx_nodes['link_frac2pm']
+                _finc = self.hgs_fx_elems['inc']
+
             # helper methods
-            def _fx_node_avg(a):
+            def _fx_node_avg_from_pm(a):
                 """a is flattened PM nodal data"""
                 ret = np.zeros(self.nfe)
 
-                for i,fx_inc in enumerate(self.hgs_fx_elems['inc']):
+                for i,fx_inc in enumerate(_finc):
+                    ret[i] = np.sum(a[_f2p[fx_inc]])
+
+                np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
+
+                return ret
+
+            def _fx_node_avg(a):
+                """a is flattened FRAC nodal data"""
+                ret = np.zeros(self.nfe)
+
+                for i,fx_inc in enumerate(_finc):
                     ret[i] = np.sum(a[fx_inc])
 
                 np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
@@ -523,50 +655,39 @@ class HGSGrid():
                 return ret
 
 
-            if len(d.shape) == 1:
-                # flat array
-                if d.size == self.nn:
-                    # data seems to be PM nodal values
-                    dd = d
-                    func = _fx_node_avg
+            if self._is_PM_nodal_scalar(d):
+                # data seems to be PM nodal values
+                dd = d.flatten(order='F')
+                func = _fx_node_avg_from_pm
 
-            elif len(d.shape) == 2:
+            elif self._is_FRAC_nodal_scalar(d):
+                # data seems to be FRAC nodal values
+                dd = d
+                func = _fx_node_avg
+
+            elif self._is_PM_nodal_vector(d):
                 # seems to be flat array of tuples
-                if d.size == d.shape[1]*self.nn:
-                    # data seems to be tuples of PM nodal values
-                    raise NotImplementedError()
-                elif d.size == d.shape[1]*self.nfn:
-                    # data seems to be tuples of frac nodal values
-                    raise NotImplementedError()
-                if d.size == d.shape[1]*self.ne:
-                    # data seems to be tuples of PM element values
-                    raise NotImplementedError()
-                elif d.size == d.shape[1]*self.nfe:
-                    # data seems to be tuples of frac element values
-                    dd = d
-                    
-            elif len(d.shape) == 3:
-                # seems to be grid array of scalars
-                if d.shape == self.shape:
-                    # data seems to be PM nodal values, as grid
-                    dd = d.flatten(order='F')
-                    func = _fx_node_avg
-
-            elif len(d.shape) == 4:
-                # seems to be grid array of tuples
+                # data seems to be tuples of PM nodal values
                 raise NotImplementedError()
 
-            # TODO speed this up?
-            # Determine the orientation of each element so that array
-            # manipulations like above can be used(??)
+            elif self._is_FRAC_nodal_vector(d):
+                # data seems to be tuples of frac nodal values
+                raise NotImplementedError()
 
+            elif self._is_PM_elemental_vector(d):
+                # data seems to be tuples of PM element values
+                raise NotImplementedError()
 
+            elif self._is_FRAC_elemental_vector(d):
+                # data seems to be tuples of frac element values
+                dd = d
+                    
         else:
             raise NotImplementedError(f'Not implemented for {dom}')
 
         if dd is None:
             raise ValueError('Unexpected size/shape found in input data, '
-                f'{d.shape}, for {dom!s}.')
+                f'{d.shape}, for domain {dom.name}.')
 
         return func(dd)
 
@@ -646,6 +767,11 @@ class HGSGrid():
         N = self.hgs_fx_elems['nfe']
         c = self.hgs_pm_nodes['ncoords']
         fxap = self.hgs_fx_elems['ap'] #alias
+        
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
+            _f2p = self.hgs_fx_nodes['link_frac2pm']
 
         # temporary arrays
         fxsz = np.zeros((N,3,3), dtype=np.float32)
@@ -653,9 +779,12 @@ class HGSGrid():
         for i,(inc, izn, ap) in enumerate(
                 self.iter_elements(Domain.FRAC)):
 
-            fxsz[i,0,:] = c[inc[1]]-c[inc[0]]
-            fxsz[i,1,:] = c[inc[2]]-c[inc[0]]
-            fxsz[i,2,:] = c[inc[3]]-c[inc[0]]
+            # pm nodes indices must be used to get coordinates
+            ipm = _f2p[inc]
+
+            fxsz[i,0,:] = c[ipm[1]]-c[ipm[0]]
+            fxsz[i,1,:] = c[ipm[2]]-c[ipm[0]]
+            fxsz[i,2,:] = c[ipm[3]]-c[ipm[0]]
 
         # with help from...
         # https://math.stackexchange.com/questions/128991/
@@ -782,9 +911,14 @@ class HGSGrid():
 
         one = np.eye(3,dtype='int32')
 
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
+            _f2p = self.hgs_fx_nodes['link_frac2pm']
+
         for i,(fnodes, zone, ap) in enumerate(self.iter_elements(Domain.FRAC)):
-            gi0 = self.find_grid_index(fnodes[0])
-            gi2 = self.find_grid_index(fnodes[2])
+            gi0 = self.find_grid_index(_f2p[fnodes[0]])
+            gi2 = self.find_grid_index(_f2p[fnodes[2]])
 
             for a in range(3):
                 if gi0[a] == gi2[a]:
@@ -961,10 +1095,11 @@ class HGSGrid():
             return list(_n.ravel(order='F'))
 
         elif dom == Domain.FRAC:
-            pm2fx = self.hgs_fx_nodes['link_pm2frac']
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                pm2fx = self.hgs_fx_nodes['link_pm2frac']
             _nn = pm2fx[_n.ravel()] # do conversion for this node set
             _nn = _nn[ _nn > -1 ] # cull out nodes that don't map
-            _nn -= self.nn # shift indices to frac domain range
             return list(np.sort(_nn))
 
         else:
@@ -1019,7 +1154,11 @@ class HGSGrid():
         _nodes = self.choose_nodes_block(blockspec, dom)
         _n2el = self._node2el(_nodes, dom)
         _els = set(chain.from_iterable(_n2el[_] for _ in _n2el))
-        _inc = self._get_inc(dom, True)
+
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
+            _inc = self.get_elements_data(dom)['inc']
 
         def make_ret(n,e):
             if return_nodes:
@@ -1039,15 +1178,6 @@ class HGSGrid():
 
         return make_ret(_nodes,ret)
 
-    def _ipm2ifrac(self,i):
-        """Return the fracture index coincident with the given index to PM
-
-        Note that the link_pm2frac array lists fracture index values
-        sequentially after all pm node indices. Values in this array that are
-        less than zero indicate that there is no fracture coincident with the
-        given pm node.
-        """
-        return self.hgs_fx_nodes['link_pm2frac'][i]-self.nn
 
     def _node2el(self, nodes=None, dom=Domain.PM):
         """Return a mapping of nodes to incident elements
@@ -1068,26 +1198,21 @@ class HGSGrid():
 
         # "source" nodes and incidence
         _sn = None
-        _sinc = self._get_inc(dom)
         _nn = -1
         _ne = -1
-
-        #  a conversion function for the node number that comes out of the
-        #  incidence array to the node number in the given domain
-        n2n = lambda i : i
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
+            _sinc = self.get_elements_data(dom)['inc']
 
         # return object
         ret = None
- 
 
         # choose the nodes and elements sets
         if dom == Domain.PM:
             _nn = self.nn
             _ne = self.ne
         elif dom == Domain.FRAC:
-            # incidence array stores pm node index values, must convert
-            # these to fracture domain values with this definition of n2n
-            n2n = self._ipm2ifrac
             _nn = self.nfn
             _ne = self.nfe
         else:
@@ -1107,7 +1232,7 @@ class HGSGrid():
 
         if _sn is not None:
             for iel,row in enumerate(_sinc):
-                elnodes = n2n(row)
+                elnodes = row
                 # use numpy for vectorized searching of node indices within
                 # target set
                 for ileft,inode in zip(np.searchsorted(_sn,elnodes), elnodes):
@@ -1116,7 +1241,7 @@ class HGSGrid():
         else:
             for iel,row in enumerate(_sinc):
                 for inode in row:
-                    ret[n2n(inode)].add(iel)
+                    ret[inode].add(iel)
 
         return ret
 
@@ -1381,4 +1506,3 @@ def determine_grid_lines(hgs_coordinates_pm):
 
     return tuple(_gl)
 
-  

@@ -8,6 +8,8 @@ from math import prod
 import numpy as np
 import numpy.testing as nptest
 
+import warnings
+
 import pyhgs
 from pyhgs.parser import parse
 from pyhgs._test import skip_if_no_sim_output 
@@ -35,7 +37,10 @@ class Test_Module04bCoarse(unittest.TestCase):
 
         # test HGS' pm 2 fracture node mapping
         # Note: pyhgs' fracture nodes are indexed starting at zero
-        self.pmn2fxn = self.g.hgs_fx_nodes['link_pm2frac'] - self.g.nn
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
+            self.pmn2fxn = self.g.hgs_fx_nodes['link_pm2frac']
 
     def test_grid_sizes(self):
         self.assertEqual(self.g.shape,(6,5,2))

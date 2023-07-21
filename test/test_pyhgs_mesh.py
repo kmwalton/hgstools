@@ -4,6 +4,7 @@
 import unittest
 
 import os
+import warnings
 from collections import defaultdict
 from decimal import Decimal
 import numpy as np
@@ -235,29 +236,30 @@ class Test_HGSGrid(unittest.TestCase):
 
         g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
 
-        pm2fx = g._ipm2ifrac
-        fx2pm = lambda i : g.hgs_fx_nodes['link_frac2pm'][i]
+        with warnings.catch_warnings():
+            #targeting the warning of the 0-based fracture node indices
+            warnings.simplefilter('ignore')
 
-        with self.subTest('Frac basic check'):
-            _r =g._node2el(dom='FRAC')
-            self.assertEqual(_r[pm2fx(3)], {4,})
-            self.assertEqual(_r[pm2fx(15)], {4,5,8,9})
+            with self.subTest('Frac basic check'):
+                _r =g._node2el(dom='FRAC')
+                self.assertEqual(_r[0], {4,})
+                self.assertEqual(_r[3], {4,5,8,9})
 
-        with self.subTest('Frac basic check with set'):
-            _r =g._node2el([pm2fx(3),], dom='FRAC')
-            self.assertEqual(_r[pm2fx(3)], {4,})
+            with self.subTest('Frac basic check with set'):
+                _r =g._node2el([0,], dom='FRAC')
+                self.assertEqual(_r[0], {4,})
 
-        with self.subTest('Frac basic check with set'):
-            _pmi = list(map(pm2fx, [15,0,]))
-            _r =g._node2el(_pmi, dom='FRAC')
+            with self.subTest('Frac basic check with set'):
+                _pmi = [3,0,] #list(map(pm2fx, [15,0,]))
+                _r =g._node2el(_pmi, dom='FRAC')
 
-        with self.subTest('Public method'):
-            n2e = g.ni2eli('FRAC')
-            self.assertEqual(n2e[pm2fx(3)], {4,})
-            self.assertEqual(n2e[pm2fx(36)], {0,})
-            self.assertEqual(n2e[pm2fx(37)], {0,1,})
-            self.assertEqual(n2e[pm2fx(15)], {4,5,8,9})
-            self.assertEqual(n2e[pm2fx(21)], {4,5,8,9})
+            with self.subTest('Public method'):
+                n2e = g.ni2eli('FRAC')
+                self.assertEqual(n2e[0], {4,})
+                self.assertEqual(n2e[12], {0,})
+                self.assertEqual(n2e[13], {0,1,})
+                self.assertEqual(n2e[3], {4,5,8,9})
+                self.assertEqual(n2e[7], {4,5,8,9})
 
 
     @unittest.skipIf(
@@ -304,25 +306,30 @@ class Test_HGSGrid(unittest.TestCase):
     def test_choose_elements_block_fx(self):
 
         g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
-        pm2fx = g._ipm2ifrac
+
+        def pm2fx(i):
+            """Warning-free wrapper of link_pm2fx"""
+            with warnings.catch_warnings():
+                #targeting the warning of the 0-based fracture node indices
+                warnings.simplefilter('ignore')
+                return g.hgs_fx_nodes['link_pm2fx'][i]
+    
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
 
         with self.subTest('full capture'):
             got = g.choose_elements_block('25,25,0,1,0,6', dom='FRAC')
             self.assertEqual(got, [4,])
 
-            got = g.choose_elements_block('10,20,0,1,20,20', False, True,
-                    dom='FRAC')
-            self.assertEqual(got,
-                    ([1,], sorted(list(map(pm2fx, [37,38,43,44,])))))
+            got = g.choose_elements_block('10,20,0,1,20,20',False,True,'FRAC')
+            self.assertEqual(got, ([1,], [13,14,18,19,]))
 
         with self.subTest('partial capture'):
             got = g.choose_elements_block('25,25,0,1,0,6', True, dom='FRAC')
             self.assertEqual(got, [4,5,8,9,])
 
-            got = g.choose_elements_block('10,20,0,1,20,20', True, True,
-                    dom='FRAC')
-            self.assertEqual(got,
-                    ([0,1,2,], sorted(list(map(pm2fx, [37,38,43,44,])))))
+            got = g.choose_elements_block('10,20,0,1,20,20',True,True,'FRAC')
+            self.assertEqual(got, ([0,1,2,], [13,14,18,19,]))
 
         with self.assertRaises(ValueError):
             g.choose_elements_block('10,20,0,1,20,20', True, 'FRAC')
