@@ -3619,7 +3619,7 @@ $!AttachText
     }
   Text = '(1-based)'
 $!FrameControl ActivateByNumber
-  Frame = 4
+  Frame = 3
 ### Page Number 2 ###
 $!PageControl Create
 $!Page 
