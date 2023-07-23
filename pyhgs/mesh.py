@@ -37,6 +37,13 @@ Notes
         meshhandler.setFormatter(logging.Formatter('HGSGrid - %(message)s'))
         meshlogger.addHandler(meshhandler)
 
+Future Development Notes
+------------------------
+Consider creating pyghs.sim.HGSSim to unite pyghs.mesh-objects with physical
+properties and temporal data. (E.g., _PropFinderDict would be moved to this
+HGSSim object.) This would better encapsulate mesh considerations and separate
+them from static and temporal data of the system being simulated.
+
 """
 
 import os
@@ -50,6 +57,7 @@ from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
 
+from functools import partial
 
 import warnings
 
@@ -253,6 +261,13 @@ class HGSGrid():
 
         logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
 
+    def domains(self):
+        """Yield the active domains in this grid"""
+        if self.hgs_pm_nodes is not None:
+            yield Domain.PM
+        if self.hgs_fx_nodes is not None:
+            yield Domain.FRAC
+
     @staticmethod
     def _to_index_nocheck(t,shp):
         # Recursive call is supremely slow -- only good if 2D/3D grid is
@@ -353,8 +368,12 @@ class HGSGrid():
         dom = Domain.a2D(dom)
 
         if dom == Domain.PM:
+            if not isinstance(self.hgs_pm_elems, _PMPropFinderDict):
+                self.hgs_pm_elems = _PMPropFinderDict(self, self.hgs_pm_elems)
             return self.hgs_pm_elems
         elif dom == Domain.FRAC:
+            if not isinstance(self.hgs_fx_elems, _FxPropFinderDict):
+                self.hgs_fx_elems = _FxPropFinderDict(self, self.hgs_fx_elems)
             return self.hgs_fx_elems
         else:
             raise ValueError(f'Domain {dom} not allowed')
@@ -400,12 +419,41 @@ class HGSGrid():
     # Several helper methods to determine the type of data in an array and its
     # domain
     #
-    def _is_PM_grid(self, dd):
-        return dd.ndim > 2
+    def _is_FRAC_elemental_scalar(self, dd):
+        return self._is_FRAC_scalar(dd,self.nfe)
+    def _is_FRAC_elemental_vector(self, dd):
+        return self._is_FRAC_vector(dd,self.nfe)
+    def _is_FRAC_elemental(self, dd):
+        return self._is_FRAC_elemental_scalar(dd) \
+            or self._is_PM_elemental_vector(dd)
+    def _is_FRAC_nodal_scalar(self, dd):
+        return self._is_FRAC_scalar(dd,self.nfn)
+    def _is_FRAC_nodal_vector(self, dd):
+        return self._is_FRAC_vector(dd,self.nfn)
+    def _is_FRAC_nodal(self, dd):
+        return self._is_FRAC_nodal_scalar(dd) \
+            or self._is_FRAC_nodal_vector(dd)
     def _is_FRAC_scalar(self, dd, n):
         return dd.ndim == 1 and dd.size == n # 1D, scalar
     def _is_FRAC_vector(self, dd, n):
         return dd.ndim == 2 and dd.shape[-1] == 3 and dd.size == 3*n # 1D, vector
+
+    def _is_PM_elemental(self, dd):
+        return self._is_PM_elemental_scalar(dd) \
+            or self._is_PM_elemental_vector(dd)
+    def _is_PM_elemental_scalar(self, dd):
+        return self._is_PM_scalar(dd,self.ne)
+    def _is_PM_elemental_vector(self, dd):
+        return self._is_PM_vector(dd,self.ne)
+    def _is_PM_grid(self, dd):
+        return dd.ndim > 2
+    def _is_PM_nodal(self, dd):
+        return self._is_PM_nodal_scalar(dd) \
+            or self._is_PM_nodal_vector(dd)
+    def _is_PM_nodal_scalar(self, dd):
+        return self._is_PM_scalar(dd,self.nn)
+    def _is_PM_nodal_vector(self, dd):
+        return self._is_PM_vector(dd,self.nn)
     def _is_PM_scalar(self, dd, n):
         return any([dd.ndim == 3 and dd.size == n, # 3D, scalar
                 dd.ndim == 1 and dd.size == n, # 1D, scalar
@@ -415,36 +463,7 @@ class HGSGrid():
             dd.ndim == 4 and dd.shape[-1] == 3 and dd.size == 3*n, # 3D, vector
             dd.ndim == 2 and dd.shape[-1] == 3 and dd.size == 3*n, # 1D, vector
         ])
-    def _is_PM_nodal_scalar(self, dd):
-        return self._is_PM_scalar(dd,self.nn)
-    def _is_PM_nodal_vector(self, dd):
-        return self._is_PM_vector(dd,self.nn)
-    def _is_PM_nodal(self, dd):
-        return self._is_PM_nodal_scalar(dd) or self._is_PM_nodal_vector(dd)
 
-    def _is_PM_elemental_scalar(self, dd):
-        return self._is_PM_scalar(dd,self.ne)
-    def _is_PM_elemental_vector(self, dd):
-        return self._is_PM_vector(dd,self.ne)
-    def _is_PM_elemental(self, dd):
-        return self._is_PM_elemental_scalar(dd) \
-            or self._is_PM_elemental_vector(dd)
-              
-
-    def _is_FRAC_nodal_scalar(self, dd):
-        return self._is_FRAC_scalar(dd,self.nfn)
-    def _is_FRAC_nodal_vector(self, dd):
-        return self._is_FRAC_vector(dd,self.nfn)
-    def _is_FRAC_nodal(self, dd):
-        return self._is_FRAC_nodal_scalar(dd) \
-            or self._is_FRAC_nodal_vector(dd)
-    def _is_FRAC_elemental_scalar(self, dd):
-        return self._is_FRAC_scalar(dd,self.nfe)
-    def _is_FRAC_elemental_vector(self, dd):
-        return self._is_FRAC_vector(dd,self.nfe)
-    def _is_FRAC_elemental(self, dd):
-        return self._is_FRAC_elemental_scalar(dd) \
-            or self._is_PM_elemental_vector(dd)
 
 
     def get_nodal_vals(self, data, dom=Domain.PM):
@@ -577,6 +596,7 @@ class HGSGrid():
 
             def _grid_8pt_avg(a):
                 """Do a non-weighted 8 point average of 3D array a"""
+
                 if not self._is_PM_grid(a):
                     raise ValueError('Must be passed in 3D or 4D')
                 if a.ndim == 3:
@@ -1505,4 +1525,93 @@ def determine_grid_lines(hgs_coordinates_pm):
 
 
     return tuple(_gl)
+
+class _PropFinderDict(dict):
+
+
+    def __init__(self, m, d,):
+        """Create a dict that "finds" properties from antoher dict"""
+        self.m = m
+        self.d = d
+        self.od = dict()
+
+        self._finders= {
+            'porosity':_PropFinderDict._key_error_undef,
+        }
+
+    def __getitem__(self, k):
+        if k in self.d:
+            return self.d[k]
+        elif k in self.od:
+            return self.od[k]
+        elif k in self._finders:
+            self.od[k] = self._finders[k]()
+            return self.od[k]
+        else:
+            raise KeyError()
+
+    def __setitem__(self, k, v):
+        if k in self.d:
+            return self.d.__setitem__(k, v)
+        else:
+            return self.od.__setitem(k, v)
+
+    def __contains__(self, k):
+        return k in self.d or k in self.od
+    def __len__(self):
+        return len(self.d)+len(self.od)
+    def __iter__(self):
+        return chain(iter(self.d),iter(self.od))
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} with {len(self)} keys>'
+    
+
+    @staticmethod
+    def _key_error_undef():
+        raise KeyError(
+            f'Key defined, but no implementation provided.')
+
+
+class _PMPropFinderDict(_PropFinderDict):
+    """
+    Assumes self.d is pyhgs.parser.parse(prefix+'o.elements_pm')
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # define
+        self._finders['porosity'] = partial(
+                self._scrape_zone_data_from_mprops, self.m, 'porosity')
+
+    @staticmethod
+    def _scrape_zone_data_from_mprops(mesh, k):
+        """Return a mapping of zone to [scalar] property value"""
+        mprops_dict = parse(mesh.prefix+'.mprops')
+        eco_data = parse(mesh.prefix+'o.eco')
+        zones = eco_data.get_pm_zone_properties()
+
+        pvals = (1+len(zones))*[1.,]
+        for izn,zname in zones:
+            # izn is 1-based
+            pvals[izn] = mprops_dict[zname][k]
+
+        return mesh.get_zoned_element_vals(pvals,'pm')
+
+
+
+class _FxPropFinderDict(_PropFinderDict):
+    """
+    Assumes self.d is pyhgs.parser.parse_elements_frac(self.prefix)
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._finders['porosity'] = partial(
+                _FxPropFinderDict._ones, self.d['nfe'])
+
+    @staticmethod
+    def _ones(n):
+        return np.ones(n)
 
