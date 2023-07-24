@@ -685,6 +685,10 @@ class HGSGrid():
                 dd = d
                 func = _fx_node_avg
 
+            elif self._is_FRAC_elemental_scalar(d):
+                # data seems to be FRAC elemental values
+                dd = d
+
             elif self._is_PM_nodal_vector(d):
                 # seems to be flat array of tuples
                 # data seems to be tuples of PM nodal values
@@ -696,11 +700,15 @@ class HGSGrid():
 
             elif self._is_PM_elemental_vector(d):
                 # data seems to be tuples of PM element values
-                raise NotImplementedError()
+                raise ValueError(
+                    'Cannot interpret PM elemental data as FRAC data.')
 
             elif self._is_FRAC_elemental_vector(d):
                 # data seems to be tuples of frac element values
                 dd = d
+
+            else:
+                raise ValueError('Unhandled type/shape of data')
                     
         else:
             raise NotImplementedError(f'Not implemented for {dom}')

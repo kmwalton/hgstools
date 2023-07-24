@@ -223,6 +223,23 @@ class Test_Module04bCoarse(unittest.TestCase):
         nptest.assert_allclose(pmqmag, pmqmag_des, rtol=1e-5)
         nptest.assert_allclose(fxvmag, fxvmag_des, rtol=1e-5)
 
+    def test_calc_flux_mag_2(self):
+
+        fxv = self.g.get_element_vals(f'{SIM_PREFIX}o.v_frac.0001',
+                Domain.FRAC)
+
+        _fxv = self.g.get_element_vals(fxv,'frac')
+
+        fxvmag = np.linalg.norm(_fxv, axis=1)
+
+        _fxvmag = self.g.get_element_vals(fxvmag,'frac')
+
+        fxvmag_des = np.array([
+          1.1558607e-03, 1.1493608e-03, 1.1380099e-03, 5.1349805e-05,
+          1.3408824e-06, 1.0958962e-03, 1.0914268e-03, 2.5401107e-06,
+          3.7644098e-05, 1.1310030e-03, 1.1501204e-03])
+
+        nptest.assert_allclose(_fxvmag, fxvmag_des, rtol=1e-5)
 
     def test_supersample_distance_groups(self):
 
