@@ -48,8 +48,9 @@ them from static and temporal data of the system being simulated.
 
 import os
 import re
+import time
 from itertools import count,repeat,product,chain
-from collections import (defaultdict, namedtuple)
+from collections import (defaultdict, namedtuple, deque)
 from bisect import bisect,bisect_left,bisect_right
 import decimal
 from decimal import Decimal
@@ -77,6 +78,26 @@ from pyhgs.parser import (
 
 import logging
 logger = logging.getLogger(__name__)
+perf_logger = logging.getLogger(__name__+'_perf')
+
+# performance
+class _PerfLogQ:
+    def __init__(self, logfunc):
+        self.perfq = deque()
+        self.logfunc = logfunc
+    def push(self, msg=None):
+        if msg is not None:
+            self.logfunc(msg)
+        self.perfq.append(time.perf_counter())
+    def pop(self, msg):
+        self.logfunc(
+            msg
+            +f' took {time.perf_counter()-self.perfq.pop():.2f}s')
+        return self
+
+_plq = _PerfLogQ(perf_logger.info)
+
+
 
 __docformat__ = 'numpy'
 
@@ -362,9 +383,19 @@ class HGSGrid():
             raise NotImplementedError(f'Not implemented for {dom}')
 
 
+    def get_nodes_data(self, dom):
+        """Transparently retrieve the `hgs_X_nodes` dictionary, for domain X"""
+        dom = Domain.a2D(dom)
+
+        if dom == Domain.PM:
+            return self.hgs_pm_nodes
+        elif dom == Domain.FRAC:
+            return self.hgs_fx_nodes
+        else:
+            raise ValueError(f'Domain {dom} not allowed')
+
     def get_elements_data(self, dom):
-        """
-        """
+        """Transparently retrieve the `hgs_X_elems` dictionary, for domain X"""
         dom = Domain.a2D(dom)
 
         if dom == Domain.PM:
@@ -1084,7 +1115,13 @@ class HGSGrid():
 
     def choose_nodes_block(self, blockspec, dom=Domain.PM):
         """Return a list of nodes contained in a 3D block"""
+
+        _plq.push()
+
         dom = Domain.a2D(dom)
+
+        if dom not in [Domain.PM, Domain.FRAC]:
+            raise NotImplementedError()
 
         # zone 3D block bounds
         bb = _BoundingBox(*toDTuple(blockspec))
@@ -1119,8 +1156,10 @@ class HGSGrid():
                     np.prod(self.shape[0:2]) * np.arange(1,_n.shape[2])
                   )[np.newaxis,np.newaxis,:]
 
+        _nn = None
+
         if dom == Domain.PM:
-            return list(_n.ravel(order='F'))
+            _nn = list(_n.ravel(order='F'))
 
         elif dom == Domain.FRAC:
             with warnings.catch_warnings():
@@ -1128,10 +1167,11 @@ class HGSGrid():
                 pm2fx = self.hgs_fx_nodes['link_pm2frac']
             _nn = pm2fx[_n.ravel()] # do conversion for this node set
             _nn = _nn[ _nn > -1 ] # cull out nodes that don't map
-            return list(np.sort(_nn))
+            _nn = list(_nn)
 
-        else:
-            raise NotImplementedError()
+        _plq.pop(f'choose_nodes_block {dom.name} on {blockspec}')
+
+        return sorted(_nn)
 
     def _get_inc(self, dom, do_conversion=False):
         """Return the element->node incidence for the give domain"""
@@ -1170,6 +1210,9 @@ class HGSGrid():
             returned here are within or on the edge of `blocspec` (i.e., _not_
             a the full set of nodes adjacent to the elements).
         """
+
+        _plq.push()
+
         # guard against old code specifying a domain as a positional parameter
         # (where return_nodes is omitted) which gets interpreted as a bool for
         # return_nodes
@@ -1193,18 +1236,22 @@ class HGSGrid():
                 return (list(sorted(e)),list(sorted(n)))
             return list(sorted(e))
 
-        # early exit
+        _ret_els = None
+
         if allow_partial:
-            return make_ret(_nodes,_els)
+            _ret_els = _els
 
-        # cull out elements who's node set is not fully in the block
-        ret = set()
-        for iel in _els:
-            _elinc = _inc[iel]
-            if _elinc.size == np.intersect1d(_elinc,_nodes,True).size:
-                ret.add(iel)
+        else:
+            # cull out elements who's node set is not fully in the block
+            _ret_els = set()
+            for iel in _els:
+                _elinc = _inc[iel]
+                if _elinc.size == np.intersect1d(_elinc,_nodes,True).size:
+                    _ret_els.add(iel)
 
-        return make_ret(_nodes,ret)
+        _plq.pop(f'choose_elements_block {dom.name} {blockspec}')
+
+        return make_ret(_nodes,_ret_els)
 
 
     def _node2el(self, nodes=None, dom=Domain.PM):
@@ -1222,54 +1269,83 @@ class HGSGrid():
         A dict-like representation of the node->element mapping for the given
         domain and subset of node indices.
         """
+
+        _plq.push('Making nodes->element incidence lists...')
+
         dom = Domain.a2D(dom)
 
-        # "source" nodes and incidence
-        _sn = None
-        _nn = -1
-        _ne = -1
-        with warnings.catch_warnings():
-            #targeting the warning of the 0-based fracture node indices
-            warnings.simplefilter('ignore')
-            _sinc = self.get_elements_data(dom)['inc']
+        def _build_n2el_inc_pm():
+            """work in progress"""
+            ret = [set() for _ in range(self.nn)]
+
+            inode = 0
+            iel = 0
+            # iterate in fortran-order
+            for iez in range(self.elshape[2]):
+                for iey in range(self.elshape[1]):
+                    for iex in range(self.elshape[0]):
+                        inode = self.ng2ni((iex  ,iey  ,iez  ,))
+                        (nnx,nny,nnz) = self.shape
+                        nnxy = nnx*nny
+                        ret[inode].add(iel)
+                        ret[inode+1].add(iel)
+                        ret[inode+nnx].add(iel)
+                        ret[inode+nnx+1].add(iel)
+                        ret[inode+nnxy].add(iel)
+                        ret[inode+nnxy+1].add(iel)
+                        ret[inode+nnxy+nnx].add(iel)
+                        ret[inode+nnxy+nnx+1].add(iel)
+                        iel += 1
+
+            return ret
+
+        def _build_n2el_inc():
+
+            # choose the nodes and elements sets
+            if dom == Domain.PM:
+                _nn = self.nn
+            elif dom == Domain.FRAC:
+                _nn = self.nfn
+            else:
+                raise NotImplementedError(f'Domain {dom} not implemented')
+
+            with warnings.catch_warnings():
+                #targeting the warning of the 0-based fracture node indices
+                warnings.simplefilter('ignore')
+                _el2ninc = self.get_elements_data(dom)['inc']
+
+            # TODO reimplement with calculation by grid indices for PM
+            ret = [set() for _ in range(_nn)]
+            for iel,row in enumerate(_el2ninc):
+                for inode in row:
+                    ret[inode].add(iel)
+            return ret
+
+
+        # enable 'caching' of node->element incidence by storing them in the
+        # hgs_fx_nodes and hgs_pm_nodes dictionaries in the key 'inc'
+        if dom not in self._n2e:
+            #if dom == Domain.PM:
+            #    self._n2e[dom] = _build_n2el_inc_pm()
+            #else:
+            self._n2e[dom] = _build_n2el_inc()
+
+        #alias
+        _n2e = self._n2e[dom]
 
         # return object
         ret = None
 
-        # choose the nodes and elements sets
-        if dom == Domain.PM:
-            _nn = self.nn
-            _ne = self.ne
-        elif dom == Domain.FRAC:
-            _nn = self.nfn
-            _ne = self.nfe
-        else:
-            raise NotImplementedError(f'Domain {dom} not implemented')
-
         # If given, reformat the `nodes` data to a sorted array
         # Specify `ret` to hold all or just a subset of rows
         if type(nodes) is int:
-            _sn = np.array([nodes,],dtype=int)
-            ret = {nodes:set(),}
+            ret = {nodes:_n2e[nodes]}
         elif nodes is not None:
-            _sn = np.array(sorted(set(nodes)), dtype=int)
-            ret = dict((i,set()) for i in _sn)
+            ret = dict((i,_n2e[i]) for i in nodes)
         else:
-            ret = [set() for _ in range(_nn)]
+            ret = _n2e
 
-
-        if _sn is not None:
-            for iel,row in enumerate(_sinc):
-                elnodes = row
-                # use numpy for vectorized searching of node indices within
-                # target set
-                for ileft,inode in zip(np.searchsorted(_sn,elnodes), elnodes):
-                    if ileft < _sn.size and ileft >=0 and _sn[ileft]==inode:
-                        ret[inode].add(iel)
-        else:
-            for iel,row in enumerate(_sinc):
-                for inode in row:
-                    ret[inode].add(iel)
+        _plq.pop('Making nodes->element incidence lists')
 
         return ret
 
