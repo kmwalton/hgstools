@@ -4,7 +4,16 @@
 Limitations:
 VERY limited --- will only work on a few keywords
 
+Keywords:
+- 'files_mprops'
+- 'files_fprops'
+- 'files_include'
+- 'zoned distribution coefficient'
+- 'solute'
+
 """
+
+__docformat__ = 'numpy'
 
 import sys
 import os

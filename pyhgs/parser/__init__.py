@@ -42,6 +42,7 @@ from scipy.io import FortranFile, FortranEOFError
 from pyhgs.parser.lst import LSTFile
 from pyhgs.parser.eco import EcoFile
 from pyhgs.parser.mprops import parse as MPropsFile
+from pyhgs.parser.grok import parse as GrokFile
 
 __docformat__ = 'numpy'
 # see https://numpydoc.readthedocs.io/en/latest/format.html
@@ -574,7 +575,8 @@ _file_info = {
     'o.v_well'               :  (parse_3D_real4,          HGS_DATATYPE.UNSPEC,  ),
     'o.lst'                  :  (LSTFile,                 HGS_DATATYPE.UNSPEC,  ),
     'o.eco'                  :  (EcoFile,                 HGS_DATATYPE.UNSPEC,  ),
-    '.mprops'                :  (MPropsFile,              HGS_DATATYPE.UNSPEC,  ),
+    'mprops'                 :  (MPropsFile,              HGS_DATATYPE.UNSPEC,  ),
+    'grok'                   :  (GrokFile,                HGS_DATATYPE.UNSPEC,  ),
 }
 
 def _find_file_info_entry(fn):
