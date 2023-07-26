@@ -59,9 +59,19 @@ class CaseInsensitiveDict(dict):
         CaseInsensitiveDict._printnesting -= 1
 
         return ret
-
     def __repr__(self):
         return f'<CaseInsensitiveDict object at {hex(id(self))}>'
+
+    def keys(self):
+        return self._d.keys()
+    def values(self):
+        return self._d.values()
+    def items(self):
+        return self._d.items()
+    def update(self, otherdict):
+        for k,v in otherdict.items():
+            self.__setitem__(k,v)
+
 
 def _parse_mat(mat_str):
    """Parse simple name-value pairs"""

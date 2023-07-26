@@ -76,6 +76,7 @@ from pyhgs.parser import (
     HGS_DATATYPE,
     get_datatype,
     )
+from pyhgs.parser.mprops import CaseInsensitiveDict
 
 import logging
 logger = logging.getLogger(__name__)
@@ -1672,19 +1673,26 @@ class _PMPropFinderDict(_PropFinderDict):
 
     @staticmethod
     def _get_mprops(pfx):
-        # TODO Should parse the grok to find 'properties files'
-        mprops_dict = {}
+
+        mprops_dict = CaseInsensitiveDict()
+        simdir = os.path.dirname(pfx)+os.path.sep
         grok = parse(pfx+'.grok')
 
-        for f in grok['files_mprops']:
-            mprops_dict.update(parse(f))
+        mprops_files = grok['files_mprops']
+        for f in mprops_files:
+            _f = f
+            if not os.path.isabs(f):
+                _f = os.path.normpath(simdir+f)
+            d = parse(_f)
+            mprops_dict.update(d)
+
+        if len(mprops_files) == 0 and \
+                os.path.isfile(simdir+'scratch_mprops'):
+            mprops_dict = parse(simdir+'scratch_mprops')
+            warnings.warn('Using scratch_mprops as the mprops datafile',
+                    stacklevel=6)
 
         if len(mprops_dict) == 0:
-            if os.path.isfile('scratch_mprops'):
-                mprops_dict = parse('scratch_mprops')
-                warnings.warn('Using scratch_mprops as the mprops datafile',
-                        stacklevel=6)
-        else:
             raise RuntimeError('Could not pick a .mprops file')
 
         return mprops_dict

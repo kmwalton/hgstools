@@ -167,14 +167,14 @@ class Test_Av(unittest.TestCase):
             delta=1e-4)
 
         with self.subTest('flux weight'):
-          _levsav = calc_logger.level
-          calc_logger.setLevel(logging.DEBUG)
+          #_levsav = calc_logger.level
+          #calc_logger.setLevel(logging.DEBUG)
           self.assertAlmostEqual(
             Cbar_qweight,
             calc.average(blockspec, [c_pm,c_fx,], [_el_q_pm.flatten('F'),
                 _el_q_fx,]),
             delta=1e-4)
-          calc_logger.setLevel(_levsav)
+          #calc_logger.setLevel(_levsav)
 
     def test_doms_list(self):
         # load grid
