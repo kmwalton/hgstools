@@ -53,6 +53,7 @@ from itertools import count,repeat,product,chain
 from collections import (defaultdict, namedtuple, deque)
 from bisect import bisect,bisect_left,bisect_right
 import decimal
+import glob
 from decimal import Decimal
 from enum import IntEnum,auto
 from multiprocessing import Pool
@@ -1670,9 +1671,28 @@ class _PMPropFinderDict(_PropFinderDict):
                 self._scrape_zone_data_from_mprops, self.m, 'porosity')
 
     @staticmethod
+    def _get_mprops(pfx):
+        # TODO Should parse the grok to find 'properties files'
+        mprops_dict = {}
+        grok = parse(pfx+'.grok')
+
+        for f in grok['files_mprops']:
+            mprops_dict.update(parse(f))
+
+        if len(mprops_dict) == 0:
+            if os.path.isfile('scratch_mprops'):
+                mprops_dict = parse('scratch_mprops')
+                warnings.warn('Using scratch_mprops as the mprops datafile',
+                        stacklevel=6)
+        else:
+            raise RuntimeError('Could not pick a .mprops file')
+
+        return mprops_dict
+
+    @staticmethod
     def _scrape_zone_data_from_mprops(mesh, k):
         """Return a mapping of zone to [scalar] property value"""
-        mprops_dict = parse(mesh.prefix+'.mprops')
+        mprops_dict = _PMPropFinderDict._get_mprops(mesh.prefix)
         eco_data = parse(mesh.prefix+'o.eco')
         zones = eco_data.get_pm_zone_properties()
 
