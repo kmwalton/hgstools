@@ -474,7 +474,7 @@ $!FieldMap  [1]
 $!FieldMap  [2]
   Mesh
     {
-    Color = Black
+    Color = Custom1
     LineThickness = 0.8
     }
   Contour
@@ -847,9 +847,9 @@ $!ThreeDView
   AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = -183.0793317969548
-    Y = -181.3855218014733
-    Z = 14.47273561904525
+    X = -184.3930176589551
+    Y = -180.0700499270593
+    Z = 14.46733668794005
     }
   ViewWidth = 64.7274
 $!FieldLayers 
@@ -1517,7 +1517,7 @@ $!AttachText
     IsBold = No
     }
   Anchor = HeadLeft
-  Text = 'Fracture Node Numbers\n1-based'
+  Text = 'Fracture Element Numbers\n1-based'
 ### Frame Number 3, Page Number 1 ###
 $!CreateNewFrame 
 $!FrameLayout 
@@ -1707,7 +1707,7 @@ $!GlobalScatter
 $!FieldMap  [1]
   Mesh
     {
-    Color = Custom2
+    Color = Custom32
     }
   Contour
     {
@@ -1826,7 +1826,6 @@ $!ThreeDAxis
 $!ThreeDAxis 
   XDetail
     {
-    ShowAxis = No
     RangeMin = -2.5
     RangeMax = 52.5
     GRSpacing = 10
@@ -1850,7 +1849,6 @@ $!ThreeDAxis
 $!ThreeDAxis 
   ZDetail
     {
-    ShowAxis = No
     RangeMin = -0.075000000000000011102
     RangeMax = 1.5749999999999999556
     GRSpacing = 0.5
@@ -2125,9 +2123,9 @@ $!ThreeDView
   AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = -183.0793317969548
-    Y = -181.3855218014733
-    Z = 14.47273561904525
+    X = -184.3930176589551
+    Y = -180.0700499270593
+    Z = 14.46733668794005
     }
   ViewWidth = 64.7274
 $!FieldLayers 
@@ -2341,7 +2339,7 @@ $!GlobalScatter
 $!FieldMap  [1]
   Mesh
     {
-    Color = Custom2
+    Color = Custom32
     }
   Contour
     {
@@ -2773,6 +2771,7 @@ $!ThreeDView
   ViewWidth = 64.7274
 $!FieldLayers 
   ShowEdge = No
+  UseLightingEffect = No
 $!StreamtraceLayers 
   Show = No
 $!Linking 
@@ -2792,7 +2791,7 @@ $!AttachText
     IsBold = No
     }
   Anchor = HeadLeft
-  Text = 'PM Node Numbers\n1-based'
+  Text = 'PM Element Numbers\n1-based'
 $!FrameControl ActivateByNumber
   Frame = 2
 ### Page Number 2 ###
@@ -3427,9 +3426,9 @@ $!ThreeDView
   AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = -183.0793317969548
-    Y = -181.3855218014733
-    Z = 14.47273561904525
+    X = -184.3930176589551
+    Y = -180.0700499270593
+    Z = 14.46733668794005
     }
   ViewWidth = 64.7274
 $!FieldLayers 
@@ -4681,9 +4680,9 @@ $!ThreeDView
   AlphaAngle = 2.52918E-46
   ViewerPosition
     {
-    X = -183.0793317969548
-    Y = -181.3855218014733
-    Z = 14.47273561904525
+    X = -184.3930176589551
+    Y = -180.0700499270593
+    Z = 14.46733668794005
     }
   ViewWidth = 64.7274
 $!FieldLayers 
