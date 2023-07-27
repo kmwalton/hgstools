@@ -216,10 +216,10 @@ $!Page
     PaperGridSpacing = HalfInch
     RegionInWorkArea
       {
-      X1 = 1
-      Y1 = 0.25
+      X1 = 0
+      Y1 = 0
       X2 = 10
-      Y2 = 8.25
+      Y2 = 8
       }
     }
 ### Frame Number 1, Page Number 1 ###
@@ -1185,10 +1185,14 @@ $!ThreeDAxis
 $!ThreeDAxis 
   XDetail
     {
-    ShowAxis = No
     RangeMin = -2.5
     RangeMax = 52.5
     GRSpacing = 10
+    Gridlines
+      {
+      Color = Custom2
+      LinePattern = Dotted
+      }
     AxisLine
       {
       Edge = 1
@@ -1197,10 +1201,14 @@ $!ThreeDAxis
 $!ThreeDAxis 
   YDetail
     {
-    ShowAxis = No
     RangeMin = -1.25
     RangeMax = 26.25
     GRSpacing = 10
+    Gridlines
+      {
+      Color = Custom2
+      LinePattern = Dotted
+      }
     AxisLine
       {
       Edge = 4
@@ -2452,10 +2460,14 @@ $!ThreeDAxis
 $!ThreeDAxis 
   XDetail
     {
-    ShowAxis = No
     RangeMin = -2.5
     RangeMax = 52.5
     GRSpacing = 10
+    Gridlines
+      {
+      Color = Custom2
+      LinePattern = Dotted
+      }
     AxisLine
       {
       Edge = 1
@@ -2464,10 +2476,14 @@ $!ThreeDAxis
 $!ThreeDAxis 
   YDetail
     {
-    ShowAxis = No
     RangeMin = -1.25
     RangeMax = 26.25
     GRSpacing = 10
+    Gridlines
+      {
+      Color = Custom2
+      LinePattern = Dotted
+      }
     AxisLine
       {
       Edge = 4
