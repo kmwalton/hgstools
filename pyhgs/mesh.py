@@ -49,7 +49,7 @@ them from static and temporal data of the system being simulated.
 import os
 import re
 import time
-from itertools import count,repeat,product,chain
+from itertools import count,repeat,product,chain,pairwise
 from collections import (defaultdict, namedtuple, deque)
 from bisect import bisect,bisect_left,bisect_right
 import decimal
@@ -1135,45 +1135,114 @@ class HGSGrid():
 
         icoord = iter(bb)
         for axis in range(3):
-            ibb[2*axis  ]= bisect_left(gl[axis],next(icoord))
-            ibb[2*axis+1]= bisect_right(gl[axis],next(icoord),lo=ibb[2*axis])
+            if gl[axis] is not None:
+                ibb[2*axis  ]= bisect_left(gl[axis],next(icoord))
+                ibb[2*axis+1]= \
+                    bisect_right(gl[axis],next(icoord),lo=ibb[2*axis])
+            else:
+                next(icoord)
+                next(icoord)
 
-        # set of nodes to return
-        _n = np.zeros(ibb[1::2]-ibb[0::2], dtype=int)
-
-        # early exit!
-        if _n.size == 0:
-            return []
-
-        # calculate indices based on a regular grid
-        _n[0,0,0] = HGSGrid._to_index_nocheck(ibb[0::2], self.shape)
-        if _n.shape[0] > 1:
-            _n[1:,0,0] = _n[0,0,0] + np.arange(1, _n.shape[0])
-        if _n.shape[1] > 1:
-            _n[:,1:,0] = _n[:,0,0][:,np.newaxis] \
-                + (self.shape[0]*np.arange(1, _n.shape[1]))[np.newaxis,:]
-        if _n.shape[2] > 1:
-            _n[:,:,1:] = _n[:,:,0][:,:,np.newaxis] \
+        # helper methods
+        def _choose_nodes_grid(_ibb):
+          """Return a 3D grid of node indices"""
+          # set of nodes to return
+          _n = np.zeros(ibb[1::2]-ibb[0::2], dtype=int)
+  
+          # early exit!
+          if _n.size == 0:
+              return _n
+  
+          # calculate indices based on a regular grid
+          _n[0,0,0] = HGSGrid._to_index_nocheck(ibb[0::2], self.shape)
+          if _n.shape[0] > 1:
+              _n[1:,0,0] = _n[0,0,0] + np.arange(1, _n.shape[0])
+          if _n.shape[1] > 1:
+              _n[:,1:,0] = _n[:,0,0][:,np.newaxis] \
+                  + (self.shape[0]*np.arange(1, _n.shape[1]))[np.newaxis,:]
+          if _n.shape[2] > 1:
+              _n[:,:,1:] = _n[:,:,0][:,:,np.newaxis] \
                 + ( 
                     np.prod(self.shape[0:2]) * np.arange(1,_n.shape[2])
                   )[np.newaxis,np.newaxis,:]
+          return _n
 
+        def _choose_nodes_nogrid(_ibb):
+
+            # strategy generate a 3D array of *candidate* nodes in the block
+            # assumes that this is still an i-j-k grid, just that the
+            # coordinates are not in a regular grid
+
+            # Then, test the coordinates of candidates (individually, or perhaps
+            # by finding "bounding" values) to determine if they're in the
+            # bounding box
+
+            for i,gla in enumerate(gl):
+                if gla is None:
+                    _ibb[2*i] = 0     # candidate min coordinate
+                    _ibb[2*i+1] = self.shape[i] # candidate max grid coordinate
+
+            _n = _choose_nodes_grid(_ibb)
+
+
+            _in_bb_funcs = []
+            for a,gla in enumerate(gl):
+                if gla is None:
+                    _in_bb_funcs.append(
+                        (a, lambda c: bb[2*a]<=c<=bb[2*a+1]),)
+
+            def _is_in_bb(c):
+                for i, predicate in _in_bb_funcs:
+                    if not predicate(c[i]):
+                        return False
+                return True
+
+            # TODO Not all nodes need to be checked --- Perhaps we can do a
+            # binary search in the no-gridline axes where we can find a lower
+            # and upper bound contained within the bounding box, then exclude
+            # the others
+
+            # OR
+            # Re-build the gridlines for the "missing" axis. They _are not_
+            # equally spaced domain-wide, but they _may_ be spaced evenly in one
+            # plane, thys
+            _all_coords = self.hgs_pm_nodes['ncoords']
+            for ia,inode in enumerate(_n.flat):
+                coord = _all_coords[inode]
+
+                if not _is_in_bb(coord):
+                    _n.flat[ia] = -1
+
+            return _n
+
+
+        # choose the PM nodes in the box
         _nn = None
+        if any([gla is None for gla in gl]):
+            _nn = _choose_nodes_nogrid(ibb).ravel(order='F')
+            _nn = _nn[_nn > -1] # cull PM node indices
+        else:
+            _nn = _choose_nodes_grid(ibb).ravel(order='F')
 
+        # reformat the nodes
         if dom == Domain.PM:
-            _nn = list(_n.ravel(order='F'))
+            _nn = list(_nn) # should already be sorted from ravel above
 
         elif dom == Domain.FRAC:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 pm2fx = self.hgs_fx_nodes['link_pm2frac']
-            _nn = pm2fx[_n.ravel()] # do conversion for this node set
+            _nn = pm2fx[_nn]      # do conversion for this node set
             _nn = _nn[ _nn > -1 ] # cull out nodes that don't map
-            _nn = list(_nn)
+            _nn = sorted(list(_nn))
+
+        else:
+            raise NotImplementedError(
+                f'Cannot choose nodes for domain {dom.name}')
 
         _plq.pop(f'choose_nodes_block {dom.name} on {blockspec}')
 
-        return sorted(_nn)
+        return _nn
 
     def _get_inc(self, dom, do_conversion=False):
         """Return the element->node incidence for the give domain"""

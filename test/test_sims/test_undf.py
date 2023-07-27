@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Python unittests involving 04b_Saturated_Fracture_Transport"""
+"""Python unittests involving undulating_coarse"""
 
 import unittest
 import os
@@ -25,7 +25,8 @@ SIM_PREFIX = os.path.join(TESTP,'undulating_coarse','undf')
         'o.eco', 'o.q_pm.0001', 'o.v_pm.0001', 'o.v_frac.0001',
         'o.conc_pm.salt.0010',],),
         'HGS output missing')
-class Test_Module04bCoarse(unittest.TestCase):
+
+class Test_UndulatingCoarse(unittest.TestCase):
 
     def setUp(self):
         # Loading and re-loading this each test case could get expensive.
@@ -78,6 +79,63 @@ class Test_Module04bCoarse(unittest.TestCase):
         pm_vol = self.g.get_element_volumes()
 
         nptest.assert_allclose(pm_vol[:,:,0], exp)
+
+
+    def test_choose_block(self):
+
+        with self.subTest('fracture nodes'):
+          self.assertEqual(
+            sorted(self.g.choose_nodes_block('10 20 12 20 0 2', dom='frac')),
+            [7,8,19,20,]
+            )
+          self.assertEqual(
+            sorted(self.g.choose_nodes_block('10 20 12 20 0 0', dom='frac')),
+            [7,8,]
+            )
+          self.assertEqual(
+            sorted(self.g.choose_nodes_block('10 20 12 20 1 2', dom='frac')),
+            [19,20,]
+            )
+
+        with self.subTest('fracture elements'):
+          self.assertEqual(
+            self.g.choose_elements_block('10 20 12 20 0 2', True, dom='frac'),
+            [0, 1, 2,]
+            )
+
+          self.assertEqual(
+            self.g.choose_elements_block('10 20 12 20 0 2', dom='frac'),
+            [1,]
+            )
+
+          self.assertEqual(
+            self.g.choose_elements_block(
+                '28 32 0 25 0 0.25', True, True, dom='frac'),
+            ([3, 8, 9,], [3,10,],)
+            )
+
+        with self.subTest('pm nodes'):
+          self.assertEqual(
+            self.g.choose_nodes_block('10 30 0 10 0 1', dom='pm'),
+            [1, 2, 3, 4, 7, 8, 9, 10, 31, 34, 37, 40,],
+            )
+
+        with self.subTest('pm elements'):
+          self.assertEqual(
+            self.g.choose_elements_block('11 29 0 25 0 1', False, dom='pm'),
+            [],
+            )
+
+          self.assertEqual(
+            self.g.choose_elements_block('11 29 0 25 0 1', True, dom='pm'),
+            [1, 2, 3, 6, 7, 8, 11, 12, 13, 16, 17, 18,],
+            )
+
+          self.assertEqual(
+            self.g.choose_elements_block('10 20 12 20 0 2', dom='pm'),
+            [11,]
+            )
+
 
 
 if __name__ == '__main__':
