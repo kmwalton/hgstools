@@ -214,6 +214,8 @@ retarr /= self.sim.get_elements_data(dom)['nln']
         else:
             return ValueError(f'Unexpected type of data {type(dataspec)}')
 
+    WEIGHTS=['arith_nd', 'arith_el', 'vol_el', 'porvol_el', ]
+    """Weighting methods understood by `average`"""
 
     def average(self, blockspec, data, weight='arith_el', doms='all'):
         """Calculate the average concentration of the block within data
