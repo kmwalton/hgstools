@@ -752,6 +752,10 @@ class HGSGrid():
 
         return func(dd)
 
+    def _is_rectilinear(self):
+        """Return True if this is a rectilinear grid"""
+        return 3 == sum(1 for gla in self.get_grid_lines() if gla is not None)
+
     def _pm_V(self):
 
         def _rect_V():
@@ -768,7 +772,7 @@ class HGSGrid():
 
         # is a regular grid
         # ... early exit
-        if 3 == sum(1 for gla in self.get_grid_lines() if gla is not None):
+        if self._is_rectilinear():
             return _rect_V()
             
         #
@@ -854,6 +858,77 @@ class HGSGrid():
         # two triangle parts
         return fxap * 0.5 * \
             (_pa(fxsz[:,0,:], fxsz[:,1,:]) + _pa(fxsz[:,1,:], fxsz[:,2,:]))
+
+    def intersect(self, iel, bb, dom=Domain.PM, with_proportion=False):
+        """Return the volume of intersection of the element with bbox
+
+
+        Parameters
+        ==========
+        iel : int
+            The element index (0-based)
+        bb : array
+            The bounding box as an array of [x_min, x_max, .., z_min, z_max,]
+
+        """
+        dom = Domain.a2D(dom)
+
+        if not self._is_rectilinear():
+            raise NotImplementedError()
+
+
+        def _pm_bb(iel):
+            _nodes = self.hgs_pm_elems['inc'][iel]
+            _bb = np.zeros(6)
+            _bb[0::2] = self.hgs_pm_nodes['ncoords'][_nodes[0]]
+            _bb[1::2] = self.hgs_pm_nodes['ncoords'][_nodes[6]]
+            return _bb
+
+
+        def _fx_bb(iel):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                _nodes = self.hgs_fx_elems['inc'][iel]
+                _n0 = self.hgs_fx_nodes['link_frac2pm'][_nodes[0]]
+                _n2 = self.hgs_fx_nodes['link_frac2pm'][_nodes[2]]
+            _bb = np.zeros(6)
+            _bb[0::2] = self.hgs_pm_nodes['ncoords'][_n0]
+            _bb[1::2] = self.hgs_pm_nodes['ncoords'][_n2]
+            
+            # determine orientation
+            _pax=0
+            if _n2-_n0 == self.shape[0]+1:
+                _pax=2 # z perpendicular
+            elif _n2-_n0 == (self.shape[0]*self.shape[1]+1):
+                _pax=1
+            # expand bounding plane to bounding box
+            # NOTE due to floating point truncation, this may not perform well
+            # in the calculation of intersection volume
+            _hap = self.hgs_fx_elems['ap'][iel]/2.
+            _bb[2*_pax] -= _hap
+            _bb[2*_pax+1] += _hap
+
+            return _bb
+
+
+        elbb = None # element bounding box
+        if dom == Domain.PM:
+            elbb = _pm_bb(iel)
+        elif dom == Domain.FRAC:
+            elbb = _fx_bb(iel)
+        else:
+            raise NotImplementedError()
+
+        ibb = np.zeros(6)
+        np.maximum(bb[0::2],elbb[0::2],out=ibb[0::2])
+        np.minimum(bb[1::2],elbb[1::2],out=ibb[1::2])
+
+        ivol = np.product(ibb[1::2]-ibb[0::2])
+        if with_proportion:
+            elvol = np.product(elbb[1::2]-elbb[0::2])
+            return ivol, ivol/elvol
+
+        return ivol
 
     def get_element_volumes(self, dom=Domain.PM):
         """Return element volumes for the requested domain"""

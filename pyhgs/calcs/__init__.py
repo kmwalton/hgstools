@@ -20,5 +20,6 @@ Stream handlers with custom formats may be attached to these loggers:
 """
 
 from .avconc import (AvCalc, )
+from .avreggrid import (AvRegGrid, )
 
-__all__ = ['AvCalc',]
+__all__ = ['AvCalc', 'AvRegGrid',]
