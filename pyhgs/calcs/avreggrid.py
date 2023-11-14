@@ -29,6 +29,7 @@ class AvRegGrid:
             raise ValueError('HGS mesh must be a rectilinear grid')
 
         self.g = grid
+        """Reference to the subject HGSGrid object"""
         reggrid = np.array(reggrid)
 
         logger.debug(f'Operating on {grid}')
@@ -39,7 +40,6 @@ class AvRegGrid:
         nshape = (np.ceil(
             np.array([(ax[-1]-ax[0]) for ax in ogl],)/reggrid)+np.ones(3)
           ).astype(np.int32)
-        nsize = np.prod(nshape-[1,1,1])
 
         logger.debug(f'New discretization has {nshape} {reggrid}-sized blocks')
 
@@ -48,7 +48,16 @@ class AvRegGrid:
                 ogl[ax][0] + np.arange(nshape[ax])*reggrid[ax]
                 for ax in range(3)
                 )
+        """The x-, y- and z-grid lines"""
         self.shape = tuple(len(ax) for ax in self.gl)
+        """The shape of the xyz-grid"""
+        self.size = np.prod(self.shape)
+        """Number of nodes in the xyz-grid"""
+
+        self.elshape = tuple(len(ax)-1 for ax in self.gl)
+        """The shape of the xyz element-grid; self.size-(1,1,1)."""
+        self.elsize = np.prod(self.elshape)
+        """Number of elements in the xyz-grid"""
 
         # store mappings
         _pl.push('Determining mappings...')
@@ -59,10 +68,12 @@ class AvRegGrid:
         indices. Values in the matrix indicate the proportion of volume of the
         original element falls into the new grid cell. (Typical entries are 0
         for no intesection or 1 for completely contained; fractional values mean
-        that an element is only partially within the gridcell's volume.
+        that an element is only partially within the gridcell's volume, or vice
+        versa.
         """
         for dom in grid.domains():
-            _map = lil_matrix((grid.get_n_elements(dom), nsize),)
+            _map = lil_matrix(
+                (grid.get_n_elements(dom),self.elsize), dtype=np.single)
             for ibl, bl in enumerate(self._iter_blocks()):
                 elind = grid.choose_elements_block(bl, True, dom=dom)
                 for iel in elind:
@@ -78,12 +89,18 @@ class AvRegGrid:
 
 
 
-    def _iter_blocks(self):
+    def _iter_blocks(self, x_fastest=True):
         """Return bounding boxes of successive blocks in the new grid"""
-        for xi, xj in zip(self.gl[0][:-1], self.gl[0][1:]):
-            for yi, yj in zip(self.gl[1][:-1], self.gl[1][1:]):
-                for zi, zj in zip(self.gl[2][:-1], self.gl[2][1:]):
-                    yield (xi, xj, yi, yj, zi, zj,)
+        if x_fastest:
+            for zi, zj in zip(self.gl[2][:-1], self.gl[2][1:]):
+                for yi, yj in zip(self.gl[1][:-1], self.gl[1][1:]):
+                    for xi, xj in zip(self.gl[0][:-1], self.gl[0][1:]):
+                        yield (xi, xj, yi, yj, zi, zj,)
+        else:
+            for xi, xj in zip(self.gl[0][:-1], self.gl[0][1:]):
+                for yi, yj in zip(self.gl[1][:-1], self.gl[1][1:]):
+                    for zi, zj in zip(self.gl[2][:-1], self.gl[2][1:]):
+                        yield (xi, xj, yi, yj, zi, zj,)
 
     def make_grid_nodes(self, i_fastest=False):
         """Return a sequence of (x,y,z) nodes for a rectilinear grid.
