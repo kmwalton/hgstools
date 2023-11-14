@@ -87,6 +87,26 @@ class Test_Av(unittest.TestCase):
             self.assertEqual(_pm_map.shape, (20,50))
             self.assertEqual(_fx_map.shape, (11,50))
 
+        with self.subTest('rows spotcheck'):
+            a = _pm_map[0,:].todense()
+            b = np.zeros((1,50))
+            b[0,0:2] = 25./60.
+            b[0,10:12] = 5./60.
+            np.testing.assert_allclose(a,b)
+
+            a = _pm_map[11,:].todense()
+            b = np.zeros((1,50), dtype=np.single)
+            b[0,22:24] = 15./80.
+            b[0,32:34] = 25./80.
+            np.testing.assert_allclose(a,b)
+
+        with self.subTest('columns spotcheck'):
+            a = _pm_map[:,21].todense()
+            b = np.zeros((20,1))
+            b[5,0] = 10./60.
+            b[10,0] = 15./80.
+            np.testing.assert_allclose(a,b)
+
 if __name__=='__main__':
 
     import sys
