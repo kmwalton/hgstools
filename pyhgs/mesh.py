@@ -179,6 +179,10 @@ class Domain(IntEnum):
 
         raise ValueError(f'Cannot build a Domain from {a}')
 
+    def __str__(self):
+        """Return a representation consistent with HGS output file name part"""
+        return self.name.lower()
+
 class _WarningDict(dict):
     def __init__(self, *args, **kwargs):
         self.warn_on = dict()
@@ -923,9 +927,9 @@ class HGSGrid():
         np.maximum(bb[0::2],elbb[0::2],out=ibb[0::2])
         np.minimum(bb[1::2],elbb[1::2],out=ibb[1::2])
 
-        ivol = np.product(ibb[1::2]-ibb[0::2])
+        ivol = np.prod(ibb[1::2]-ibb[0::2])
         if with_proportion:
-            elvol = np.product(elbb[1::2]-elbb[0::2])
+            elvol = np.prod(elbb[1::2]-elbb[0::2])
             return ivol, ivol/elvol
 
         return ivol
