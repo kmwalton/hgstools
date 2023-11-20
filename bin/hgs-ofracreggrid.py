@@ -121,15 +121,22 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
         izn, zn = next(iter_zones)
 
         # bass-ackward workaround?
-        _bad_size = np.array(rgrid.shape)-[0,0,1]
-        _padded = np.zeros(_bad_size)
+        # NOTE
+        # Tecplot uses unexpected array sizes for CellCentered data
+        # See
+        # https://kb.tecplot.com/2019/06/28/explanation-cell-centered-data-numpy-arrays-pytecplot/
+        # Most intuitive way to overcome this with a 3D array is to copy the
+        # valid data into a padded array, versus trying to hstack arrays onto
+        # different dimensions
+        _tp_size = np.array(rgrid.shape)-[0,0,1]
+        _tpccd = np.empty(_tp_size)
 
         if izn == 0:
             #breakpoint()
-            _padded[:-1,:-1,:] = _V_pm.reshape(rgrid.elshape, order='F')
-            zn.values('pv_pm')[:] = _padded.ravel(order='F')
-            _padded[:-1,:-1,:] = _V_fx.reshape(rgrid.elshape, order='F')
-            zn.values('pv_fx')[:] = _padded.ravel(order='F')
+            _tpccd[:-1,:-1,:] = _V_pm.reshape(rgrid.elshape, order='F')
+            zn.values('pv_pm')[:] = _tpccd.ravel(order='F')
+            _tpccd[:-1,:-1,:] = _V_fx.reshape(rgrid.elshape, order='F')
+            zn.values('pv_fx')[:] = _tpccd.ravel(order='F')
 
         for s in grok['solute']:
 
@@ -174,10 +181,10 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
 
 
                 # with workaround
-                _padded[:-1,:-1,:] = _d_fx.reshape(rgrid.elshape, order='F')
-                zn.values(f'{s}_fx')[:] = _padded.ravel(order='F')
-                _padded[:-1,:-1,:] = _d_tot.reshape(rgrid.elshape, order='F')
-                zn.values(f'{s}_tot')[:] = _padded.ravel(order='F')
+                _tpccd[:-1,:-1,:] = _d_fx.reshape(rgrid.elshape, order='F')
+                zn.values(f'{s}_fx')[:] = _tpccd.ravel(order='F')
+                _tpccd[:-1,:-1,:] = _d_tot.reshape(rgrid.elshape, order='F')
+                zn.values(f'{s}_tot')[:] = _tpccd.ravel(order='F')
 
 
             #if isuff == 0: return # DEBUG
