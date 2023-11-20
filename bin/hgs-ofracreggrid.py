@@ -185,7 +185,8 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
 
 if __name__ == '__main__':
 
-    argp = argparse.ArgumentParser()
+    argp = argparse.ArgumentParser(description=__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter)
     argp.add_argument('-v', '--verbose',
         action='count',
         default=0,
@@ -198,10 +199,10 @@ if __name__ == '__main__':
     )
 
     argp.add_argument('DISCRETIZATION',
-        metavar=('dx', 'dy', 'dz',),
+        #metavar=('dx', 'dy', 'dz',),
         type=float,
         nargs=3,
-        help='The target discretization.',
+        help='The target discretization, as "dx dy dz".',
     )
 
     argp.add_argument('PATH_TO_PREFIX',
