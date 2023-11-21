@@ -20,6 +20,17 @@ import argparse
 import pickle
 import copy
 from more_itertools import grouper
+from warnings import warn
+
+HGS_DEFAULTS = {
+    'porosity':0.375,   # HGS Reference Manual r2538 Table 2.6
+    'bulk density':2650.,   # HGS Reference Manual r2538 Table 2.22
+}
+"""Dictionary of the HGS-default material properties
+
+This provides a fall-back set of values if the caller request a value that is
+not defined in the other mprops source files.
+"""
 
 # idea from
 # https://stackoverflow.com/questions/3296499/case-insensitive-dictionary-search
@@ -36,8 +47,17 @@ class CaseInsensitiveDict(dict):
         return len(self._s)
     def __iter__(self):
         return iter(self._s)
+
     def __getitem__(self, k):
-        return self._d[self._s[k.lower()]]
+        normk = k.lower()
+        if normk in self._s:
+            return self._d[self._s[normk]]
+        elif normk in HGS_DEFAULTS:
+            warn(f'Requested mprops "{k}" retrieved from HGS defaults',
+                    stacklevel=2)
+            return HGS_DEFAULTS[normk]
+        raise KeyError(f'"{k}" not found in mprops sources or defaults.')
+
     def actual_key_case(self, k):
         return self._s.get(k.lower())
     def __setitem__(self, k, v):
