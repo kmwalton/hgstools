@@ -422,5 +422,20 @@ class Test_Module04bCoarse(unittest.TestCase):
         nptest.assert_allclose(pm_vol[:,0,:], exp)
 
 
+    def test_coords(self):
+        """Spot-check a few element coordinates"""
+
+        _cmp = np.allclose
+       
+        pm_el_11 = self.g.get_coords(11, dom='pm')
+        self.assertEqual(len(pm_el_11), 8)
+        self.assertTrue(_cmp(pm_el_11[0], [10., 0., 12.,]))
+        self.assertTrue(_cmp(pm_el_11[6], [20., 1., 20.,]))
+
+        fx_el_6 = self.g.get_coords(6, dom='frac')
+        self.assertEqual(len(fx_el_6), 4)
+        self.assertTrue(_cmp(fx_el_6[0], [25., 0., 12.,]))
+        self.assertTrue(_cmp(fx_el_6[2], [25., 1., 20.,]))
+
 if __name__ == '__main__':
     unittest.main()

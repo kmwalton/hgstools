@@ -446,7 +446,8 @@ class HGSGrid():
 
         elif dom == Domain.FRAC:
             inc_nodes = self.hgs_fx_elems['inc'][iel]
-            return tuple(self.hgs_pm_nodes['ncoords'][i] for i in inc_nodes)
+            _f2p = self.hgs_fx_nodes['link_frac2pm']
+            return tuple(self.hgs_pm_nodes['ncoords'][_f2p[inc_nodes]])
 
         else:
             raise NotImplementedError(f'Not implemented for {dom}')
