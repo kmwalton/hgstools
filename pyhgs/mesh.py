@@ -271,7 +271,7 @@ class HGSGrid():
 
             self.hgs_fx_elems = _WarningDict(self.hgs_fx_elems)
             self.hgs_fx_elems.warn_on['inc'] = [
-                '0-based, fracture node indicies held here', UserWarning, 3,]
+                '0-based, fracture node indicies held here', UserWarning, 2,]
 
 
         self.shape = tuple(self.hgs_pm_nodes[a] for a in ['nx','ny','nz'])
@@ -416,6 +416,10 @@ class HGSGrid():
             raise ValueError(f'Domain {dom} not allowed')
 
 
+    # TODO
+    # Write a get_coords method that iterates over sets of nodal coordinates, in
+    # contrast to the following method that gets one set at a time.
+
     def get_coords(self, iel, dom=Domain.PM):
         """
             Parameters
@@ -446,7 +450,9 @@ class HGSGrid():
 
         elif dom == Domain.FRAC:
             inc_nodes = self.hgs_fx_elems['inc'][iel]
-            _f2p = self.hgs_fx_nodes['link_frac2pm']
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                _f2p = self.hgs_fx_nodes['link_frac2pm']
             return tuple(self.hgs_pm_nodes['ncoords'][_f2p[inc_nodes]])
 
         else:
@@ -1536,7 +1542,7 @@ def make_supersample_distance_groups(dx, maxd):
 
 
     n = 0
-    ssbl = np.empty((len(dx),2), dtype=np.uint32) # super sample blocks
+    ssbl = np.empty((len(dx),2), dtype=np.int32) # super sample blocks
     ssbl[0][0] = -1
     NONE = ssbl[0][0]
     accd = 0
