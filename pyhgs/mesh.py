@@ -288,6 +288,12 @@ class HGSGrid():
 
         logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
 
+    def __str__(self):
+        ndoms = len(list(self.domains()))
+        s = f'HGSGrid {self.prefix} with {ndoms} domain{"s" if ndoms>1 else ""}'
+        s += f' and {self.nn:,} PM nodes'
+        return s
+
     def domains(self):
         """Yield the active domains in this grid"""
         if self.hgs_pm_nodes is not None:
