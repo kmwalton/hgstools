@@ -116,7 +116,10 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
 
     # Load datafiles
     for isuff, suff in enumerate(dfsuff):
-        mylog.info(f'processing temporal suffix {suff}')
+        _ns = len(grok['solute'])
+        mylog.info(f'Processing temporal suffix {suff} '
+            + f'with {_ns} solute{"s" if _ns > 1 else ""}'
+        )
 
         izn, zn = next(iter_zones)
 
@@ -141,8 +144,11 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
         for s in grok['solute']:
 
             # read PM dataset
-            d = pyhgs.parser.parse(f'{ppfx}o.conc_pm.{s}.{suff}')
+            _fn = f'{ppfx}o.conc_pm.{s}.{suff}'
+            d = pyhgs.parser.parse(_fn)
             t = d['ts']
+
+            mylog.info(f'Processing {_fn}...')
 
             # concentration, PM
             data_pm = ogrid.get_element_vals(d['data']).ravel(order='F')
@@ -197,7 +203,7 @@ if __name__ == '__main__':
     argp.add_argument('-v', '--verbose',
         action='count',
         default=0,
-        help='Set the verbosity.',
+        help='Set the verbosity up to level 3, -vvv. Default 0.',
     )
 
     argp.add_argument('--out-file',
@@ -223,27 +229,25 @@ if __name__ == '__main__':
     if args.verbose > 0:
         for l in (mylog, calclog, calcperflog,):
             l.addHandler(logging.StreamHandler())
-    if args.verbose > 1:
         mylog.setLevel(logging.INFO)
         calclog.setLevel(logging.INFO)
-    if args.verbose > 2:
+    if args.verbose > 1:
         mylog.setLevel(logging.DEBUG)
-        calclog.setLevel(logging.DEBUG)
         calcperflog.setLevel(logging.INFO)
+    if args.verbose > 2:
+        calclog.setLevel(logging.DEBUG)
 
     mylog.info(get_imprint(os.path.abspath(__file__), True))
 
     pathto, pfx, junk = PathToPrefix.split(args.PATH_TO_PREFIX)
     ppfx = pathto + os.sep + pfx
 
-    mylog.debug(f'Examining HGS problem "{pfx}"')
-
     # Load grid
     g = HGSGrid(ppfx)
-    grok = pyhgs.parser.grok.parse(ppfx+'.grok')
-    #mprops = merge_dicts(pyhgs.parser.mprops.parse(pathto+os.sep+fmprops)
-    #    for fmprops in grok['files_mprops'])
-    #breakpoint()
+    grok = pyhgs.parser.grok.parse(ppfx+'.grok', do_includes=True)
+    mylog.info(f'Using grid: {g!s}\n'
+            +f'Using solute{"s" if len(grok["solute"])>1 else ""}: '
+            +', '.join(grok['solute']) )
 
     # make averaged-grid
     ag = AvRegGrid(g, args.DISCRETIZATION)
@@ -256,6 +260,7 @@ if __name__ == '__main__':
 
     # write tecplot datafile
     mylog.debug(f'Writing tecplot data to {args.out_file}')
-    tp.data.save_tecplot_ascii(args.out_file, dataset=ds)
+    tp.data.save_tecplot_ascii(args.out_file, dataset=ds,
+            include_data_share_linkage=True)
 
     sys.exit(0)
