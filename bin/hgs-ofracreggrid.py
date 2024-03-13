@@ -211,6 +211,22 @@ if __name__ == '__main__':
         help='The name of the tecplot ascii-format datafile',
     )
 
+    argp.add_argument('--origin',
+        type=float,
+        default=None,
+        nargs=3,
+        help='''The regular grid\'s origin (if different than the hydrogeosphere
+            domain), as "x y z".''',
+    )
+
+    argp.add_argument('--size',
+        type=float,
+        default=None,
+        nargs=3,
+        help='''The regular grid\'s size (if different than the hydrogeosphere
+            domain), as "Lx Ly Lz".''',
+    )
+
     argp.add_argument('DISCRETIZATION',
         #metavar=('dx', 'dy', 'dz',),
         type=float,
@@ -250,7 +266,7 @@ if __name__ == '__main__':
             +', '.join(grok['solute']) )
 
     # make averaged-grid
-    ag = AvRegGrid(g, args.DISCRETIZATION)
+    ag = AvRegGrid(g, args.DISCRETIZATION, args.origin, args.size)
 
     # set up destination tecplot datafile
     ds = make_tp_dataset(pfx, grok['solute'])
