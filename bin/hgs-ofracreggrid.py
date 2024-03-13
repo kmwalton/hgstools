@@ -167,7 +167,7 @@ def populate_tp_zones(ds, ogrid, rgrid, solutes, pathto):
             # write data to zone
             with tp.session.suspend(), warnings.catch_warnings():
                 warnings.simplefilter('ignore') # ignore divde by zero in _V_fx
-                zn1.solution_time = float(t)
+                zn.solution_time = float(t)
 
                 _d_fx = np.nan_to_num(np.squeeze(np.asarray(_M_fx/_V_fx)),
                             copy=False)
