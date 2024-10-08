@@ -17,35 +17,53 @@ _pl = _PerfLogStack(perf_logger.info)
 class AvRegGrid:
     """Calculate elemental average properties on a regular grid"""
 
-    def __init__(self, grid, reggrid):
+    def __init__(self, grid, reggrid_d, reggrid_o=None, reggrid_s=None):
         """Initialize a new regular grid
 
         This includes the process of mapping all HGS grid elements to the new
         regular grid, which can be expensive:
             - elements intersecting each new grid block are determined using
             `choose_elements_block` with partial matches.
+
+
+        Arguments
+        ---------
+            grid : HGSGrid
+            reggrid_d, reggrid_o, reggrid_s : 3 floats
+                The regular grid domain discretization, origin, and size. Origin
+                and size will be taken from the HGSGrid's domain if they are
+                specified as `None`.
         """
         if not isinstance(grid, HGSGrid):
             raise ValueError('HGS mesh must be a rectilinear grid')
 
         self.g = grid
         """Reference to the subject HGSGrid object"""
-        reggrid = np.array(reggrid)
+        reggrid = np.array(reggrid_d)
 
         logger.debug(f'Operating on {grid}')
 
 
-        # determine shape of new grid
-        ogl = grid.get_grid_lines()
-        nshape = (np.ceil(
-            np.array([(ax[-1]-ax[0]) for ax in ogl],)/reggrid)+np.ones(3)
-          ).astype(np.int32)
+        # determine size, origin, and index-shape of new grid
+        ogl = grid.get_grid_lines()  # input HGS Grid
 
-        logger.debug(f'New discretization has {nshape} {reggrid}-sized blocks')
+        if reggrid_o is None:
+            reggrid_o = np.array([ax[0] for ax in ogl],)
+        else:
+            reggrid_o = np.array(reggrid_o)
+
+        if reggrid_s is None:
+            reggrid_s = np.array([ax[-1]-ax[0] for ax in ogl],)
+        else:
+            reggrid_o = np.array(reggrid_o)
+
+        nshape = (np.ceil(reggrid_s/reggrid_d)+np.ones(3)).astype(np.int32)
+
+        logger.debug(f'New discretization has {nshape} {reggrid_d}-sized blocks')
 
         # compute new grid cell boundaries
         self.gl = tuple(
-                ogl[ax][0] + np.arange(nshape[ax])*reggrid[ax]
+                reggrid_o[ax] + np.arange(nshape[ax])*reggrid_d[ax]
                 for ax in range(3)
                 )
         """The x-, y- and z-grid lines"""
