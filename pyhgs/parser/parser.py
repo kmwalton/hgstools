@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """
 main method herein will dump a binary file to console output.
+
+.TODO..
+
+This old functionality should be merged in with `pyhgs.parser.eco` and `pyhgs.parser.grok`
 """
 
 import sys
@@ -46,7 +50,7 @@ class GrokParser():
         """
             Arguments:
                 prefix : str
-                    A prefix, or path\prefix, combined.
+                    A prefix, or path/prefix, combined.
                     Or the empty string will look for the prefix in batch.pfx
         """
         if not prefix:

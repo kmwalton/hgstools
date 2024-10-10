@@ -1,7 +1,9 @@
 """A parser for RFGen grids from RFGen text output"""
 
-import re,sys,copy
-from ofracs import *
+import sys
+import re
+import copy
+from ofrac.ofracs import *
 
 class NotValidRFGenInputError(Exception):
     """Exception raised if input file is not valid"""
@@ -38,7 +40,7 @@ class RFGenFracListParser:
         # the (first) index column, 'i', is optional
         # the (last) type column 'ifractyp' or 'type' is optional
         fracListHdr = re.compile(
-         '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?',
+         r'(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s*(type|ifractyp)?',
          flags=re.I)
 
         while True:

@@ -88,7 +88,7 @@ def _clean(text_in):
     """Clean out hgs comments and extra whitespace"""
 
     # get rid of comments
-    text = re.sub('\!.*?\n','\n',text_in)
+    text = re.sub(r'!.*?\n','\n',text_in)
 
     # get rid of trailing whitespace, leading space, multiple newlines
     text = re.sub(r'\s*\n\s*','\n',text)

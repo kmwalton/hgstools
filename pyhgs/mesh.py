@@ -367,9 +367,9 @@ class HGSGrid():
         """Iterate over element data.
 
             Yields tuples of
-            <code>( (node indices), zone, *<other data\>* )</code>
+            <code>( (node indices), zone, *<other data\\>* )</code>
 
-            where <code>*<otherdata\>*</code>is:
+            where <code>*<otherdata\\>*</code>is:
                 for <code>dom == Domain.PM</code>, nothing;
                 for <code>dom == Domain.FRAC</code>, ap.
         """
