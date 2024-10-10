@@ -6,3 +6,6 @@
 
 # OS X directory cache files
 .DS_Store
+# Windows undo files
+*.un~
+*~
