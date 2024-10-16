@@ -617,7 +617,11 @@ def parse(fn, **kwargs):
     if p:
         logger.info(f'Parsing {fn} using {p.__name__}')
         logger.log(logging.INFO-1,p.__doc__)
-        return p(fn, **kwargs)
+
+        try:
+            return p(fn, **kwargs)
+        except BaseException as e:
+            raise RuntimeError(f'When parsing {fn}') from e
     else:
         raise RuntimeError(f'No parser for {fn}')
 

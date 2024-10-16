@@ -554,7 +554,7 @@ class _Triple_List(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=''):
         ell = getattr(namespace,re.sub('-','_',option_string[2:]))
         for v in values:
-            self._parse(v,ell, parser, option_string)
+            self._parse(v, ell, parser, option_string)
         return ell
 
     @staticmethod
@@ -569,12 +569,13 @@ class _Triple_List(argparse.Action):
                 ell[i] = d
 
         def _as_ax_eq_val(s, ell=ell):
-            m=re.match(r'([xyz])\s*=\s*('+_num_re_str+')',s)
-            ax, val = (m.group(1),Decimal(m.group(2)),)
-            iax = 'xyz'.index(ax.lower())
-            if ell[iax] is not None:
-                raise RuntimeError(f'{ax} value already assigned')
-            ell[iax] = val
+            """Find one or more axid=value string in `s`"""
+            for m in re.findall(r'([xyz])\s*=\s*('+_num_re_str+')',s):
+                ax, val = m[0], Decimal(m[1])
+                iax = 'xyz'.index(ax.lower())
+                if ell[iax] is not None:
+                    parser.error(f'{ax} value assigned multiple times in {opts}')
+                ell[iax] = val
 
         pl = [ _as_Decimal, _as_ax_eq_val, ]
 

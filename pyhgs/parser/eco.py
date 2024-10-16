@@ -4,7 +4,7 @@ import os
 import re
 import copy
 from decimal import Decimal as D
-from ofracs import OFracGrid
+from ofrac.ofracs import OFracGrid
 
 class NotValidHGSEcoInputError(Exception):
     """Exception raised if input file is not valid"""
@@ -75,7 +75,7 @@ class EcoFile:
       line = fin.readline()
 
       gridlines = [ [], [], [] ]
-      gridEntry= re.compile('^[0-9]+\s+'+r'\s+'.join(3*['([+.0-9-]+)',])+'$')
+      gridEntry= re.compile(r'^[0-9]+\s+'+r'\s+'.join(3*['([+.0-9-]+)',])+'$')
 
       #
       # READ THE GRID
@@ -131,7 +131,7 @@ class EcoFile:
       # the (first) index column, 'i', is optional
       # the (last) type column 'ifractyp' or 'type' is optional
       fracListHdr = re.compile(
-         '(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s+aperture\s*(type|ifractyp)?')
+         r'(i)?\s*(xfrom\s+xto\s+yfrom\s+yto\s+zfrom\s+zto)\s+aperture\s*(type|ifractyp)?')
       while fin:
          m = fracListHdr.search( line.lower() )
          if m:

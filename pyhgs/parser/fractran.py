@@ -25,7 +25,7 @@ from scipy.io import FortranFile
 import numpy as np
 from math import log10
 
-from ofracs import *
+from ofrac.ofracs import *
 
 class NotValidFractranInputError(Exception):
    """Exception raised if input file is not valid"""
@@ -80,11 +80,11 @@ class Parser_FractranLengthsFile():
       # i zbot    ztop   length   xpos  aperture
       # i xleft   xright length   zpos  aperture
       vfHeader = re.compile(
-         '^{}$'.format('\s+'.join(
+         '^{}$'.format(r'\s+'.join(
              ['i','zbot','ztop','length','xpos','aperture'])))
 
       hfHeader = re.compile(
-         '^{}$'.format('\s+'.join(
+         '^{}$'.format(r'\s+'.join(
              ['i','xleft','xright','length','zpos','aperture'])))
 
       atEOF = False
@@ -127,11 +127,11 @@ class Parser_FractranLengthsFile():
    def _readFracList(self, fin):
       """Read and yield a list of fractures (as tuples of float values)"""
 
-      reInt='[+-]?[0-9]+' # RE for a signed integer
-      reFix='[+-]?[0-9]*\.?[0-9]+' # RE for a fixed point number
+      reInt=r'[+-]?[0-9]+' # RE for a signed integer
+      reFix=r'[+-]?[0-9]*\.?[0-9]+' # RE for a fixed point number
 
       fracEntry= \
-         re.compile('^{0}\s+({1})\s+({1})\s+({1})\s+({1})\s+({1})\s*$'.format(reInt,reFix))
+         re.compile(r'^{0}\s+({1})\s+({1})\s+({1})\s+({1})\s+({1})\s*$'.format(reInt,reFix))
 
       lastPos = fin.tell()
 
