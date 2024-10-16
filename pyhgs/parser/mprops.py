@@ -75,10 +75,28 @@ class CaseInsensitiveDict(dict):
 
 def _parse_mat(mat_str):
    """Parse simple name-value pairs"""
+
+   def _floattriple(s):
+      s = s.split('!',maxsplit=1)[0].strip()
+      s = re.sub(',',' ',s)
+      return tuple(map(float, s.split()))
+
+   parser_list = [ float, _floattriple, ]
+
    d = dict()
 
    for k,v in grouper(mat_str.strip().split('\n'),2):
-      d[k] = float(v)
+      _success = False
+      for p in parser_list:
+          try:
+             d[k] = p(v)
+          except:
+             pass
+          else:
+             _success = True
+             break
+      if not _success:
+          raise ValueError(f'Could not parse {k} with {v}')
 
    return CaseInsensitiveDict(d)
    #return d
