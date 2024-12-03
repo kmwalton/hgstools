@@ -148,7 +148,7 @@ def parse(file, do_skips=False):
               f' not {type(file)}')
 
    # get rid of comments
-   file_text = re.sub('\!.*?\n','\n',file_text)
+   file_text = re.sub(r'\!.*?\n','\n',file_text)
 
    # get rid of trailing whitespace, leading space, multiple newlines
    file_text = re.sub(r'\s*\n\s*','\n',file_text).strip()

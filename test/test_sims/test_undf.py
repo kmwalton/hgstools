@@ -29,11 +29,13 @@ SIM_PREFIX = os.path.join(TESTP,'undulating_coarse','undf')
 class Test_UndulatingCoarse(unittest.TestCase):
 
     def setUp(self):
-        # Loading and re-loading this each test case could get expensive.
-        # Consider refactoring to a "static" module level variable that can be
-        # treated as read-only as a balance between data loading overhead and
-        # test independence; test cases that modify the HGSGrid object can
-        # reload the data.
+        '''Set up this TestCase
+
+        Loading and re-loading this each test case could get expensive.
+        Consider refactoring to a "static" module level variable that can be
+        treated as read-only as a balance between data loading overhead and
+        test independence; test cases that modify the HGSGrid object can
+        reload the data.'''
         self.g = HGSGrid(SIM_PREFIX)
 
         # test HGS' pm 2 fracture node mapping
