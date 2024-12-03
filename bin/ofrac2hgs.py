@@ -50,7 +50,7 @@ _num_re = re.compile(_num_re_str)
 
 _gl_list_re_str = \
     r'\s*(?:(?P<axis>[xyzXYZ])\s*=\s*)?' \
-    r'(?P<vals>(?:\s*'+_num_re_str+'\s*,?){1,})\s*;?'
+    r'(?P<vals>(?:\s*'+_num_re_str+r'\s*,?){1,})\s*;?'
 
 _gl_list_re = re.compile(_gl_list_re_str)
 

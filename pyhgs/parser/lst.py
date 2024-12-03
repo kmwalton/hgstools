@@ -26,7 +26,7 @@ _FILTER = {
         flags=re.M),
     'timestepsize':re.compile(
         r'(?ms:^Global target time.*Tnext)' \
-        r'(^(?:\s+'+_NUM_RE+'){3}(?:\s+.*)$)+'),
+        r'(^(?:\s+'+_NUM_RE+r'){3}(?:\s+.*)$)+'),
     'accepted_solution_time':re.compile(
         r'^ Accepted solution at time:?\s+('+_NUM_RE+')',
         flags=re.M),
@@ -50,7 +50,7 @@ _FILTER = {
     'mass_exchange': re.compile(
         r'^RATE OF MASS EXCHANGE\s+IN\s+OUT\s+TOTAL.*\n' \
         r'(?s:(?P<bc_data>.*?))\n' \
-        r'   (?P<tot>NET1 EXCHANGE RATE.*?)\s+(?P<totval>(?:'+_NUM_RE+'))\s*$',
+        r'   (?P<tot>NET1 EXCHANGE RATE.*?)\s+(?P<totval>(?:'+_NUM_RE+r'))\s*$',
         flags=re.M),
 
     'mass_storage': re.compile(
@@ -69,7 +69,7 @@ _FILTER = {
         r'^(?:(?P=indent)(?P<phase>\S.*?)\s+(?P<val>'+_NUM_RE+r')\s*\n)*',
         flags=re.M),
 
-    'kv': re.compile(r'\s*(?P<k>\S.*?)\s+(?P<v>'+_NUM_RE+')\s*')
+    'kv': re.compile(r'\s*(?P<k>\S.*?)\s+(?P<v>'+_NUM_RE+r')\s*')
 
 }
 """Dictionary of compiled re objects for various chunks of a .lst file"""
@@ -326,7 +326,7 @@ class LSTFile:
             r'Boundary condition name\s+IN\s+OUT\s+NET.*' \
             #r'(?P<bc_data>(?:\n\S.+\s+(?:+'+_NUM_RE+'\s+){3}\S.*){1,})'\
             r'(?s:(?P<bc_data>.*?))\n'\
-            r'TOTAL:\[[^\]]+\]\s+(?P<total>(?:\s+'+_NUM_RE+'){3})\s*\n',
+            r'TOTAL:\[[^\]]+\]\s+(?P<total>(?:\s+'+_NUM_RE+r'){3})\s*\n',
             flags=re.M)
     ]
 
@@ -451,7 +451,7 @@ class LSTFile:
 
         # get BCs
         for l in m['bc_data'].strip().split('\n'):
-            mm = re.match(r'\s*(.*?)'+2*('\s+('+_NUM_RE+')') +'\s*', l)
+            mm = re.match(r'\s*(.*?)'+2*(r'\s+('+_NUM_RE+')') +r'\s*', l)
             ret[mm[1]] = (float(mm[2]), float(mm[3]),)
 
         # get total
