@@ -97,6 +97,7 @@ class RFG:
             fnin,
             collapse_policy='warn-omit',
             domainSize=[],
+            translate=None,
             forcedGridLines=[],
             nudgeTo=0.0,
             pmRefNearFx=[],
@@ -121,6 +122,10 @@ class RFG:
 
         # start transformations
         logger.verbose2("\nTransforming...")
+
+        if translate is not None:
+            self.fxnet.translate(translate)
+            logger.verbose2(f'\n...with translation {translate}')
 
         if domainSize:
             self.fxnet.setDomainSize( '(0,0,0)', domainSize )
@@ -636,7 +641,19 @@ def make_arg_parser():
 
     parser.add_argument(
         '--domain-size', default='', type=str,
-        help='domain dimensions, as "dx, dy, dz" or "(dx,dy,dz)' )
+        help='''Set the domain extent, as "X, Y, Z" or "(X,Y,Z)", and
+        truncate the domain such that only the region between (0,0,0) and
+        (X,Y,Z) remains.''',
+    )
+
+    parser.add_argument(
+        '--translate', default=None, type=str,
+        help='''Translate the domain by the given distances, as "Xt, Yt, Zt" or
+        "(Xt,Yt,Zt)", by adding the given values to each coordinate in the
+        domain/fractre network. Translation is performed before domain size
+        truncation''',
+        )
+
 
     parser.add_argument(
         '--force-extra-grid-lines',
@@ -746,14 +763,20 @@ if __name__ == "__main__":
                 for axSet in fglvals.values():
                     axSet.update(vals)
 
+    def _to_decimal_list(s):
+        if s in (None, '', False):
+            return None
+        else:
+            return list(
+                Decimal(v) for v in
+                re.sub(r'[(),]',' ', s).split())
+
     # get parse grid and make modifications
-    #try:
     rfg = RFG(
         args.filename,
         args.fx_collapse_policy,
-        domainSize=list(
-            Decimal(v) for v in
-            re.sub(r'[(),]',' ',args.domain_size).split() ),
+        domainSize=_to_decimal_list(args.domain_size),
+        translate=_to_decimal_list(args.translate),
         forcedGridLines=list( fglvals.values() ),
         nudgeTo=args.nudge_fx_coordinates_to,
         maxGlSpacing=args.max_grid_space,
@@ -761,9 +784,6 @@ if __name__ == "__main__":
         pmRefNearFx=args.refine_near_fx_plane,
     )
 
-    #except BaseException as e:
-    #    print(str(e), file=sys.stderr)
-    #    sys.exit(1)
 
     def quoteMultipartParam(s):
         if any(specialChar in s for specialChar in '$(), '):
