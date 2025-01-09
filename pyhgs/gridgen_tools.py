@@ -8,7 +8,7 @@ Thu, Feb  4, 2016  4:56:22 PM
 import sys,os,datetime,argparse
 from math import log10,floor
 from itertools import zip_longest
-
+from functools import partial
 
 def regularLines(spacing=0.1, start=0.0, end=30.0, irregGLs=[]):
    """Grid lines from 0 m to 30m in irregular intervals
@@ -26,12 +26,24 @@ def regularLines(spacing=0.1, start=0.0, end=30.0, irregGLs=[]):
    return gl
 
 
-def printHGS(gl):
-   """print grid lines (suitable for HGS); a 'row'-shaped list"""
+def printHGS(gl, fout=sys.stdout):
+   """Print the given array, plus metadata/comments, in HGS format
 
-   print("! Grid lines printed by {}, {}".format(
+   Parameters
+   ----------
+   gl : array-like
+      An array of ascending numeric values representing the location of grid
+      lines.
+   fout : file-like
+      An open file/stream where output text will be written.
+   """
+
+   pfout = partial(print, file=fout)
+
+
+   pfout("! Grid lines printed by {}, {}".format(
                os.path.basename(__file__), datetime.datetime.now()) )
-   print("! {} grid lines; {} total distance ".format(len(gl), gl[-1]-gl[0]))
+   pfout("! {} grid lines; {} total distance ".format(len(gl), gl[-1]-gl[0]))
 
    gl.reverse()
 
@@ -44,16 +56,16 @@ def printHGS(gl):
    # the maximum line width is much lower. Hence, 80.
    MAX_LINE=80 - 2 - WIDTH
 
-   print( len(gl) )
+   pfout( len(gl) )
 
    while gl:
-      print( FMT.format(gl.pop()), end='' )
+      pfout( FMT.format(gl.pop()), end='' )
       cc=WIDTH # character count
       while gl and cc<MAX_LINE and not float(gl[-1]) % 5.0 < 1e-6 :
-         print( " "+FMT.format(gl.pop()), end='' )
+         pfout( " "+FMT.format(gl.pop()), end='' )
          cc += 1+WIDTH
 
-      print()
+      pfout()
 
 def printRFGen(gl):
    """print grid lines (in format of RFGen); a 'i x y z'-shaped list, in columns"""
