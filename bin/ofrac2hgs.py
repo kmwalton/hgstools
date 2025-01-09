@@ -88,6 +88,7 @@ class RFG:
 
     def __init__(self,
             fnin,
+            collapse_policy='warn-omit',
             domainSize=[],
             forcedGridLines=[],
             nudgeTo=0.0,
@@ -105,6 +106,8 @@ class RFG:
         gridGen = iter(map(RFG._getGrid, fnin))
 
         self.fxnet = next(gridGen).merge(*gridGen)
+
+        self.fxnet.collapse_policy = collapse_policy
 
         # success
         if __VERBOSITY__:
@@ -687,9 +690,9 @@ def make_arg_parser():
 
     parser.add_argument( '--fx-collapse-policy',
             choices=getattr(ofracs_module,'__FX_COLLAPSE_POLICIES__'),
-            default=getattr(ofracs_module,'__FX_COLLAPSE_POLICY__'),
-            help=f'''Define what to do if a fracture collapses when nudging, etc
-            Default {getattr(ofracs_module,'__FX_COLLAPSE_POLICY__')}'''
+            default='warn-omit',
+            help=f'''Define what to do if a fracture collapses when nudging,
+            etc. Default "warn-omit".''',
             )
 
     parser.add_argument( '--quantize-apertures',
@@ -745,6 +748,7 @@ if __name__ == "__main__":
     #try:
     rfg = RFG(
         args.filename,
+        args.fx_collapse_policy,
         domainSize=list(
             Decimal(v) for v in
             re.sub(r'[(),]',' ',args.domain_size).split() ),
