@@ -223,10 +223,17 @@ class RFG:
     def _pack_frac(self, f):
         # pack up the frac data, as it might be in one of two formats
         pack = None
-        if type(f) == OFrac:
-            pack = tuple( f.d ) + ( f.ap, )
-        else:
-            (pack, t) = f
+
+        try:
+            if f.__class__.__name__ == 'OFrac':
+                pack = tuple( f.d ) + ( f.ap, )
+            else:
+                (pack, t) = f
+        except Exception as e:
+            raise ValueError(
+                f'!!! Failed to pack fracture {f!s} of type {type(f)}') \
+                from e
+
         return pack
 
     def spewFracs(self,
