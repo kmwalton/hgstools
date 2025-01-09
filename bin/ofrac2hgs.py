@@ -20,16 +20,29 @@ import pickle
 import warnings
 import decimal
 from decimal import Decimal
-from math import sqrt
-from functools import reduce
+from math import sqrt, floor, log10
+from functools import reduce, partial
 from collections import defaultdict
 
 import numpy as np
 
 
-import ofracs
-from ofracs import (D_AP, D_CO, OFrac, OFracGrid)
-from pyhgs.gridgen_tools import *
+# For the purpose of PYTHONPATH'ing to to a top-level packages directory
+# (moving away from adding specific package directories to the PYTHONPATH
+# environment variable), we must guard the import of the 'ofrac.ofracs' module
+# so it works seamlessly for less favourable setup of importing 'ofracs'.
+import importlib
+import warnings
+try:
+    ofracs_module = importlib.import_module('ofrac.ofracs')
+except ModuleNotFoundError:
+    warnings.warn('This environment includes path/to/package_libary/ofrac.')
+    ofracs_module = importlib.import_module('ofracs')
+# put the required functions into the local namespace
+for func_name in ('D_AP', 'D_CO', 'OFrac', 'OFracGrid'):
+    locals()[func_name] = getattr(ofracs_module, func_name)
+
+from hgstools.pyhgs.gridgen_tools import printHGS
 
 __VERBOSITY__ = 0
 
@@ -148,7 +161,7 @@ class RFG:
 
     @staticmethod
     def _getGrid(fn):
-        return ofracs.parse(fn)
+        return ofracs_module.parse(fn)
 
     def spewPreamble(self, moreMessages='', fout=sys.stdout):
         """Print a message about this grid and some of its parameters."""
@@ -208,7 +221,7 @@ class RFG:
             print('generate variable blocks')
             for a in range(3):
                 print()
-                printHGS(list(self.fxnet.iterGridLines(a)))
+                printHGS(list(self.fxnet.iterGridLines(a)), fout)
             print('end grid generation')
 
         sys.stdout = stdoutSave
@@ -248,7 +261,7 @@ class RFG:
                 fout because more fracture zones are grouped together with a
                 single "read properties" statement.
         """
-        prefixGuess = re.sub('o\.eco','',self.fnin)
+        prefixGuess = re.sub(r'o\.eco','',self.fnin)
         more = ''
         
         if fpropsout is not None:
@@ -673,10 +686,10 @@ def make_arg_parser():
             help='Output file name for OFracGrid-type object data (pickled)')
 
     parser.add_argument( '--fx-collapse-policy',
-            choices=getattr(sys.modules['ofracs'],'__FX_COLLAPSE_POLICIES__'),
-            default=getattr(sys.modules['ofracs'],'__FX_COLLAPSE_POLICY__'),
+            choices=getattr(ofracs_module,'__FX_COLLAPSE_POLICIES__'),
+            default=getattr(ofracs_module,'__FX_COLLAPSE_POLICY__'),
             help=f'''Define what to do if a fracture collapses when nudging, etc
-            Default {getattr(sys.modules['ofracs'],'__FX_COLLAPSE_POLICY__')}'''
+            Default {getattr(ofracs_module,'__FX_COLLAPSE_POLICY__')}'''
             )
 
     parser.add_argument( '--quantize-apertures',
@@ -707,12 +720,10 @@ if __name__ == "__main__":
 
     __VERBOSITY__ = args.verbosity
 
-    setattr(
-            sys.modules['ofracs'],
+    setattr(ofracs_module,
             '__VERBOSITY__',
             max(0,__VERBOSITY__-1) )
-    setattr(
-            sys.modules['ofracs'],
+    setattr(ofracs_module,
             '__FX_COLLAPSE_POLICY__',
             args.fx_collapse_policy )
 
@@ -731,22 +742,22 @@ if __name__ == "__main__":
                     axSet.update(vals)
 
     # get parse grid and make modifications
-    try:
-        rfg = RFG(
-            args.filename,
-            domainSize=list(
-                Decimal(v) for v in
-                re.sub(r'[(),]',' ',args.domain_size).split() ),
-            forcedGridLines=list( fglvals.values() ),
-            nudgeTo=args.nudge_fx_coordinates_to,
-            maxGlSpacing=args.max_grid_space,
-            regGlSpacing=args.reg_grid_space,
-            pmRefNearFx=args.refine_near_fx_plane,
-        )
+    #try:
+    rfg = RFG(
+        args.filename,
+        domainSize=list(
+            Decimal(v) for v in
+            re.sub(r'[(),]',' ',args.domain_size).split() ),
+        forcedGridLines=list( fglvals.values() ),
+        nudgeTo=args.nudge_fx_coordinates_to,
+        maxGlSpacing=args.max_grid_space,
+        regGlSpacing=args.reg_grid_space,
+        pmRefNearFx=args.refine_near_fx_plane,
+    )
 
-    except BaseException as e:
-        print(str(e), file=sys.stderr)
-        sys.exit(1)
+    #except BaseException as e:
+    #    print(str(e), file=sys.stderr)
+    #    sys.exit(1)
 
     def quoteMultipartParam(s):
         if any(specialChar in s for specialChar in '$(), '):
