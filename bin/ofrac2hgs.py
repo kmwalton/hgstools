@@ -44,7 +44,14 @@ for func_name in ('D_AP', 'D_CO', 'OFrac', 'OFracGrid'):
 
 from hgstools.pyhgs.gridgen_tools import printHGS
 
-__VERBOSITY__ = 0
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.WARNING)
+logger.verbose1 = partial(logger.log, logging.INFO)
+logger.verbose2 = partial(logger.log, logging.INFO-1)
+
+
 
 
 WISHLIST="""
@@ -110,25 +117,19 @@ class RFG:
         self.fxnet.collapse_policy = collapse_policy
 
         # success
-        if __VERBOSITY__:
-            print( '\nOriginal domain ' + str(self.fxnet), file=sys.stderr )
-            if __VERBOSITY__ > 1:
-                print("\nTransforming...")
+        logger.verbose1('\nOriginal domain ' + str(self.fxnet))
 
         # start transformations
+        logger.verbose2("\nTransforming...")
+
         if domainSize:
             self.fxnet.setDomainSize( '(0,0,0)', domainSize )
-
-            if __VERBOSITY__ > 1:
-                print(f'\n...with forced domain size: {self.fxnet!s}',
-                        file=sys.stderr)
+            logger.verbose2(f'\n...with forced domain size: {self.fxnet!s}')
 
         self.nudgeTo=nudgeTo
         if nudgeTo > 0.0:
             self.fxnet.nudgeAll(nudgeTo)
-            if __VERBOSITY__ > 1:
-                print(f'\n...with fracture nudging: {self.fxnet!s}',
-                        file=sys.stderr )
+            logger.verbose2(f'\n...with fracture nudging: {self.fxnet!s}')
 
         if forcedGridLines and sum(map(len,forcedGridLines))>0:
             # assume we have a triple of list-like things with numeric values
@@ -136,31 +137,23 @@ class RFG:
                 for gl in gla:
                     self.fxnet.addGridline(ia,gl)
 
-            if __VERBOSITY__ > 1:
-                print(f'\n...with forced grid lines: {self.fxnet!s}',
-                        file=sys.stderr )
+            logger.verbose2(f'\n...with forced grid lines: {self.fxnet!s}')
 
         if regGlSpacing and any(regGlSpacing):
             self.fxnet.addRegularGlSpacing(regGlSpacing)
-            if __VERBOSITY__ > 1:
-                print(f'\n...with regular gridline spacing: {self.fxnet!s}',
-                        file=sys.stderr )
+            logger.verbose2(
+                f'\n...with regular gridline spacing: {self.fxnet!s}')
 
         self.pmRefs = pmRefNearFx
         if pmRefNearFx:
             self.fxnet.refineNearFx(pmRefNearFx)
-            if __VERBOSITY__ > 1:
-                print(f'\n...with PM refinement: {self.fxnet!s}',
-                        file=sys.stderr )
+            logger.verbose2(f'\n...with PM refinement: {self.fxnet!s}')
 
         if maxGlSpacing and any(maxGlSpacing):
             self.fxnet.setMaxGlSpacing(maxGlSpacing)
-            if __VERBOSITY__ > 1:
-                print(f'\n...with max gridline spacing: {self.fxnet!s}',
-                        file=sys.stderr )
+            logger.verbose2(f'\n...with max gridline spacing: {self.fxnet!s}')
 
-        if __VERBOSITY__:
-            print('\nTransformed domain ' + str(self.fxnet), file=sys.stderr)
+        logger.verbose1('\nTransformed domain ' + str(self.fxnet))
 
     @staticmethod
     def _getGrid(fn):
@@ -202,32 +195,30 @@ class RFG:
 
     def spewGrid(self, fout=sys.stdout):
 
-        stdoutSave = sys.stdout
-        sys.stdout = fout
+        ps = partial(print, file=fout)
 
         if ( self.fxnet.isUniformGridSpacing(0) and
              self.fxnet.isUniformGridSpacing(1) and
              self.fxnet.isUniformGridSpacing(2) ):
-            print('generate uniform blocks')
+            ps('generate uniform blocks')
 
             for a,(aStart,aEnd) in enumerate(self.fxnet.getBounds()):
                 if aStart == 0.0:
-                    print('{:10.3f} {:5d}'.format(
+                    ps('{:10.3f} {:5d}'.format(
                         aEnd, self.fxnet.getGridLineCounts()[a]-1))
                 else:
-                    print('{:10.3f} {:5d} {:10.3f}'.format(
+                    ps('{:10.3f} {:5d} {:10.3f}'.format(
                         aEnd, self.fxnet.getGridLineCounts()[a]-1), aStart)
 
-            print('end grid generation')
+            ps('end grid generation')
 
         else:
-            print('generate variable blocks')
+            ps('generate variable blocks')
             for a in range(3):
-                print()
+                ps()
                 printHGS(list(self.fxnet.iterGridLines(a)), fout)
-            print('end grid generation')
+            ps('end grid generation')
 
-        sys.stdout = stdoutSave
 
     def _pack_frac(self, f):
         # pack up the frac data, as it might be in one of two formats
@@ -617,7 +608,11 @@ def make_arg_parser():
     parser.add_argument( '-v', '--verbosity',
             default=0,
             action='count',
-            help='increase the verbosity with each "-v"' )
+            help='''Increase the verbosity with each "-v". Default is verbosity
+            level 0, which only produces output related to node and gridline
+            counts in the style of array_sizes.default; Higher levels give
+            information on the operations of this script.''',
+            )
 
     parser.add_argument(
             '-n', '--nudge-fx-coordinates-to',
@@ -721,11 +716,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    __VERBOSITY__ = args.verbosity
+    logger.setLevel(logging.INFO+1 - args.verbosity)
 
     setattr(ofracs_module,
             '__VERBOSITY__',
-            max(0,__VERBOSITY__-1) )
+            max(0,args.verbosity-1) )
     setattr(ofracs_module,
             '__FX_COLLAPSE_POLICY__',
             args.fx_collapse_policy )
