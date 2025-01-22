@@ -25,7 +25,7 @@ from scipy.io import FortranFile
 import numpy as np
 from math import log10
 
-from ofrac.ofracs import *
+from ofracs import OFracGrid
 
 class NotValidFractranInputError(Exception):
    """Exception raised if input file is not valid"""

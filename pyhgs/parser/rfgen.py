@@ -3,7 +3,7 @@
 import sys
 import re
 import copy
-from ofrac.ofracs import *
+from ofracs import OFracGrid
 
 class NotValidRFGenInputError(Exception):
     """Exception raised if input file is not valid"""

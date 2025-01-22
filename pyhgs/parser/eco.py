@@ -4,7 +4,7 @@ import os
 import re
 import copy
 from decimal import Decimal as D
-from ofrac.ofracs import OFracGrid
+from ofracs import OFracGrid
 
 class NotValidHGSEcoInputError(Exception):
     """Exception raised if input file is not valid"""
