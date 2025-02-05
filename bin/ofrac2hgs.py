@@ -26,21 +26,12 @@ from collections import defaultdict
 
 import numpy as np
 
-
-# For the purpose of PYTHONPATH'ing to to a top-level packages directory
-# (moving away from adding specific package directories to the PYTHONPATH
-# environment variable), we must guard the import of the 'ofrac.ofracs' module
-# so it works seamlessly for less favourable setup of importing 'ofracs'.
-import importlib
-import warnings
-try:
-    ofracs_module = importlib.import_module('ofrac.ofracs')
-except ModuleNotFoundError:
-    warnings.warn('This environment includes path/to/package_libary/ofrac.')
-    ofracs_module = importlib.import_module('ofracs')
-# put the required functions into the local namespace
-for func_name in ('D_AP', 'D_CO', 'OFrac', 'OFracGrid'):
-    locals()[func_name] = getattr(ofracs_module, func_name)
+# highly unconventional:
+from hgstools.pyhgs._import_helpers import (
+        _get_ofracs_module, _get_from_ofracs,)
+ofracs_module = _get_ofracs_module()
+locals().update(_get_from_ofracs(
+   'D_AP', 'D_CO', 'OFrac', 'OFracGrid'))
 
 from hgstools.pyhgs.gridgen_tools import printHGS
 

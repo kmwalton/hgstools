@@ -4,12 +4,13 @@ import os
 import re
 import copy
 from decimal import Decimal as D
-from ofracs import OFracGrid
+
+
+from .._import_helpers import _get_from_ofracs
 
 class NotValidHGSEcoInputError(Exception):
     """Exception raised if input file is not valid"""
     pass
-
 
 _tags = {
     'zones_pm_prop':(
@@ -69,6 +70,10 @@ class EcoFile:
 
    def getOFracGrid(self):
 
+      # delay the fetching/import of this the ofrac module in case the user does
+      # not have it.
+      locals().update(_get_from_ofracs('OFracGrid'))
+
       fin = open(self._fnin, 'r')
 
       m = None    # re match object
@@ -93,7 +98,8 @@ class EcoFile:
 
       if not m:
         fin.close()
-        raise NotValidHGSEcoInputError("Could not find the grid line list in "+fnin)
+        raise NotValidHGSEcoInputError(
+            "Could not find the grid line list in "+self._fnin)
  
       # read grid lines until the end of the list (signified by any line that
       # doesn't match the re pattern

@@ -3,7 +3,9 @@
 import sys
 import re
 import copy
-from ofracs import OFracGrid
+
+from .._import_helpers import _get_from_ofracs
+locals().update(_get_from_ofracs('OFracGrid'))
 
 class NotValidRFGenInputError(Exception):
     """Exception raised if input file is not valid"""
