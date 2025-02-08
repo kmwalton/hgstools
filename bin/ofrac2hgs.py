@@ -31,7 +31,7 @@ from hgstools.pyhgs._import_helpers import (
         _get_ofracs_module, _get_from_ofracs,)
 ofracs_module = _get_ofracs_module()
 locals().update(_get_from_ofracs(
-   'D_AP', 'D_CO', 'OFrac', 'OFracGrid'))
+   'D_AP', 'D_CO', 'D', 'OFrac', 'OFracGrid'))
 
 from hgstools.pyhgs.gridgen_tools import printHGS
 
@@ -68,15 +68,14 @@ _gl_list_re = re.compile(_gl_list_re_str)
 def apQuantize(v,n_sig):
     """Determine the aperture to n_sig significant figures."""
 
-    if Decimal(v) < Decimal('0.0000005'):
-        warnings.warn(f'Encountered aperture < 1um: {v}')
-        v = 1e-6
-    #if Decimal(v) < Decimal('1e-6') or v > 1.:
-    #    raise ValueError(f'v must be between zero and one, exclusive')
+    #new_prec = Decimal('0.'+n_sig*'1')
+    new_prec = Decimal(f'{10**(-n_sig):.{n_sig}f}')
+    old_prec = D_AP(new_prec)
 
-    least_sig = max(1e-6,10**(floor(log10(v))-n_sig+1))
+    if Decimal(v) < new_prec:
+        return D_AP(new_prec/2)
 
-    return Decimal(v).quantize(Decimal(f'{least_sig:.6f}'.strip('0')))
+    return Decimal(v).quantize(new_prec).quantize(old_prec)
 
 class RFG:
     """Parse/store/manipulate/produce HGS-style grids and fracture definitions
