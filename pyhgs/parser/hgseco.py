@@ -1,6 +1,6 @@
 
 import warnings
-from pyhgs.parser.eco import EcoFile
+from .eco import EcoFile
 
 class HGSEcoFileParser(EcoFile):
     def __init__(self, *args, **kwargs):

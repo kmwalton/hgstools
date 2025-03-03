@@ -39,10 +39,10 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 from scipy.io import FortranFile, FortranEOFError
 
-from pyhgs.parser.lst import LSTFile
-from pyhgs.parser.eco import EcoFile
-from pyhgs.parser.mprops import parse as MPropsFile
-from pyhgs.parser.grok import parse as GrokFile
+from .lst import LSTFile
+from .eco import EcoFile
+from .mprops import parse as MPropsFile
+from .grok import parse as GrokFile
 
 __docformat__ = 'numpy'
 # see https://numpydoc.readthedocs.io/en/latest/format.html
