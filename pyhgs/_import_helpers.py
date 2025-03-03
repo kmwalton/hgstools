@@ -8,28 +8,35 @@ working. As a stop-gap, this is a helper module to transparently find things
 within the ofrac.ofracs module and give warnings when the environment needs to
 be updated.
 """
+import sys
 import importlib
 import warnings
 
 def _get_ofracs_module():
     """Return the ofracs module from wherever its found"""
 
-    try:
-        ofracs_module = importlib.import_module('ofrac.ofracs')
-    except ModuleNotFoundError:
-        warnings.warn('This environment includes path/to/package_libary/ofrac.')
-        ofracs_module = importlib.import_module('ofracs')
+    ofracs_module = None
+
+    if 'ofrac.ofracs' in sys.modules:
+        ofracs_module = sys.modules['ofrac.ofracs']
+    elif 'ofracs' in sys.modules:
+        ofracs_module = sys.modules['ofracs']
+    else:
+        try:
+            ofracs_module = importlib.import_module('ofrac.ofracs')
+        except ModuleNotFoundError as e:
+            try:
+                ofracs_module = importlib.import_module('ofracs')
+            finally:
+                warnings.warn('This environment includes a one-too-deep ' \
+                    'path, path/to/package_libary/ofrac.')
 
     return ofracs_module
 
 def _get_from_ofracs(*names):
     """Return a dict of names->class_function_or_object"""
 
-    try:
-        ofracs_module = importlib.import_module('ofrac.ofracs')
-    except ModuleNotFoundError:
-        warnings.warn('This environment includes path/to/package_libary/ofrac.')
-        ofracs_module = importlib.import_module('ofracs')
+    ofracs_module = _get_ofracs_module()
 
     retdict = {}
 
