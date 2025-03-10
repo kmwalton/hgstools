@@ -22,7 +22,9 @@ from scipy.io import FortranFile
 
 import tabulate
 
-from pyhgs.parser import parse
+from . import parse
+
+__docformat__ = 'numpy'
 
 class ParserHGSEcoFile:
 

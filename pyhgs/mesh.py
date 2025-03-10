@@ -67,7 +67,7 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.sparse import lil_array
 
-from pyhgs.parser import (
+from .parser import (
     parse,
     parse_coordinates_pm,
     parse_elements_pm,
@@ -76,7 +76,7 @@ from pyhgs.parser import (
     HGS_DATATYPE,
     get_datatype,
     )
-from pyhgs.parser.mprops import CaseInsensitiveDict
+from .parser.mprops import CaseInsensitiveDict
 
 import logging
 logger = logging.getLogger(__name__)
