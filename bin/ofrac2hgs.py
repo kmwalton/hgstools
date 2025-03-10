@@ -232,17 +232,23 @@ class RFG:
         return pack
 
     def spewFracs(self,
-            fout=sys.stdout,
+            fracsout=sys.stdout,
+            fracpropasgt=sys.stdout,
             fpropsout=None,
             quantizeApertures=None,
         ):
-        """Write out fracture definitions and properties.
+        """Write out fracture definitions and "read properties".
 
         Args:
-            fout : file-like
+            fracsout : file-like
                 The destination of the fracture definition text. Fracture
                 definitions include the "choose faces" block and creating a new
-                zone or stating the aperture.
+                zone (or stating the aperture if no fpropsout file is specified).
+
+            fracpropasgt : file-like
+                The destination of "choose zone"/"read properties" text for
+                aperture assignment. This can be the same as the preceding file
+                object.
 
             fpropsout : file-like
                 If not None...
@@ -257,15 +263,16 @@ class RFG:
                 fout because more fracture zones are grouped together with a
                 single "read properties" statement.
         """
-        prefixGuess = re.sub(r'o\.eco','',self.fnin)
-        more = ''
-        
-        if fpropsout is not None:
-            more += '\nuse domain type\n\tfracture\n\n'
-            more += f'properties file\n\t{fpropsout.name}\n\n'
 
-        more +='! begin explicit fractures\n'
-        print( more, file=fout )
+        # aliases for printing
+        pfd = partial(print, file=fracsout) # fracture definition
+        pfpa = partial(print, file=fracpropasgt) # fracture property asgt
+        pprop = partial(print, file=fpropsout) # fracture properties
+
+        prefixGuess = re.sub(r'o\.eco','',self.fnin)
+        
+        pfd( '\nuse domain type\n\tfracture\n\n'
+            +'! begin explicit fractures\n')
 
         apQuant = defaultdict(list)
         apAssign = ''
@@ -295,12 +302,17 @@ class RFG:
                     fracName=f'fracture_{i}'
                     apAssign += f'\nread properties\n\t{fracName}\n'
                     apStr = self._strAperture(pack[-1])
-                    print(f'\n{fracName}\n{apStr}\nend',file=fpropsout)
+                    pprop(f'\n{fracName}\n{apStr}\nend')
                 else:
                     apStr = self._strAperture(pack[-1])
                     s += f'\n{apStr}\n'
-            print(s, file=fout)
+            pfd(s)
 
+        pfd('! end explicit fractures\n\n')
+
+        pfpa('! begin fracture property assignment\n')
+        if fpropsout is not None:
+            pfpa(f'properties file\n\t{fpropsout.name}\n\n')
 
         # print property assignments
         if quantizeApertures:
@@ -313,18 +325,15 @@ class RFG:
                 if fpropsout:
                     apqName=f'fracture_ap_quantum_{iq}'
                     s += f'\nread properties\n\t{apqName}\n'
-                    print(f'\n{apqName}\n{apStr}\nend',file=fpropsout)
+                    pprop(f'\n{apqName}\n{apStr}\nend')
                 else:
                     s += f'\n{apStr}\n'
 
-                print(s,file=fout)
+                pfpa(s)
         else:
-            print('\n\n'+apAssign,file=fout)
+            pfpa('\n\n'+apAssign)
 
-
-        more ='! end explicit fractures\n\n'
-        more += '!choose zones all\n!read properties\n!CommonFractureProperties'
-        print( more, file=fout )
+        pfpa('!choose zones all\n!read properties\n!CommonFractureProperties')
 
 
 
@@ -603,6 +612,24 @@ class _Triple_List(argparse.Action):
 
         return ell
 
+class _OneOrTwoFileNames(argparse.Action):
+    '''For parsing --frac-out'''
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=''):
+        res = [sys.stdout, sys.stdout]
+        if len(values) == 1:
+            res[0] = open(values[0], 'w')
+            res[1] = res[0]
+        elif len(values) == 2:
+            res[0] = open(values[0], 'w')
+            res[1] = open(values[1], 'w')
+        else:
+            parser.error(f'{option_string} expecting one or two filenames.')
+
+        setattr(namespace, self.dest, res)
+
 def make_arg_parser():
     # set up command line parser
     parser = argparse.ArgumentParser()
@@ -682,9 +709,20 @@ def make_arg_parser():
             help='Grid output file name')
 
     parser.add_argument( '--frac-out',
-            default=sys.stdout,
-            type=argparse.FileType('w'),
-            help='Fracture (spatial definitions) output file name')
+            nargs='+',
+            #metavar='FRAC_DEFS_OUT [, FRAC_PROP_ASGT_OUT]',
+            metavar=('FRAC_DEFS_OUT', 'FRAC_PROP_ASGT_OUT'),
+            default=(sys.stdout, sys.stdout),
+            action=_OneOrTwoFileNames,
+            help='''Fracture definitions (and property assignment) output file
+            name. Optionally, supply a second file name to store the property
+            assignments. Default behaviour is to write to stdout, which is
+            equivalent to '--frac-out - -'. This is useful if multiple .fprops
+            files are needed, like an initial 'read properties generic.fprops'
+            directive to apply generic properties to all fractures, then a
+            second 'read properties FPROPS_OUT' file to assign/override
+            apertures, etc.''',
+            )
 
     parser.add_argument( '--fprops-out',
             default=None,
@@ -786,10 +824,13 @@ if __name__ == "__main__":
 
     rfg.spewPreamble(
             moreMessages=otherMessages,
-            fout=[args.grid_out, args.frac_out, args.fprops_out])
+            fout=[args.grid_out, args.frac_out[0], args.fprops_out])
+    if args.frac_out[0] != args.frac_out[1]:
+        rfg.spewPreamble( moreMessages=otherMessages, fout=args.frac_out[1])
 
     rfg.spewGrid(fout=args.grid_out)
-    rfg.spewFracs(fout=args.frac_out,
+    rfg.spewFracs(fracsout=args.frac_out[0],
+            fracpropasgt=args.frac_out[1],
             fpropsout=args.fprops_out,
             quantizeApertures=args.quantize_apertures,
         )
