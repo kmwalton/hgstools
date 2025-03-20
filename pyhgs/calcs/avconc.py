@@ -7,12 +7,12 @@ from itertools import repeat, chain
 import numpy as np
 from tabulate import tabulate
 
-from pyhgs.mesh import HGSGrid, Domain
-from pyhgs.parser.eco import EcoFile
+from ..mesh import HGSGrid, Domain
+from ..parser.eco import EcoFile
 
 # logging stuff
 import logging
-from pyhgs.calcs._perfstack import _PerfLogStack
+from ._perfstack import _PerfLogStack
 logger = logging.getLogger('pyhgs.calcs')
 perf_logger = logging.getLogger('pyhgs.calcs_perf')
 _pl = _PerfLogStack(perf_logger.info)

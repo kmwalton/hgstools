@@ -163,26 +163,25 @@ zone(i): numpy.ndarray
         ] )
 
 def parse_coordinates_frac(fn):
-    """Parse the o.coordinates_frac file and return a `dict`.
+    """Parse the *o.coordinates_frac* file and return a `dict`.
 
-Returns
--------
-A `dict` with the following keys/values.
+    **Note:**
+    Fracture index values (in the `link_pm2frac` array) reflect all-domain
+    node ordering. For meshes that involve only porous media and fracture domains,
+    subtracting the number of porous media nodes from these fracture indices
+    will yield the index relative to only the fracture domain (like the indices
+    needed in the `link_frac2pm` array).
 
-nnfrac : int
-    Total number of fracture nodes (int4)
-frac_scheme : int
-    0 for common node or 1 for dual node (int4)
-link_frac2pm(i), i=1,nnfrac : int
-    Fracture node to PM node mapping (int4) *0-based indices returned.*
-link_pm2frac(i), i=1,nn : int
-    PM node to fracture node mapping (int4) *0-based indices returned.*
-
-Note that Fracture index values (in the link_pm2frac array) reflect all-domain
-node ordering. For meshes that involve only porous media and fracture domains,
-subtracting the number of porous media nodes from these fracture indices
-will yield the index relative to only the fracture domain (like the indices
-needed in the link_frac2pm array).
+    Returns
+    ---
+    nnfrac : int
+        Total number of fracture nodes (int4)
+    frac_scheme : int
+        0 for common node or 1 for dual node (int4)
+    link_frac2pm(i), i=1,nnfrac : int
+        Fracture node to PM node mapping (int4) *0-based indices returned.*
+    link_pm2frac(i), i=1,nn : int
+        PM node to fracture node mapping (int4) *0-based indices returned.*
     """
 
     if not os.path.exists(fn):
@@ -206,24 +205,23 @@ needed in the link_frac2pm array).
         ] )
 
 def parse_elements_frac(fn):
-    """Parse o.elements_frac file and return a `dict`.
+    """Parse *o.elements_frac* file and return a `dict`.
 
-Returns
--------
-A `dict` with the following values
-nln: int
-    number of nodes per frac element (int4)
-nfe: int
-    total number of fracture elements (int4)
-inc(i,j), i=1,nfe, j=1,nln: numpy.ndarray
-    node numbers of fracture element incidences (int4) *0-based indices
-    returned.*
-zone(i), i=1,nfe: numpy.ndarray
-    zone number for each fracture element (int4)
-face_map(i, j), i=1,nfe, j=1,2: numpy.ndarray
-    fracture to element face mapping (int4)
-ap(i), i=1,nfe: numpy.ndarray
-    aperture values (real8)
+    Returns
+    -------
+    nln: int
+        number of nodes per frac element (int4)
+    nfe: int
+        total number of fracture elements (int4)
+    inc(i,j), i=1,nfe, j=1,nln: numpy.ndarray
+        node numbers of fracture element incidences (int4) *0-based indices
+        returned.*
+    zone(i), i=1,nfe: numpy.ndarray
+        zone number for each fracture element (int4)
+    face_map(i, j), i=1,nfe, j=1,2: numpy.ndarray
+        fracture to element face mapping (int4)
+    ap(i), i=1,nfe: numpy.ndarray
+        aperture values (real8)
     """
 
     if not os.path.exists(fn):
@@ -256,15 +254,16 @@ ap(i), i=1,nfe: numpy.ndarray
 def _parse(fn, dtype, shape=None):
     """Return the timestamp and [possibly rehsaped] data in a dict.
 
-    Arguments:
-        fn : str
-            filename to open
+    Parameters
+    ---
+    fn : str
+        filename to open
 
-        dtype : numpy.datatype
-            interperet the data as this type
+    dtype : numpy.datatype
+        interperet the data as this type
 
-        shape : tuple
-            resize the data to a numpy.ndarray of this size, if provided
+    shape : tuple
+        resize the data to a numpy.ndarray of this size, if provided
     """
     with FortranFile(fn,'r') as fin:
         ts = fin.read_ints(dtype=np.byte)
@@ -281,27 +280,27 @@ def _parse(fn, dtype, shape=None):
 def _parse_nd(fn, dtype, shape=None):
     """Read a number of *n-tuple* data points from file
 
-E.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
-unknown-length sequence of elemental values.
+    E.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
+    unknown-length sequence of elemental values.
 
-This function is _much_ more efficient if the shape of the data is know a
-priori. Array copying for unknown-length final data is avoided in this case.
+    This function is _much_ more efficient if the shape of the data is know a
+    priori. Array copying for unknown-length final data is avoided in this case.
 
 
-Arguments
----------
-fn : str
-    The data file name.
+    Parameters
+    ---
+    fn : str
+        The data file name.
 
-dtype : `numpy.dtype`
-    The numeric type of the data in the array.
+    dtype : `numpy.dtype`
+        The numeric type of the data in the array.
 
-shape : tuple, optional
-    The shape of the output data.
+    shape : tuple, optional
+        The shape of the output data.
 
-Returns
--------
-    `numpy.ndarray` with shape (-1, len(*n-tuple*))
+    Returns
+    -------
+        `numpy.ndarray` with shape (-1, len(*n-tuple*))
     """
 
     def _read_shape_unknown():
@@ -341,85 +340,85 @@ Returns
 def parse_1D_real8(fn, **kwargs):
     """(a) 1D real8 fields
 
-Arguments
----------
+    **Notes:**
+    File expected file format
+
+        [int4][char80][int4]
+        [int4][real8]...[real8][int4]
+
+   Used for:
+
+    - *o.ETEvap_olf.NNNN*
+    - *o.ETPmEvap3D_pm.NNNN*
+    - *o.ETPmEvap_olf.NNNN*
+    - *o.ETPmTranspire3D_pm.NNNN*
+    - *o.ETPmTranspire_olf.NNNN*
+    - *o.ETTotal_olf.NNNN*
+    - *o.conc_dual.species.NNNN*
+    - *o.conc_frac.species.NNNN*
+    - *o.conc_olf.species.NNNN*
+    - *o.conc_pm.species.NNNN*
+    - *o.freeze_thaw_temp_pm.NNNN*
+    - *o.head_chan.NNNN*
+    - *o.head_dual.NNNN*
+    - *o.head_frac.NNNN*
+    - *o.head_olf.NNNN*
+    - *o.head_pm.NNNN*
+    - *o.head_well.NNNN*
+    - *o.iconc_pm.species.NNNN*
+    - *o.pet_olf.NNNN*
+    - *o.rain_olf.NNNN*
+
+    Parameters
+    ---------
     fn : str
         File name
 
     kwargs : dict, optional
         Ignored.
 
-Notes
------
-
-File format:
-
-    [int4][char80][int4]
-    [int4][real8]...[real8][int4]
-
-Used for:
-
-    o.ETEvap_olf.XXXX
-    o.ETPmEvap3D_pm.XXXX
-    o.ETPmEvap_olf.XXXX
-    o.ETPmTranspire3D_pm.XXXX
-    o.ETPmTranspire_olf.XXXX
-    o.ETTotal_olf.XXXX
-    o.conc_dual.species.XXXX
-    o.conc_frac.species.XXXX
-    o.conc_olf.species.XXXX
-    o.conc_pm.species.XXXX
-    o.freeze_thaw_temp_pm.XXXX
-    o.head_chan.XXXX
-    o.head_dual.XXXX
-    o.head_frac.XXXX
-    o.head_olf.XXXX
-    o.head_pm.XXXX
-    o.head_well.XXXX
-    o.iconc_pm.species.XXXX
-    o.pet_olf.XXXX
-    o.rain_olf.XXXX
     """
     return _parse(fn, np.double)
 
 def parse_1D_real4(fn, **kwargs):
     """(b) 1D real4 fields
 
-Arguments
----------
+    Notes
+    -----
+
+    File format:
+
+        [int4][char80][int4]
+        [int4][real4]...[real4][int4]
+
+    Used for:
+
+    - *o.ExchFlux_chan.NNNN*
+    - *o.ExchFlux_dual.NNNN*
+    - *o.ExchFlux_olf.NNNN*
+    - *o.ExchFlux_olf2_chan.NNNN*
+    - *o.ExchFlux_pm2_chan.NNNN*
+    - *o.ExchFlux_well.NNNN*
+    - *o.ExchSolAdv_olf.species.NNNN*
+    - *o.ExchSolDisp_olf.species.NNNN*
+    - *o.exchsol_dual.species.NNNN*
+    - *o.ice_sat_pm.NNNN*
+    - *o.kxx.NNNN*
+    - *o.kyy.NNNN*
+    - *o.kzz.NNNN*
+    - *o.por_pm.NNNN*
+    - *o.sat_dual.NNNN*
+    - *o.sat_frac.NNNN*
+    - *o.sat_pm.NNNN*
+
+    Parameters
+    ---------
     fn : str
         File name
 
     kwargs : dict, optional
         Ignored.
 
-Notes
------
-
-File format:
-
-    [int4][char80][int4]
-    [int4][real4]...[real4][int4]
-
-Used for:
-
-    o.ExchFlux_chan.XXXX
-    o.ExchFlux_dual.XXXX
-    o.ExchFlux_olf.XXXX
-    o.ExchFlux_olf2_chan.XXXX
-    o.ExchFlux_pm2_chan.XXXX
-    o.ExchFlux_well.XXXX
-    o.ExchSolAdv_olf.species.XXXX
-    o.ExchSolDisp_olf.species.XXXX
-    o.exchsol_dual.species.XXXX
-    o.ice_sat_pm.XXXX
-    o.kxx.XXXX
-    o.kyy.XXXX
-    o.kzz.XXXX
-    o.por_pm.XXXX
-    o.sat_dual.XXXX
-    o.sat_frac.XXXX
-    o.sat_pm.XXXX
     """
     return _parse(fn, np.float)
 
@@ -600,9 +599,8 @@ def get_datatype(fn):
 def parse(fn, **kwargs):
     """Find a parser based on the given file name
 
-    Arguments
-    ---------
-
+    Parameters
+    ----------
     count : int, optional
         An integer denoting the quantity of scalar or vector data points in the
         file.  This will give the implementing parser function a hint at the

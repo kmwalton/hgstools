@@ -4,30 +4,31 @@ import os
 import re
 import warnings
 
-def parse_path_to_prefix(s):
+__docformat__ = 'numpy'
+
+def parse_path_to_prefix(s='.'):
     """Determine the `(path_to, prefix, leftovers)` for any given string.
 
-        path_to, prefix, leftovers = \
-                        pyhgs.cli.parse_path_to_prefix(args.PATH_TO_PREFIX)
+        path_to, prefix, leftovers =
+            pyhgs.cli.parse_path_to_prefix(args.PATH_TO_PREFIX)
 
-    Assume the current directory if no path is apparent in `s`, which will
-    returned as `path_to`.
+    `path_to`, `prefix` and `leftovers` are determined by the following
+    ways:
 
-    `(prefx, leftovers)` are determined by one of the following ways:
-    1) If *batch.pfx* exists, then its contents appears in `prefix` and the
-       balance of `s` in `leftovers`
-    2) if `o.` appears in `s`, then what precedes `o.` is returned in
-       `prefix` and the balance is in `leftovers`
-    3) If a `.` appears in s, then all non-directory parts of `s` are
-       `leftovers` and `prefix` is the empty string `''`.
-    4) if the non-directory part of `s` is a single word, that word is
-       returned in `prefix` and `leftovers is the empty string `''`.
+    1. `s` is examined for drive and directory components. Any components that
+       are found will be returned in `path_to`, or `path_to` will be '.'.
+    2. If `path_to/batch.pfx` exists, then the contents of *batch.pfx* will
+       be returned in `prefix` and the balance of `s` in `leftovers`
+    3. if `o.` or `.` in the non-`path_to` part of `s`, then `prefix` and and
+       `leftovers` take the strings split before this marker.
+    4. if the non-directory part of `s` is a single word, that word is
+       returned in `prefix` and `leftovers` is the empty string.
 
-
-    If the contents of batch.pfx appears in s, then return it and the
-    leftovers separately. 
-    If `o.` appears in s, then assume that prefix is the part before the
-    `o.` and `o.` to the end of the string is returned as leftovers.
+    Parameters
+    ----------
+    s : str or Path-like
+        The string or Path to examine. Default '.', the the current working
+        directory.
     """
 
     (pth, pfx, more) = ('', '', '')

@@ -3,12 +3,11 @@
 import numpy as np
 from scipy.sparse import lil_matrix, csc_matrix
 
-import pyhgs
-from pyhgs.mesh import HGSGrid, Domain
+from ..mesh import (HGSGrid, Domain,)
 
 # logging stuff
 import logging
-from pyhgs.calcs._perfstack import _PerfLogStack
+from ._perfstack import _PerfLogStack
 logger = logging.getLogger('pyhgs.calcs')
 perf_logger = logging.getLogger('pyhgs.calcs_perf')
 _pl = _PerfLogStack(perf_logger.info)
