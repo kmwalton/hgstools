@@ -589,7 +589,7 @@ def _find_file_info_entry(fn):
     # ick.
     fn = _lowerfunc(fn)
     for pat,info in _file_info.items():
-        if _lowerfunc(pat) in fn:
+        if _lowerfunc(pat) in str(fn):
             return info
 
     raise RuntimeError(f'{fn} did not match any known HGS output file')
