@@ -717,9 +717,9 @@ class HGSGrid():
                 """a is flattened FRAC nodal data, may have ndim = 1 or 2"""
             
                 ret = None
-                if a.ndims == 1:
+                if a.ndim == 1:
                     ret = np.zeros(self.nfe)
-                elif a.ndims == 2:
+                elif a.ndim == 2:
                     ret = np.zeros((self.nfe, a.shape[1]),)
                 else:
                     raise NotImplementedError('Unexpected number of dimensions in "a"')
