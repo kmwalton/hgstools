@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import unittest
 import numpy as np
 
@@ -16,6 +17,8 @@ calc_logger.addHandler(logging.StreamHandler())
 
 class Test_Av(unittest.TestCase):
 
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.coordinates_pm')),
+            'Could not find source simulation')
     def test_small_selection(self):
         """
 
@@ -176,6 +179,8 @@ class Test_Av(unittest.TestCase):
             delta=1e-4)
           #calc_logger.setLevel(_levsav)
 
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.eco')),
+            'Could not find source simulation')
     def test_doms_list(self):
         # load grid
         _d = sims_join('04b_very_coarse_mesh','module4b')
@@ -188,6 +193,8 @@ class Test_Av(unittest.TestCase):
         self.assertEqual(calc._doms_list(['pm','frac']), [Domain.PM, Domain.FRAC,])
         self.assertEqual(calc._doms_list(['frac','pm']), [Domain.PM, Domain.FRAC,])
 
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.eco')),
+            'Could not find source simulation')
     def test_get_block(self):
         # load grid
         _d = sims_join('04b_very_coarse_mesh','module4b')

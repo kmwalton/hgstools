@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 
+import os
 import unittest
 import numpy as np
 
@@ -17,6 +18,8 @@ perf_logger = logging.getLogger('pyhgs.calcs_perf')
 
 class Test_Av(unittest.TestCase):
 
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.eco')),
+            'Could not find source simulation')
     def test_coarse_regridding(self):
         _d = sims_join('04b_very_coarse_mesh','module4b')
         g = HGSGrid(_d)
@@ -53,6 +56,8 @@ class Test_Av(unittest.TestCase):
             self.assertTrue(_fx_map[6,0] == 0.5)
             self.assertTrue(_fx_map[6,1] == 0.5)
         
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.coordinates_pm')),
+            'Could not find source simulation')
     def test_overflow_regridding(self):
 
         _d = sims_join('04b_very_coarse_mesh','module4b')
@@ -71,6 +76,8 @@ class Test_Av(unittest.TestCase):
             self.assertEqual(_fx_map.shape, (11,12))
 
         
+    @unittest.skipIf( not os.path.isfile(sims_join('04b_very_coarse_mesh','module4bo.coordinates_pm')),
+            'Could not find source simulation')
     def test_medium_regridding(self):
 
         _d = sims_join('04b_very_coarse_mesh','module4b')
