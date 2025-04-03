@@ -714,23 +714,29 @@ class HGSGrid():
                 return ret
 
             def _fx_node_avg(a):
-                """a is flattened FRAC nodal data"""
-                ret = np.zeros(self.nfe)
+                """a is flattened FRAC nodal data, may have ndim = 1 or 2"""
+            
+                ret = None
+                if a.ndims == 1:
+                    ret = np.zeros(self.nfe)
+                elif a.ndims == 2:
+                    ret = np.zeros((self.nfe, a.shape[1]),)
+                else:
+                    raise NotImplementedError('Unexpected number of dimensions in "a"')
 
                 for i,fx_inc in enumerate(_finc):
-                    ret[i] = np.sum(a[fx_inc])
+                    ret[i] = np.sum(a[fx_inc], axis=0)
 
                 np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
 
                 return ret
-
 
             if self._is_PM_nodal_scalar(d):
                 # data seems to be PM nodal values
                 dd = d.flatten(order='F')
                 func = _fx_node_avg_from_pm
 
-            elif self._is_FRAC_nodal_scalar(d):
+            elif self._is_FRAC_nodal_scalar(d) or self._is_FRAC_nodal_vector(d):
                 # data seems to be FRAC nodal values
                 dd = d
                 func = _fx_node_avg
@@ -742,10 +748,6 @@ class HGSGrid():
             elif self._is_PM_nodal_vector(d):
                 # seems to be flat array of tuples
                 # data seems to be tuples of PM nodal values
-                raise NotImplementedError()
-
-            elif self._is_FRAC_nodal_vector(d):
-                # data seems to be tuples of frac nodal values
                 raise NotImplementedError()
 
             elif self._is_PM_elemental_vector(d):
