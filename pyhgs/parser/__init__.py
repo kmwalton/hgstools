@@ -486,7 +486,7 @@ Used for:
     o.v_well.XXXX
     """
 
-    if 'count' not in kwargs:
+    if 'count' not in kwargs or kwargs['count'] is None:
         logger.warning(
                 f'Parsing {fn} without "count". This might take a while.')
         return _parse_nd(fn,np.float32)

@@ -535,7 +535,8 @@ class HGSGrid():
         d = data
         if type(data) == str:
             logger.debug(f'Nodal value read requested from file {data}')
-            d = parse(data)['data']
+            _count = self._get_count_from_filetype(data, dom)
+            d = parse(data,count=_count)['data']
 
         if dom == Domain.PM:
             logger.debug(f'Nodal values being reshaped to {self.shape}')
@@ -595,6 +596,18 @@ class HGSGrid():
 
         return ret
 
+    def _get_count_from_filetype(self, fn, dom):
+        """From the file name, determine the count of expected data"""
+        _count = None
+        _dt = get_datatype(fn)
+        if _dt is HGS_DATATYPE.NODAL:
+            if dom == Domain.PM: _count = self.nn
+            elif dom == Domain.FRAC: _count = self.nfn
+        elif _dt is HGS_DATATYPE.ELEMENTAL:
+            if dom == Domain.PM: _count = self.ne
+            elif dom == Domain.FRAC: _count = self.nfe
+        return _count
+
     def get_element_vals(self, data, dom=Domain.PM, method=None):
         """Return an array with nodal data values calculated per element.
 
@@ -611,6 +624,9 @@ class HGSGrid():
             element to compute the combined value.
             Default: n-point average, where n is the number of nodes per
             element.
+        count : int (optional)
+            The number of values expected in the Datafile (if a str is passed as
+                    `data`. Otherwise, ignored.
         """
         dom = Domain.a2D(dom)
 
@@ -621,19 +637,8 @@ class HGSGrid():
         d = data
         if type(data) == str:
             logger.debug(f'Element value read requested from file {data}')
-            _count = None
-            _dt = get_datatype(data)
-            if _dt is HGS_DATATYPE.NODAL:
-                if dom == Domain.PM: _count = self.nn
-                elif dom == Domain.FRAC: _count = self.nfn
-            elif _dt is HGS_DATATYPE.ELEMENTAL:
-                if dom == Domain.PM: _count = self.ne
-                elif dom == Domain.FRAC: _count = self.nfe
-
-            if _count is not None:
-                d = parse(data,count=_count)['data']
-            else:
-                d = parse(data)['data']
+            _count = self._get_count_from_filetype(data, dom)
+            d = parse(data,count=_count)['data']
 
         # function to calculate elemental data
         func = lambda i : i # identity method, for now
