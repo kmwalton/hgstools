@@ -209,16 +209,20 @@ class HGSGrid():
         self.prefix = prefix
         """Simulation path and prefix"""
         self.hgs_pm_nodes = None
-        """Simulation PM node data from `pyhgs.parser.parse_coordinates_pm`"""
+        """Simulation PM node data from
+        `hgstools.pyhgs.parser.parse_coordinates_pm`
+        """
         self.hgs_pm_elems = None
-        """Simulation PM node data from `pyhgs.parser.parse_elements_pm`"""
+        """Simulation PM node data from
+        `hgstools.pyhgs.parser.parse_elements_pm`
+        """
         self.hgs_fx_nodes = None
         """Simulation fracture node data from
-        `pyhgs.parser.parse_coordinates_frac`
+        `hgstools.pyhgs.parser.parse_coordinates_frac`
         """
         self.hgs_fx_elems = None
         """Simulation fracture node data from 
-        `pyhgs.parser.parse_elements_frac`
+        `hgstools.pyhgs.parser.parse_elements_frac`
         """
 
         self.nn = 0
@@ -240,7 +244,7 @@ class HGSGrid():
         self.nn = self.hgs_pm_nodes['nn'] # aliases
         self.ne = self.hgs_pm_elems['ne']
 
-        if os.path.exists(prefix+'o.coordinates_frac'):
+        if os.path.exists(f'{prefix}o.coordinates_frac'):
             self.hgs_fx_nodes = parse_coordinates_frac(prefix)
             self.hgs_fx_elems = parse_elements_frac(prefix)
             self.nfn = self.hgs_fx_nodes['nnfrac']
@@ -1869,7 +1873,7 @@ class _PMPropFinderDict(_PropFinderDict):
     def _scrape_zone_data_from_mprops(mesh, k):
         """Return a mapping of zone to [scalar] property value"""
         mprops_dict = _PMPropFinderDict._get_mprops(mesh.prefix)
-        eco_data = parse(mesh.prefix+'o.eco')
+        eco_data = parse(f'{mesh.prefix}o.eco')
         zones = eco_data.get_pm_zone_properties()
 
         pvals = (1+len(zones))*[1.,]
