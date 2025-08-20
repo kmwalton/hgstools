@@ -22,6 +22,7 @@ import io
 import pprint
 import argparse
 import pickle
+import pathlib
 from more_itertools import grouper
 
 _NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
@@ -54,7 +55,12 @@ _tags = {
                 txt, flags=re.M|re.I|re.S)
            )
         )),
-
+    'files_initial':(lambda txt:
+        list( re.findall(
+            #r'^\s*initial.*?from.*?file.*?(?:!.*)?\n(.*?)(?:!.*)\n',
+            r'^\s*initial.*?from.*?file(?:\s*!.*\n|\s*)*(\S*?)\s*\n',
+            txt, flags=re.M|re.I)
+        )),
 }
 
 def _parse_solute(txt):
@@ -78,6 +84,8 @@ def _parse_solute(txt):
 def _get_as_stream(file, mode='r'):
     """Return an open file and a flag for whether it needs closing"""
     if type(file) is str:
+        return (open(file,mode), True)
+    elif isinstance(file, pathlib.Path):
         return (open(file,mode), True)
     elif isinstance(file,io.IOBase):
         return (file, False)
