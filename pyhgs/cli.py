@@ -52,10 +52,15 @@ def parse_path_to_prefix(s='.'):
         #parser.error( f'Could not find {batchfn}; '\
         #        'cannot auto-detect problem prefix')
         pass
-    else:
+
+    if batchpfx and more and more.startswith(batchpfx):
         pfx = batchpfx
-    
-    if not batchpfx:
+        more = more[len(batchpfx):]
+    elif batchpfx and not more:
+        pfx = batchpfx
+        more = ''
+    #elif not batchpfx:
+    else:
         pats = [
             # Probable hgs output file: break at 'o.'
             r'(.*?)(o\..*)',
@@ -71,8 +76,6 @@ def parse_path_to_prefix(s='.'):
             if m:
                 pfx, more = m.groups()
                 break
-    elif more.startswith(batchpfx):
-        more = more[len(batchpfx):]
 
     return (pth, pfx, more)
 

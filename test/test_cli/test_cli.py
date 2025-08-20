@@ -6,7 +6,7 @@ import tempfile
 import argparse
 import unittest
 
-from pyhgs import cli
+from hgstools.pyhgs import cli
 
 
 class TestCLI(unittest.TestCase):
@@ -87,10 +87,13 @@ class TestCLI(unittest.TestCase):
                 self.assertEqual(oth,'')
 
             with self.subTest('allother'):
+                # Change in functionality here -- If the user passes a prefix
+                # that does not match what's in batch.pfx, then assume the user
+                # intended this to be the prefix
                 pth, pfx, oth = cli.PathToPrefix.split('bar')
                 self.assertEqual(pth,'.')
-                self.assertEqual(pfx,'foo')
-                self.assertEqual(oth,'bar')
+                self.assertEqual(pfx,'bar')
+                self.assertEqual(oth,'')
 
             with self.subTest('prefixother'):
                 pth, pfx, oth = cli.PathToPrefix.split('foo.blahblah')
@@ -98,6 +101,15 @@ class TestCLI(unittest.TestCase):
                 self.assertEqual(pfx,'foo')
                 self.assertEqual(oth,'.blahblah')
 
+                pth, pfx, oth = cli.PathToPrefix.split('foo.bar.blahblah')
+                self.assertEqual(pth,'.')
+                self.assertEqual(pfx,'foo')
+                self.assertEqual(oth,'.bar.blahblah')
+
+                pth, pfx, oth = cli.PathToPrefix.split('fooo.bar.blahblah')
+                self.assertEqual(pth,'.')
+                self.assertEqual(pfx,'foo')
+                self.assertEqual(oth,'o.bar.blahblah')
 
             os.chdir(owd)
 
