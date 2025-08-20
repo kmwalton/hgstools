@@ -8,7 +8,7 @@ from itertools import islice
 from bisect import bisect_left
 from operator import itemgetter
 
-from pyhgs.parser.lst import LSTFile
+from hgstools.pyhgs.parser.lst import LSTFile
 
 import logging
 lstlog = logging.getLogger('pyhgs.parser.lst')

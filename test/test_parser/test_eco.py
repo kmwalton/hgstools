@@ -4,8 +4,8 @@
 import unittest
 
 import os
-from pyhgs.parser.eco import EcoFile
-from pyhgs.test import sims_join
+from hgstools.pyhgs.parser.eco import EcoFile
+from hgstools.pyhgs.test import sims_join
 
 DATDIR=os.path.abspath(os.path.dirname(__file__)+'/..')+os.path.sep
 

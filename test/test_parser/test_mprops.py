@@ -5,7 +5,7 @@
 import unittest
 import os
 
-from pyhgs.parser.mprops import parse as MProps
+from hgstools.pyhgs.parser.mprops import parse as MProps
 
 import logging
 lstlog = logging.getLogger('pyhgs.parser.mprops')
