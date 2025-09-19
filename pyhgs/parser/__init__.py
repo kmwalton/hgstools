@@ -251,8 +251,13 @@ def parse_elements_frac(fn):
         ] )
 
 
-def _parse(fn, dtype, shape=None):
+def _parse(fn, dtype, shape=None, with_timestamp=True):
     """Return the timestamp and [possibly rehsaped] data in a dict.
+
+    `with_timestamp` causes this parser to read (or not read) a timestamp (byte
+    array) at the beginning of the file. Errors will occur if a timestamp is
+    requested but not present, and vice versa. A timestamp of `None` will be in
+    the return `dict` if no timestamp is read.
 
     Parameters
     ---
@@ -264,18 +269,23 @@ def _parse(fn, dtype, shape=None):
 
     shape : tuple
         resize the data to a numpy.ndarray of this size, if provided
+
+    with_timestamp : bool
+        Optionally, read a time stamp preceding the data. Default True. This
+        **must** match the presence of a timestamp in the datafile.
     """
+    ts, d = None, None
+
     with FortranFile(fn,'r') as fin:
-        ts = fin.read_ints(dtype=np.byte)
+        if with_timestamp:
+            ts = fin.read_ints(dtype=np.byte)
+            ts = ts.tobytes().decode('UTF-8').strip()
         d = fin.read_reals(dtype=dtype)
 
     if shape:
         d = d.reshape(shape)
 
-    return OrderedDict( [
-            ('ts',ts.tobytes().decode('UTF-8').strip()),
-            ('data',d),
-        ] )
+    return OrderedDict( [('ts',ts), ('data',d),] )
 
 def _parse_nd(fn, dtype, shape=None):
     """Read a number of *n-tuple* data points from file
@@ -378,7 +388,16 @@ def parse_1D_real8(fn, **kwargs):
         Ignored.
 
     """
-    return _parse(fn, np.double)
+    return _parse(fn, np.float64)
+
+def parse_1D_real8_nots(fn, **kwargs):
+    """Like, `parse_1D_real8` but
+
+    Used for:
+    - *o.hen
+    - *o.cen
+    """
+    return _parse(fn, np.float64, with_timestamp=False)
 
 def parse_1D_real4(fn, **kwargs):
     """(b) 1D real4 fields
@@ -420,7 +439,7 @@ def parse_1D_real4(fn, **kwargs):
         Ignored.
 
     """
-    return _parse(fn, np.float)
+    return _parse(fn, np.float32)
 
 def parse_2D_real8(fn, **kwargs):
     """(c) 2D real8 fields
@@ -536,12 +555,14 @@ _file_info = {
     'o.conc_frac'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.conc_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.conc_pm'              :  (parse_1D_real8,          HGS_DATATYPE.NODAL,  ),
+    'o.cen'                  :  (parse_1D_real8_nots,     HGS_DATATYPE.NODAL,  ),
     'o.freeze_thaw_temp_pm'  :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.head_chan'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.head_dual'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.head_frac'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.head_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.head_pm'              :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.hen'                  :  (parse_1D_real8_nots,     HGS_DATATYPE.NODAL,  ),
     'o.head_well'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.iconc_pm'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.pet_olf'              :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
