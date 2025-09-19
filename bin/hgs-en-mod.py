@@ -26,8 +26,8 @@ from scipy.interpolate import RegularGridInterpolator
 
 import matplotlib.pyplot as plt
 
-from pyhgs.cli import PathToPrefix
-from pyhgs.mesh import HGSGrid
+from hgstools.pyhgs.cli import PathToPrefix
+from hgstools.pyhgs.mesh import HGSGrid
 
 
 
