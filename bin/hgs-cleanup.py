@@ -3,7 +3,7 @@
 
 import argparse
 import os
-from pyhgs.runner import PyPowerShellRunner
+from hgstools.pyhgs.runner import PyPowerShellRunner
 
 
 if __name__ == '__main__':
@@ -13,6 +13,8 @@ if __name__ == '__main__':
     )
     ap.add_argument( 'keep_file',
         type=str,
+        default=None,
+        nargs='?',
         help='The name of a file (relative or absolute path) that contains a '\
             'list of file names and/or glob-style patterns of files to '\
             'retain in the present directory.',
