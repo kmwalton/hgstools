@@ -644,3 +644,42 @@ def parse(fn, **kwargs):
     else:
         raise RuntimeError(f'No parser for {fn}')
 
+def peek_NNNN_time(file_path):
+    """Peek at the time string encoded in a prefixo.XXX.NNNN file
+
+    Opens the file in binary mode, reads the first 88 bytes, and
+    decodes a specific slice of those bytes as UTF-8 characters.
+
+    Args:
+        file_path (str): The path to the file.
+
+    Returns:
+        str: The decoded string, or None if an error occurs.
+    """
+    try:
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            print(f"Error: The file '{file_path}' does not exist.")
+            return None
+
+        # Open the file in binary read mode ('rb')
+        with open(file_path, 'rb') as f:
+            # Read the first 88 bytes into a bytes object
+            time_as_bytes = f.read(88)
+
+            # Check if we read enough bytes
+            if len(time_as_bytes) < 88:
+                print("Error: File is too small to read 88 bytes.")
+                return None
+
+            # Slice the bytes from index 4 to 84 (inclusive of 4, exclusive of 84)
+            data_slice = time_as_bytes[4:84]
+
+            # Decode the sliced bytes as UTF-8 characters
+            decoded_string = data_slice.decode('utf-8', errors='ignore')
+            
+            return decoded_string
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
