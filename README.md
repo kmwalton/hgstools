@@ -12,15 +12,18 @@ matrix, sub-surface domain, flow and contaminant transport simulator; other aspe
 of HGS' functionality are not specifically considered or tested for these tools.
 
 USAGE:
-  1. clone the repository to a directory of your choosing, like `hgstools`
-  2. add `hgstools/bin` to your system's `$PATH`, `$env:PATH`, or `%PATH%` to use scripts/executables
-  3. add `hgstools` to your system's `$PYTHONPATH` for use as a python module
+  1. clone the repository to a directory of your choosing, like
+     `path/to/hgstools`
+  2. add `path/to/hgstools/bin` to your system's `$PATH`, `$env:PATH`, or
+     `%PATH%` to use scripts/executables
+  3. add `path/to` to your system's `$PYTHONPATH` for use as a python module
 
 WHAT'S HERE:
 
 Scripts in `bin/`
-  1. `hgs-copy-inputs.py` - Copy inputs and adjacent to a different directory.
-  2. `hgs-nnnn-to-en.py` - Convert an arbitrary binary output file to a restart
+  1. `hgs-runall.py` - Run the HGS toolchain with pre- and postprocessing.
+  2. `hgs-copy-inputs.py` - Copy inputs and adjacent to a different directory.
+  3. `hgs-nnnn-to-en.py` - Convert an arbitrary binary output file to a restart
      file.
 
 Most of the above scripts can be run with argument `--help` for full
