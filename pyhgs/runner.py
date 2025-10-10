@@ -717,6 +717,25 @@ class HGSToolChainRun(BaseRunner):
         self._t_start = 0
         self._t_end = len(self._tool_chain)
 
+    @staticmethod
+    def _tool_name_equal(t1, t2):
+        def _ftas(t):
+            """Find tool as string"""
+            _t = None
+            if isinstance(t, list):
+                # assume the last entry in the list is the script name
+                if _ftas(t[0]) in ('powershell', 'python'):
+                    _t = t[-1]
+                # else, first
+                else:
+                    _t = t[0]
+            elif type(t) in (str, Path):
+                _t = t
+
+            return Path(_t).stem
+
+        return _ftas(t1) == _ftas(t2)
+
     def set_tool_override(self, default_tool, optional_tool):
         """Overrides a default tool in the chain with an optional one.
 
@@ -736,17 +755,19 @@ class HGSToolChainRun(BaseRunner):
             If the `optional_tool` executable cannot be found on the system path.
         """
         # Find the path to the optional tool first
-        tool_path = shutil.which(optional_tool)
-        if not tool_path:
+        opt_tool_path = shutil.which(optional_tool)
+        if not opt_tool_path:
             raise RuntimeError(f"Optional tool '{optional_tool}' not found in system path.")
 
         # Replace the tool in the chain
         for i, tool_list in enumerate(self._tool_chain):
-            # The executable name is always the first item in the list
-            base_exe = os.path.basename(tool_list[0])
-            if base_exe == default_tool:
+
+            if self._tool_name_equal(tool_list, default_tool):
                 # Replace the entire tool entry (path and arguments)
-                self._tool_chain[i] = [tool_path]
+                # uhoh - what if the optional tool is a python script (not an
+                        # exe on the path) and hence should be prefixed with
+                # python.exe <script> ??
+                self._tool_chain[i] = [opt_tool_path]
                 return # Assumes only one instance needs to be replaced
 
     def _check_write_access(self):
