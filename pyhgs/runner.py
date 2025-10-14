@@ -244,8 +244,8 @@ class PhgsFilter(BaseOutputFilter):
             self._step_data['time'] = float(match_time.group(1))
             return self._format_summary() # Print custom summary string and suppress raw line
 
-        # 7. Keep calculation lines (including steady-state)
-        if 'flow solution' in line:
+        # 7. Keep steady-state calculation line
+        if line.startswith('Calculating steady-state flow solution'):
             return True
 
         # 8. Suppress everything else
