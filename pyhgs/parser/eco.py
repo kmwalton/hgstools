@@ -47,7 +47,7 @@ class EcoFile:
          self.txt = fin.read()
 
    def get_n_zones(self):
-      '''Return the number of 'new zone's created.'''
+      '''Return the number of 'new zones created.'''
       return _tags['zones_pm'](self.txt)
 
    def get_pm_zone_properties(self):
@@ -57,16 +57,64 @@ class EcoFile:
    def get_output_times(self):
       '''Return a list of output times'''
 
+      # older hydrogeosphere versions
+
       reOTimes = re.compile(r'OUTPUT TIME:\s+([0-9.]+)')
       # TODO add lookahead assertion that 'e' is not part of 'end'
       #reOTimes = re.compile(r'^OUTPUT TIME: *([0-9.eEdD+-]+)')
 
       times_raw = reOTimes.findall(self.txt)
 
+      if not times_raw:
+        times_raw = self._find_output_times_v2829(self.txt)
+
       self.outputTimes = list(map(D, times_raw))
 
       return self.outputTimes
 
+   def _find_output_times_v2829(self, txt):
+      """Finds the 'OUTPUT TIMES' block and extracts the table data.
+
+      This function looks for the '# OUTPUT TIMES' header, then finds the
+      'Step # Timestep Time' line. It captures all text after that line
+      until it encounters a line of dashes ('-------------------').
+
+      The captured data is stored in a named group 'table_values'.
+
+      Args:
+         txt: The string content to search within.
+
+      Returns:
+         A list of the times it found, or an empty list if none found
+      """
+      # This pattern uses re.DOTALL (the 's' flag), which makes '.' match
+      # newline characters. This is crucial for matching across multiple lines.
+      #
+      # Breakdown:
+      # # OUTPUT TIMES       - Matches the literal starting header.
+      # .*?                  - Lazily matches any character (including newlines)
+      #                        until the next part of the pattern is found.
+      # Step #\s+Timestep\s+Time\s*\n - Matches the table header line and the
+      #                                  newline after it.
+      # (?P<table_values>.*?) - Starts a named capture group 'table_values'.
+      #                        It lazily captures all characters until...
+      # \n-------------------  - It finds a newline followed by the dash
+      #                        delimiter you specified.
+
+      pattern = r"# OUTPUT TIMES.*?Step #\s+Timestep\s+Time\s*\n(?P<table_values>.*?)\n-------------------"
+
+      # re.DOTALL makes the '.' special character match any character,
+      # including a newline.
+      match = re.search(pattern, txt, re.DOTALL)
+
+      times = []
+
+      if match:
+          times = list(
+             float(l.strip().split()[-1])
+               for l in match['table_values'].strip().split('\n'))
+
+      return times
 
    def getOFracGrid(self):
 
