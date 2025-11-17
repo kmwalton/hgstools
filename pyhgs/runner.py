@@ -19,13 +19,18 @@ import datetime
 import re
 import logging
 import shlex
+
+from pprint import pformat
 from collections import deque
 from itertools import chain
 from pathlib import Path
 
 from hgstools.pyhgs.cli import parse_path_to_prefix
+from hgstools.pyhgs.parser.grok import parse as grok_parse
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 # --- Filter Classes for Console Output ---
 # These filter specific tool output to suppress noise and highlight status.
@@ -609,18 +614,6 @@ class BaseRunner():
 
         return ret
 
-
-class PyPowerShellRunner(object):
-    """A placeholder class for running PowerShell scripts on Windows."""
-    def __init__(self, script_path):
-        """
-        Parameters
-        ----------
-        script_path : str
-            The path to the PowerShell script.
-        """
-        self.script_path = script_path
-        # Implementation details for running PowerShell scripts go here...
 
 def _list_pprocessing(
             fpfx='pre',
