@@ -77,6 +77,19 @@ if __name__ == '__main__':
         options' values.''',
         )
 
+    keep_inputs_grp = ap.add_mutually_exclusive_group()
+    keep_inputs_grp.add_argument('--keep-inputs', action='store_true',
+        dest='keep_inputs',
+        default=True,
+        help='''Keep files in the 'input' category (default behaviour).
+        Equivalent to a line with 'cat=input' in the KEEP_FILE.''',
+        )
+    keep_inputs_grp.add_argument('--no-keep-inputs', action='store_false',
+        dest='keep_inputs',
+        help='''Delete files in the 'input' category.''',
+        )
+
+
     ap.add_argument( '--make-snippits', action='store_true', default=False,
         help='''Reduce prefixo.eco and prefixo.lst to a few lines.'''
         )
@@ -105,6 +118,10 @@ if __name__ == '__main__':
         ap.error(f'Could not find keep file {args.keepfile_name}')
 
     keep_cats, keep_files = BaseRunner.read_keep_file(args.keepfile_name)
+    if args.keep_inputs:
+        keep_cats.append('input')
+    else:
+        keep_cats = [ c for c in keep_cats if c != 'input' ]
 
     runners = []
     for p in args.pfx:
@@ -148,9 +165,9 @@ if __name__ == '__main__':
                 cat = '' # avoid redundant output
             else:
                 lastcat = cat
-            s += f'{"keep" if keep else "del":4} {cat:{cw}} {fn!s}\n'
+            s += f'{"keep" if keep else "delete":6} {cat:{cw}} {fn!s}\n'
 
-        logger.info(f'Fate {"Category":{cw}} File\n'+s)
+        logger.info(f'Action {"Category":{cw}} File\n'+s)
         exit(0)
 
     # do the deletion
