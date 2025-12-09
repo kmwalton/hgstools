@@ -505,6 +505,8 @@ class BaseRunner():
 
         def _match(pats, p):
             for pat in pats:
+                if '\\' in pat:
+                    pat = re.escape(pat)
                 if re.match(pat, str(p)):
                     return True
             return False
