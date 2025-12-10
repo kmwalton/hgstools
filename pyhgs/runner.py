@@ -700,10 +700,15 @@ class HGSToolChainRun(BaseRunner):
 
         # put pre- and postprocessing commands into TOOL_CHAIN
         # Default core tools are grok, phgs, and hgs2vtu
+        # Default argument for hgs2vtu is --tecplot
+        # TODO create a mechanism on the command line to specify optional
+        # parameters for the each specific tool, like
+        # --tool-args N arg1 arg2 (for generic tools by integer number N)
+        # --hgs2vtu-args arg1 arg2 (for args for specific tool)
         self._tool_chain = _list_pprocessing('pre') \
             + list(
-                ( [shutil.which(exe),]
-                  for exe in ('grok','phgs','hgs2vtu')) ) \
+                ( [shutil.which(exe.split()[0]),]+exe.split()[1:]
+                  for exe in ('grok','phgs','hgs2vtu --tecplot')) ) \
             + _list_pprocessing('post')
 
 
