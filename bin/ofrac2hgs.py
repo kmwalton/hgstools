@@ -310,7 +310,7 @@ class RFG:
 
         pfd('! end explicit fractures\n\n')
 
-        pfpa('! begin fracture property assignment\n')
+        pfpa('! begin fracture property assignment\nuse domain type\n\tfracture\n')
         if fpropsout is not None:
             pfpa(f'properties file\n\t{fpropsout.name}\n\n')
 
