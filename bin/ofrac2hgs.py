@@ -203,7 +203,8 @@ class RFG:
                         aEnd, self.fxnet.getGridLineCounts()[a]-1))
                 else:
                     ps('{:10.3f} {:5d} {:10.3f}'.format(
-                        aEnd, self.fxnet.getGridLineCounts()[a]-1), aStart)
+                      aEnd-aStart, self.fxnet.getGridLineCounts()[a]-1, aStart)
+                    )
 
             ps('end grid generation')
 
