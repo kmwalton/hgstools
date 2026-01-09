@@ -197,8 +197,9 @@ class RFG:
              self.fxnet.isUniformGridSpacing(2) ):
             ps('generate uniform blocks')
 
+            use_datum = any(ax[0] != 0. for ax in self.fxnet.getGridLines())
             for a,(aStart,aEnd) in enumerate(self.fxnet.getBounds()):
-                if aStart == 0.0:
+                if not use_datum:
                     ps('{:10.3f} {:5d}'.format(
                         aEnd, self.fxnet.getGridLineCounts()[a]-1))
                 else:
