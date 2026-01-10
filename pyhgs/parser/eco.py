@@ -1,4 +1,10 @@
-"""A parser for RFGen grids from a grok .eco file"""
+"""A parser for RFGen grids from a grok .eco file
+
+
+
+
+
+"""
 
 import os
 import re
@@ -28,6 +34,24 @@ _tags = {
             r'Total number of porous media zones now\s+(\d+)',
             txt, flags=re.I))))
         ),
+    'units':(lambda txt:
+        re.search(r'GROK:\s+units:\s+(\w+?)-(\w+?)-(\w+?)',
+            txt, flags=re.I).group(1,2,3)
+        ),
+}
+
+_unit_abbr={
+    'kilogram':'kg',
+    'kg':'kg',
+
+    'meter':'m',
+    'metre':'m',
+    'm':'m',
+
+    'day':'d',
+    'd':'d',
+    'hour':'hr',
+    'hr':'hr',
 }
 
 class EcoFile:
@@ -71,6 +95,13 @@ class EcoFile:
       self.outputTimes = list(map(D, times_raw))
 
       return self.outputTimes
+
+   def get_units(self):
+       """Return the (mass, length, time) units of the problem as a tuple"""
+
+       u = _tags['units'](self.txt)
+
+       return [ _unit_abbr[_] for _ in u ]
 
    def _find_output_times_v2829(self, txt):
       """Finds the 'OUTPUT TIMES' block and extracts the table data.
