@@ -643,6 +643,10 @@ class HGSGrid():
             logger.debug(f'Element value read requested from file {data}')
             _count = self._get_count_from_filetype(data, dom)
             d = parse(data,count=_count)['data']
+        elif type(data) == np.ndarray:
+            pass
+        else:
+            raise ValueError(f'Unhandled input type for `data`, {type(data)}')
 
         # function to calculate elemental data
         func = lambda i : i # identity method, for now
