@@ -6,10 +6,10 @@ import numpy as np
 
 import warnings
 
-from pyhgs.test import sims_join
-from pyhgs.calcs import AvCalc
-from pyhgs.mesh import HGSGrid, Domain
-from pyhgs.parser.eco import EcoFile
+from hgstools.pyhgs.test import sims_join
+from hgstools.pyhgs.calcs import AvCalc
+from hgstools.pyhgs.mesh import HGSGrid, Domain
+from hgstools.pyhgs.parser.eco import EcoFile
 
 import logging
 calc_logger = logging.getLogger('pyhgs.calcs')

@@ -7,9 +7,9 @@ import os
 from math import prod
 import numpy as np
 
-import pyhgs
-from pyhgs._test import skip_if_no_sim_output
-from pyhgs.mesh import (HGSGrid, Domain)
+import hgstools.pyhgs as pyhgs
+from hgstools.pyhgs._test import skip_if_no_sim_output
+from hgstools.pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)+os.sep
 'Path to this testing directory'

@@ -10,10 +10,10 @@ import numpy.testing as nptest
 
 import warnings
 
-import pyhgs
-from pyhgs.parser import parse
-from pyhgs._test import skip_if_no_sim_output 
-from pyhgs.mesh import (HGSGrid, Domain)
+import hgstools.pyhgs as pyhgs
+from hgstools.pyhgs.parser import parse
+from hgstools.pyhgs._test import skip_if_no_sim_output 
+from hgstools.pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)
 'Path to this testing directory'

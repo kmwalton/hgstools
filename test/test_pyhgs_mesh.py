@@ -9,8 +9,8 @@ from collections import defaultdict
 from decimal import Decimal
 import numpy as np
 
-from pyhgs._test import skip_if_no_sim_output
-from pyhgs.mesh import make_supersample_distance_groups, HGSGrid, Domain
+from hgstools.pyhgs._test import skip_if_no_sim_output
+from hgstools.pyhgs.mesh import make_supersample_distance_groups, HGSGrid, Domain
 
 TESTP = os.path.dirname(__file__)+os.sep
 'Path to this testing file'

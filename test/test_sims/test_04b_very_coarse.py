@@ -10,10 +10,10 @@ import numpy.testing as nptest
 
 import warnings
 
-import pyhgs
-from pyhgs.parser import parse
-from pyhgs._test import skip_if_no_sim_output 
-from pyhgs.mesh import (HGSGrid, Domain)
+import hgstools.pyhgs as pyhgs
+from hgstools.pyhgs.parser import parse
+from hgstools.pyhgs._test import skip_if_no_sim_output 
+from hgstools.pyhgs.mesh import (HGSGrid, Domain)
 
 TESTP = os.path.dirname(__file__)
 'Path to this testing directory'
@@ -434,7 +434,10 @@ class Test_Module04bCoarse(unittest.TestCase):
         self.assertTrue(_cmp(pm_el_11[0], [10., 0., 12.,]))
         self.assertTrue(_cmp(pm_el_11[6], [20., 1., 20.,]))
 
-        fx_el_6 = self.g.get_coords(6, dom='frac')
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            fx_el_6 = self.g.get_coords(6, dom='frac')
         self.assertEqual(len(fx_el_6), 4)
         self.assertTrue(_cmp(fx_el_6[0], [25., 0., 12.,]))
         self.assertTrue(_cmp(fx_el_6[2], [25., 1., 20.,]))

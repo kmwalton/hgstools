@@ -7,14 +7,14 @@ import numpy as np
 
 import warnings
 
-from pyhgs.mesh import HGSGrid, Domain
-from pyhgs.calcs import AvRegGrid
+from hgstools.pyhgs.mesh import HGSGrid, Domain
+from hgstools.pyhgs.calcs import AvRegGrid
 
-from pyhgs.test import sims_join
+from hgstools.pyhgs.test import sims_join
 
 import logging
-logger = logging.getLogger('pyhgs.calcs')
-perf_logger = logging.getLogger('pyhgs.calcs_perf')
+logger = logging.getLogger('hgstools.pyhgs.calcs')
+perf_logger = logging.getLogger('hgstools.pyhgs.calcs_perf')
 
 class Test_Av(unittest.TestCase):
 
