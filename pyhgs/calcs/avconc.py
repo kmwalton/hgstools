@@ -7,6 +7,7 @@ from itertools import repeat, chain
 import numpy as np
 from tabulate import tabulate
 
+from ..mesh import Domain
 from ._basecalc import _BaseCalc
 from ..parser.eco import EcoFile
 
