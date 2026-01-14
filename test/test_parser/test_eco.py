@@ -2,6 +2,7 @@
 """Test functions in `pyhgs.parser.hgseco`"""
 
 import unittest
+from pathlib import Path
 
 import os
 from hgstools.pyhgs.parser.eco import EcoFile
@@ -11,7 +12,14 @@ DATDIR=os.path.abspath(os.path.dirname(__file__)+'/..')+os.path.sep
 
 class Test_ECO_Parser(unittest.TestCase):
 
-    @unittest.skipIf( not os.path.isfile(sims_join('goodo.eco')),
+    @unittest.skipIf( not (Path(DATDIR)/'goodo.eco').exists(),
+            'Could not find testing source file')
+    def test_sim_units(self):
+        p = EcoFile(DATDIR+'goodo.eco')
+        u = p.get_units()
+        self.assertEqual(u,'kg m d'.split())
+
+    @unittest.skipIf( not (Path(DATDIR)/'goodo.eco').exists(),
             'Could not find testing source file')
     def test_ext_detect(self):
         p = EcoFile(DATDIR+'goodo.eco')
