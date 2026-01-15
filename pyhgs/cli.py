@@ -33,6 +33,8 @@ def parse_path_to_prefix(s='.'):
 
     (pth, pfx, more) = ('', '', '')
 
+    s = str(s) # normalize input
+
     if os.path.isdir(s):
         # look for '.' or '..', which will get path.split into the tail
         pth = s
