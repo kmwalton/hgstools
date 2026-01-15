@@ -48,10 +48,18 @@ _unit_abbr={
     'metre':'m',
     'm':'m',
 
+    'seconds':'s',
+    'second':'s',
+    's':'s',
+    'days':'d',
     'day':'d',
     'd':'d',
+    'hours':'hr',
     'hour':'hr',
     'hr':'hr',
+    'years':'yr',
+    'year':'yr',
+    'yr':'yr',
 }
 
 class EcoFile:

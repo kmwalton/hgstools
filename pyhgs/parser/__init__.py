@@ -690,7 +690,9 @@ def peek_NNNN_time(file_path):
             # Decode the sliced bytes as UTF-8 characters
             decoded_string = data_slice.decode('utf-8', errors='ignore')
 
-            return decoded_string
+            # return the first segment of the time info line
+            # a version code may occupy a second segment in this data
+            return decoded_string.strip().split()[0]
 
     except Exception as e:
         print(f"An error occurred: {e}")

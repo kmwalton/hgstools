@@ -216,15 +216,6 @@ class HGSGrid():
         self.pfx = pfx
         """Simulation prefix"""
 
-        @property
-        def prefix(self):
-            warnings.warn(
-              'This attribute has been renamed "ppfx" (Path and PreFiX) for clarity',
-              category=DeprecationWarning,
-              stacklevel=2,
-            )
-            return self.ppfx
-
         self.hgs_pm_nodes = None
         """Simulation PM node data from
         `hgstools.pyhgs.parser.parse_coordinates_pm`
@@ -308,6 +299,16 @@ class HGSGrid():
         """dict with eapping of node index to element index for each domain"""
 
         logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
+
+    @property
+    def prefix(self):
+        """The path and prefix of the simulation (deprecated)"""
+        warnings.warn(
+          'This attribute has been renamed "ppfx" (Path and PreFiX) for clarity',
+          category=DeprecationWarning,
+          stacklevel=2,
+        )
+        return self.ppfx
 
     def __str__(self):
         ndoms = len(list(self.domains()))
