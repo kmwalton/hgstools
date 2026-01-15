@@ -12,7 +12,7 @@ from hgstools.pyhgs.mesh import HGSGrid, Domain
 from hgstools.pyhgs.parser.eco import EcoFile
 
 import logging
-calc_logger = logging.getLogger('pyhgs.calcs')
+calc_logger = logging.getLogger('hgstools.pyhgs.calcs')
 calc_logger.addHandler(logging.StreamHandler())
 
 class Test_Av(unittest.TestCase):
@@ -79,7 +79,7 @@ class Test_Av(unittest.TestCase):
         _el_q_fx = None
 
         # pm
-        _q = g.get_element_vals(g.prefix+'o.q_pm.0001','pm')
+        _q = g.get_element_vals(g.ppfx+'o.q_pm.0001','pm')
         _qq = np.zeros((len(el_pm), 3))
         for i in range(3):
             _qq[:,i] = _q[:,:,:,i].ravel('F')[el_pm]
@@ -88,7 +88,7 @@ class Test_Av(unittest.TestCase):
         el_q.append(np.linalg.norm(_qq,axis=1))
 
         # fx
-        _q = g.get_element_vals(g.prefix+'o.v_frac.0001','frac')
+        _q = g.get_element_vals(g.ppfx+'o.v_frac.0001','frac')
         _qq = np.zeros((len(el_fx), 3))
         for i in range(3):
             _qq[:,i] = _q[:,i].ravel('F')[el_fx]

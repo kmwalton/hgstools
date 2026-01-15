@@ -58,6 +58,7 @@ from decimal import Decimal
 from enum import IntEnum,auto
 from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from functools import partial
 
@@ -66,6 +67,8 @@ import warnings
 import numpy as np
 from numpy.linalg import norm
 from scipy.sparse import lil_array
+
+from .cli import parse_path_to_prefix
 
 from .parser import (
     parse,
@@ -206,8 +209,22 @@ class HGSGrid():
 
     def __init__(self, prefix):
 
-        self.prefix = prefix
+        pth, pfx, _ = parse_path_to_prefix(prefix)
+
+        self.ppfx = pth+os.sep+pfx
         """Simulation path and prefix"""
+        self.pfx = pfx
+        """Simulation prefix"""
+
+        @property
+        def prefix(self):
+            warnings.warn(
+              'This attribute has been renamed "ppfx" (Path and PreFiX) for clarity',
+              category=DeprecationWarning,
+              stacklevel=2,
+            )
+            return self.ppfx
+
         self.hgs_pm_nodes = None
         """Simulation PM node data from
         `hgstools.pyhgs.parser.parse_coordinates_pm`
@@ -239,14 +256,14 @@ class HGSGrid():
         def _my_call_2(a):
             return a[0](a[1:])
 
-        self.hgs_pm_nodes = parse_coordinates_pm(prefix)
-        self.hgs_pm_elems = parse_elements_pm(prefix)
+        self.hgs_pm_nodes = parse_coordinates_pm(self.ppfx)
+        self.hgs_pm_elems = parse_elements_pm(self.ppfx)
         self.nn = self.hgs_pm_nodes['nn'] # aliases
         self.ne = self.hgs_pm_elems['ne']
 
-        if os.path.exists(f'{prefix}o.coordinates_frac'):
-            self.hgs_fx_nodes = parse_coordinates_frac(prefix)
-            self.hgs_fx_elems = parse_elements_frac(prefix)
+        if os.path.exists(f'{self.ppfx}o.coordinates_frac'):
+            self.hgs_fx_nodes = parse_coordinates_frac(self.ppfx)
+            self.hgs_fx_elems = parse_elements_frac(self.ppfx)
             self.nfn = self.hgs_fx_nodes['nnfrac']
             self.nfe = self.hgs_fx_elems['nfe']
 
@@ -285,7 +302,7 @@ class HGSGrid():
 
         if self.hgs_pm_nodes['tetramesh'] or self.hgs_pm_nodes['nb2d']>0:
             raise ValueError(
-                f'Simulation {prefix} does not have a rectilinear grid')
+                f'Simulation {self.pfx} does not have a rectilinear grid')
 
         self._n2e = dict()
         """dict with eapping of node index to element index for each domain"""
@@ -294,7 +311,7 @@ class HGSGrid():
 
     def __str__(self):
         ndoms = len(list(self.domains()))
-        s = f'HGSGrid {self.prefix} with {ndoms} domain{"s" if ndoms>1 else ""}'
+        s = f'HGSGrid {self.pfx} with {ndoms} domain{"s" if ndoms>1 else ""}'
         s += f' and {self.nn:,} PM nodes'
         return s
 
@@ -639,10 +656,11 @@ class HGSGrid():
 
         # data, format unspecified
         d = data
-        if type(data) == str:
-            logger.debug(f'Element value read requested from file {data}')
-            _count = self._get_count_from_filetype(data, dom)
-            d = parse(data,count=_count)['data']
+        if type(data) == str or isinstance(data, Path):
+            _ds = str(data)
+            logger.debug(f'Element value read requested from file {_ds}')
+            _count = self._get_count_from_filetype(_ds, dom)
+            d = parse(_ds,count=_count)['data']
         elif type(data) == np.ndarray:
             pass
         else:
@@ -1876,8 +1894,8 @@ class _PMPropFinderDict(_PropFinderDict):
     @staticmethod
     def _scrape_zone_data_from_mprops(mesh, k):
         """Return a mapping of zone to [scalar] property value"""
-        mprops_dict = _PMPropFinderDict._get_mprops(mesh.prefix)
-        eco_data = parse(f'{mesh.prefix}o.eco')
+        mprops_dict = _PMPropFinderDict._get_mprops(mesh.ppfx)
+        eco_data = parse(f'{mesh.ppfx}o.eco')
         zones = eco_data.get_pm_zone_properties()
 
         pvals = (1+len(zones))*[1.,]
@@ -1891,7 +1909,7 @@ class _PMPropFinderDict(_PropFinderDict):
 
 class _FxPropFinderDict(_PropFinderDict):
     """
-    Assumes self.d is pyhgs.parser.parse_elements_frac(self.prefix)
+    Assumes self.d is pyhgs.parser.parse_elements_frac(self.ppfx)
     """
 
     def __init__(self, *args, **kwargs):
