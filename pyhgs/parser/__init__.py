@@ -274,7 +274,7 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
         Optionally, read a time stamp preceding the data. Default True. This
         **must** match the presence of a timestamp in the datafile.
     """
-    ts, d = None, None
+    ts, ver, d = None, None, None
 
     with FortranFile(fn,'r') as fin:
         if with_timestamp:
@@ -285,7 +285,10 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
     if shape:
         d = d.reshape(shape)
 
-    return OrderedDict( [('ts',ts), ('data',d),] )
+    if len(ts.strip().split())==2:
+        ts, ver = ts.strip().split()
+
+    return OrderedDict( [('ts',ts), ('ver',ver), ('data',d),] )
 
 def _parse_nd(fn, dtype, shape=None):
     """Read a number of *n-tuple* data points from file
@@ -313,7 +316,7 @@ def _parse_nd(fn, dtype, shape=None):
         `numpy.ndarray` with shape (-1, len(*n-tuple*))
     """
 
-    def _read_shape_unknown():
+    def _read_shape_unknown(fin):
         _d = fin.read_reals(dtype=dtype)
         while True:
             try:
@@ -322,30 +325,39 @@ def _parse_nd(fn, dtype, shape=None):
                 break
             else:
                 _d = np.vstack((_d,_rd,))
+
         return _d
 
     ts = None
+    ver = None
     d = None
 
     if shape is None:
         with FortranFile(fn,'r') as fin:
             ts = fin.read_ints(dtype=np.byte)
-            d = _read_shape_unknown()
+            d = _read_shape_unknown(fin)
 
     else:
         # Assumes HGS-"standard" offset of 80-character fortran array at the
         # beginning of the file
         with open(fn,'rb') as fin:
-            ts = np.fromfile( fin,
-                    dtype=[ ('','i4'), ('time_str','a80',), ('','i4'),],
+            ts = np.fromfile(fin,
+                    dtype=[('','i4'), ('time_str','a80',), ('','i4'), ],
                     count=1,)['time_str']
             d = np.fromfile(fin,
-                    dtype=[('','i4'), ('data', dtype, shape[1],), ('','i4',),],
-                    count=shape[0])['data']
+                    dtype=[('','i4'), ('data', dtype, shape[0],), ('','i4',),],
+                    count=shape[1])['data']
+            logger.debug(f'Read {fin.tell()} bytes')
+
+    ts = ts.tobytes().decode('UTF-8').strip()
+    if len(ts.strip().split()) == 2:
+        ts, ver = ts.strip().split()
 
     return OrderedDict( [
-            ('ts',ts.tobytes().decode('UTF-8').strip()),
-            ('data',d), ] )
+            ('ts',ts),
+            ('ver',ver),
+            ('data',d.T),
+    ] )
 
 def parse_1D_real8(fn, **kwargs):
     """(a) 1D real8 fields
@@ -527,7 +539,7 @@ def _is_fs_case_sensitive():
     return(_is_fs_case_sensitive.case_sensitive)
 
 class HGS_DATATYPE(enum.Enum):
-    """Enumeration to describe types of data found in HGS output files""" 
+    """Enumeration to describe types of data found in HGS output files"""
     UNSPEC = -1
     'Not yet specified'
 
@@ -635,7 +647,7 @@ def parse(fn, **kwargs):
 
     if p:
         logger.info(f'Parsing {fn} using {p.__name__}')
-        logger.log(logging.INFO-1,p.__doc__)
+        logger.log(logging.DEBUG-1,p.__doc__)
 
         try:
             return p(fn, **kwargs)
@@ -677,7 +689,7 @@ def peek_NNNN_time(file_path):
 
             # Decode the sliced bytes as UTF-8 characters
             decoded_string = data_slice.decode('utf-8', errors='ignore')
-            
+
             return decoded_string
 
     except Exception as e:
