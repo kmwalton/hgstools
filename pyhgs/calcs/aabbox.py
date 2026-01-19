@@ -76,6 +76,12 @@ class AABBox:
         #return f"AABBox(x0={v[0]:.3f}, y0={v[1]:.3f}, z0={v[2]:.3f}, x1={v[3]:.3f}, y1={v[4]:.3f}, z1={v[5]:.3f})"
         return f'AABBox({", ".join("{}{}={:.3f}".format(*_) for _ in zip("xyzxyz","000111",v))})'
 
+    def shrink(self, v):
+        """Returns a new AABBox that is smaller by v on all sides"""
+        if any((self._data[3:]-self._data[:3])<=v):
+            raise ValueError(f'Cannot shrink {self} by {v} -- gets too small')
+        return AABBox(*(self._data[:3]+v), *(self._data[3:]-v))
+
 
     def find_inner_grid_indices(self, x_grids, y_grids, z_grids):
         """Returns (xs, xe, ys, ye, zs, ze) for gridlines inside the box."""
@@ -92,8 +98,10 @@ class AABBox:
 
     def to_centroid_bbox(self, x_grids, y_grids, z_grids):
         """Returns a new AABBox bounded by the first and last inner cell centroids."""
-        idx = self.find_inner_grid_indices(x_grids, y_grids, z_grids)
+
         grids = [np.asanyarray(g) for g in (x_grids, y_grids, z_grids)]
+        #cgrids = [(g[1:]+g[:-1])/2. for g in (x_grids, y_grids, z_grids)]
+        idx = self.find_inner_grid_indices(*grids)
 
         c = []
         for i in range(3):
@@ -114,7 +122,7 @@ class AABBox:
         """Pass through to numpy array to support the user's string formatting."""
         return self._data.reshape(shape)
 
-    def iter_face_bbox(self, dim_mask):
+    def iter_face_bbox(self, dim_mask=(True,True,True)):
         """
         Yields pairs of AABBox objects representing the planes
         on the opposite faces of the box for each active axis.
@@ -136,4 +144,25 @@ class AABBox:
 
             yield AABBox(*d0), AABBox(*d1)
 
+    def iter_layer_bbox(self, grids, dim_mask=(True,True,True)):
+        """
+        Yields pairs of AABBox objects representing the grid layers
+        on the opposite faces of the box for each active axis.
+        """
+        # Get indices of active axes (e.g., [0, 1, 2])
+        active_axes = np.arange(3)[dim_mask]
 
+        for ax in active_axes:
+            # Create copies of current box data
+            d0 = self._data.copy()
+            d1 = self._data.copy()
+
+            # Face 0: find the outside gridline and go one inwards
+            i = np.searchsorted(grids[ax], d0[ax], side='right')
+            d0[ax + 3] = grids[ax][i]
+
+            # Face 1: find the outside gridline and go one inwards
+            j = np.searchsorted(grids[ax], d1[ax+3], side='left')
+            d1[ax] = grids[ax][j-1]
+
+            yield AABBox(*d0), AABBox(*d1)
