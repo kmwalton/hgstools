@@ -58,7 +58,7 @@ class AvCalc(_BaseCalc):
     distinct (duplicately stored) *blocks* in this object.
     """
 
-    def __init__(self, sim):
+    def __init__(self, *args, **kwargs):
         """
         Parameters
         ----------
@@ -67,7 +67,7 @@ class AvCalc(_BaseCalc):
             simulation.
         """
 
-        super().__init__(sim)
+        super().__init__(*args, **kwargs)
 
 
     def _get_weight(self, blockspec, dom, w_key, evalstr=None, execstr=None):
