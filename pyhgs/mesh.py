@@ -1260,11 +1260,10 @@ class HGSGrid():
         ibb = -np.ones(6,dtype=int)
 
         icoord = iter(bb)
-        for axis in range(3):
-            if gl[axis] is not None:
-                ibb[2*axis  ]= bisect_left(gl[axis],next(icoord))
-                ibb[2*axis+1]= \
-                    bisect_right(gl[axis],next(icoord),lo=ibb[2*axis])
+        for axis,glax in enumerate(gl):
+            if glax is not None:
+                ibb[2*axis  ]= bisect_left( glax,float(next(icoord)))
+                ibb[2*axis+1]= bisect_right(glax,float(next(icoord)),lo=ibb[2*axis])
             else:
                 next(icoord)
                 next(icoord)
