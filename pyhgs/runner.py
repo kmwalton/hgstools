@@ -437,6 +437,14 @@ class BaseRunner():
     def _cat_rec(self, d, files):
         """Recursive categorization function.
 
+        Parameters
+        ----------
+        d : dict or list
+            dict or list of 2-tuples
+
+        files : list-like
+            list of files yet to be categorized
+
         Returns
         -------
         tuple of (dict, set)
@@ -472,9 +480,18 @@ class BaseRunner():
         return ret, files
 
 
-    def categorize_files(self, files=None):
+    def categorize_files(self, files=None, default_cat=None):
         """Categorize files in the simulation directory.
 
+        Parameters
+        ----------
+        files : list-like
+            list of files yet to be categorized
+
+        default_cat : obj or None
+            If `None`, return any uncategorized files in the return set.
+            Otherwise, add all uncategorized to this category.
+            
         Returns
         -------
         tuple of (dict, set)
@@ -483,33 +500,29 @@ class BaseRunner():
         """
 
         grokfn=self.prefix+'.grok'
-        _input_pats = [
-            'batch.pfx',
-            grokfn,
-            self.prefix+'*.control',
-            'debug.control',
-            'parallelindx.dat',
-            'array_sizes.default',
-        ]
-
         try:
             # Assuming grok_parse returns a dict-like object where keys starting
             # with 'files_' contain lists of filenames/patterns.
+            # Assume that we may encounter entries with file paths containing
+            # '\', so add escapes here so '\' are preserved as literals when these are
+            # interpreted as regular expression patterns later
             grok = grok_parse(grokfn)
-            _input_pats += list(
+            _input_grok = list( re.escape(fn) for fn in
                 chain.from_iterable( grok[a] for a in [
                     k for k in grok.keys() if k.startswith('files_') ])
             )
         except BaseException as e:
             logger.warning(f'Problem reading {grokfn}. Error:\n{e}')
+            _input_grok = []
 
         def _match(pats, p):
-            for pat in pats:
-                if '\\' in pat:
-                    pat = re.escape(pat)
-                if re.match(pat, str(p)):
-                    return True
-            return False
+            # any is short-circuiting; exits on first successful match
+            return any( re.match(pat,p) for pat in pats )
+            #for pat in pats:
+            #    #if 'props' in pat: breakpoint()
+            #    if re.match(pat, str(p)):
+            #        return True
+            #return False
 
         def _match_scratch(p):
             _pats = ['scratch_grok',
@@ -520,15 +533,26 @@ class BaseRunner():
             ]
             return _match(_pats, p)
 
-
         def _match_input(p):
             '''Return True if Path p matches any known input file name pattern'''
+
+            _input_pats = [
+                'batch.pfx',
+                grokfn,
+                self.prefix+r'.*\.control',
+                r'.*\.[mf]props',
+                'debug.control',
+                'parallelindx.dat',
+                'array_sizes.default',
+                'restart_file_info.dat',
+                'restart_state.dat',
+            ] + _input_grok
+
             return _match(_input_pats, p)
 
         def _match_dbg(p):
             _pats = ['hs.dbg', 'grok.dbg','hsplot.dbg', ]
             return _match(_pats, p)
-
 
         if files is None:
             files = set(Path(self.simdir).iterdir())
@@ -543,10 +567,16 @@ class BaseRunner():
             'output':{
                 'scratch':_match_scratch,
                 'dbg':_match_dbg,
+                'node_set':(lambda p:
+                    re.match(self.prefix+r'o\.node_set\..*$', str(p))),
                 'intermediate':(lambda p:
                     re.match(self.prefix+r'o\..*\.\d+$', str(p))),
                 'tecplot':(lambda p:
                     re.match(self.prefix+r'o\..*dat$', str(p))),
+                'listing':(lambda p:
+                    re.match(self.prefix+r'o.*?\.(?:eco|lst)$', str(p))),
+                'restart':(lambda p:
+                    re.match(r'restart_.*\.dat', str(p))),
                 'other':(lambda p:
                     re.match(self.prefix+r'o\..*', str(p))),
             },
@@ -555,6 +585,13 @@ class BaseRunner():
         cat, uncategorized_files = self._cat_rec(categories, file_strings)
 
         # logger.debug(pformat(cat, indent=2))
+
+        if default_cat is not None:
+            if default_cat in cat:
+                cat[default_cat].append(uncategorized_files)
+            else:
+                cat[default_cat] = uncategorized_files
+            uncategorized_files = set()
 
         return cat, uncategorized_files
 

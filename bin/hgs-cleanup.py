@@ -1,5 +1,13 @@
 #!/usr/bin/env python
-"""Erase all files that *are not* in the keep file's list"""
+"""Erase all files that *are not* in the keep file's list
+
+Default behaviour:
+- keep input files
+- delete all other files and subdirectories (might change depending on
+        field-testing)
+
+Run with --help for a fuller description.
+"""
 
 import argparse
 import os
@@ -140,10 +148,17 @@ if __name__ == '__main__':
     catfiles = dict()
 
     # use the runners in reverse-order of invocation categorize the files.
-    for runner in runners:
+    # apply the default category to the last runner
+    for runner in runners[:-1]:
         runner.preexistingfiles = []
         _catfiles, files = runner.categorize_files(files)
         catfiles = ravel_merge_nested(_catfiles, catfiles)
+    # last runner
+    runner = runners[-1]
+    runner.preexistingfiles = []
+    _catfiles, files = runner.categorize_files(files, 'non-hgs')
+    catfiles = ravel_merge_nested(_catfiles, catfiles)
+    del runner
 
     # Determine whether each file will be deleted. Create a dict of bool,
     # whether the file (key) will be kept (value)
@@ -153,6 +168,10 @@ if __name__ == '__main__':
         _k |= any(fnmatch(cat, c) for c in keep_cats)
         _k |= any(fnmatch(fn, g) for g in keep_files)
         keepmaskfiles[fn] = _k
+
+    # deal with all files that were not categorized
+    #catfiles.update( (fn,'non-hgs') for fn in files ) # hopefully new category
+    #keepmaskfiles.update( (fn,'non-hgs' in keep_cats) for fn in files ) # default delete
 
     # print the listing
     if args.dry_run:
