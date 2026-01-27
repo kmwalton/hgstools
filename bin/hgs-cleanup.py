@@ -190,7 +190,15 @@ if __name__ == '__main__':
         exit(0)
 
     # do the deletion
+    errors = []
     for fn,keep in filterfalse(itemgetter(1), keepmaskfiles.items()):
         logger.info(f'Deleting {fn}')
-        os.remove(fn)
+        try:
+            os.remove(fn)
+        except Exception as e:
+            errors.append(e)
+
+    if errors:
+        logger.warning(f'Encountered {len(errors)} errors during deletion:\n'
+            +'\n'.join(str(e) for e in errors))
 
