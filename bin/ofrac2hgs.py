@@ -81,6 +81,11 @@ class RFG:
     """Parse/store/manipulate/produce HGS-style grids and fracture definitions
 
     TODO: refactor and use more code from 'ofracs' module
+
+    Note: Translation and adding forced gridlines happen second last and last.
+    All other options implicitly operate on the origional gridding or on a
+    relative sense (to the origin, or to fractures) on any grid. Therefore,
+    apply these modificaions last, as they modify the absolute grid.
     """
 
     def __init__(self,
@@ -113,10 +118,6 @@ class RFG:
         # start transformations
         logger.verbose2("\nTransforming...")
 
-        if translate is not None:
-            self.fxnet.translate(translate)
-            logger.verbose2(f'\n...with translation {translate}')
-
         if domainSize:
             self.fxnet.setDomainSize( '(0,0,0)', domainSize )
             logger.verbose2(f'\n...with forced domain size: {self.fxnet!s}')
@@ -125,14 +126,6 @@ class RFG:
         if nudgeTo > 0.0:
             self.fxnet.nudgeAll(nudgeTo)
             logger.verbose2(f'\n...with fracture nudging: {self.fxnet!s}')
-
-        if forcedGridLines and sum(map(len,forcedGridLines))>0:
-            # assume we have a triple of list-like things with numeric values
-            for ia,gla in enumerate(forcedGridLines):
-                for gl in gla:
-                    self.fxnet.addGridline(ia,gl)
-
-            logger.verbose2(f'\n...with forced grid lines: {self.fxnet!s}')
 
         if regGlSpacing and any(regGlSpacing):
             self.fxnet.addRegularGlSpacing(regGlSpacing)
@@ -147,6 +140,18 @@ class RFG:
         if maxGlSpacing and any(maxGlSpacing):
             self.fxnet.setMaxGlSpacing(maxGlSpacing)
             logger.verbose2(f'\n...with max gridline spacing: {self.fxnet!s}')
+
+        if translate is not None:
+            self.fxnet.translate(translate)
+            logger.verbose2(f'\n...with translation {translate}')
+
+        if forcedGridLines and sum(map(len,forcedGridLines))>0:
+            # assume we have a triple of list-like things with numeric values
+            for ia,gla in enumerate(forcedGridLines):
+                for gl in gla:
+                    self.fxnet.addGridline(ia,gl)
+            logger.verbose2(f'\n...with forced grid lines: {self.fxnet!s}')
+
 
         logger.verbose1('\nTransformed domain ' + str(self.fxnet))
 
