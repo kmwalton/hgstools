@@ -76,6 +76,12 @@ class AABBox:
         #return f"AABBox(x0={v[0]:.3f}, y0={v[1]:.3f}, z0={v[2]:.3f}, x1={v[3]:.3f}, y1={v[4]:.3f}, z1={v[5]:.3f})"
         return f'AABBox({", ".join("{}{}={:.3f}".format(*_) for _ in zip("xyzxyz","000111",v))})'
 
+    def __str__(self):
+        v = self._data
+        fr = ', '.join("{:.3f}".format(_) for _ in v[:3])
+        to = ', '.join("{:.3f}".format(_) for _ in v[3:])
+        return f'({fr})->({to})'
+
     def shrink(self, v):
         """Returns a new AABBox that is smaller by v on all sides"""
         if any((self._data[3:]-self._data[:3])<=v):
