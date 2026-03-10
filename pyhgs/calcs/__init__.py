@@ -20,8 +20,25 @@ Stream handlers with custom formats may be attached to these loggers:
 """
 
 from .aabbox import (AABBox,)
-from .avconc import (AvCalc,)
-from .avreggrid import (AvRegGrid,)
-from .discharge import (DischargeCalc,)
-
 __all__ = ['AABBox', 'AvCalc', 'AvRegGrid',]
+
+
+# guard against these modules being unavailable
+try:
+    from .avconc import (AvCalc,)
+    __all__.extend([AvCalc,])
+except ImportError:
+    pass
+
+try:
+    from .avreggrid import (AvRegGrid,)
+    __all__.extend([AvRegGrid,])
+except ImportError:
+    pass
+
+try:
+    from .discharge import (DischargeCalc,)
+    __all__.extend([DischargeCalc,])
+except ImportError:
+    pass
+
