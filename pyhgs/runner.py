@@ -68,7 +68,8 @@ class BaseOutputFilter:
         self._filtering_on = status
 
     def _tool_specific_rules(self, line_str):
-        """Implement tool-specific filtering logic here.
+        """Override in subclasses for tool-specific logic.
+        Return True/False/str on match, or None to fall back to base rules.
 
         Parameters
         ----------
@@ -77,12 +78,12 @@ class BaseOutputFilter:
 
         Returns
         -------
-        bool or str
+        bool or str or None
             - bool: True to print line, False to suppress.
             - str: A formatted summary line to print instead of the raw line.
+            - None: Fall back to base class rules.
         """
-        # Suppress everything by default unless explicitly allowed by rules
-        return False
+        return None
 
     def should_print(self, line_str):
         """Determines if a line should be printed to the console.
@@ -104,17 +105,19 @@ class BaseOutputFilter:
         if not self._filtering_on:
             return True
 
-        # Strip whitespace for consistent comparison
+        # 1. Apply tool-specific rules FIRST
+        tool_result = self._tool_specific_rules(line_str)
+        if tool_result is not None:
+            return tool_result
+
+        # 2. Fallback to base class generic parsing
         line = line_str.strip()
 
-        # 1. Keep separator banners as a break between tools
-        # Updated to check for '@@' to catch all parts of the HGS tool banners.
+        # Keep separator banners as a break between tools
         if line.startswith('@@'):
             return True
 
-        # 2. Keep final exit/summary lines
-        # uhoh - this also catches 'Step' lines. Omitting for now.
-        #if line.startswith('---') or line.startswith('****'):
+        # Keep final exit/summary lines
         if self._EXIT_FILTER.match(line):
             return True
 
@@ -122,8 +125,8 @@ class BaseOutputFilter:
         if any(keyword in line.upper() for keyword in ['WARNING', 'ERROR', 'FAILED', 'FATAL', 'RAISED']):
             return True
 
-        # 4. Apply tool-specific rules
-        return self._tool_specific_rules(line_str)
+        # Default to suppress if no rules match
+        return False
 
 
 class GrokFilter(BaseOutputFilter):
@@ -137,8 +140,8 @@ class GrokFilter(BaseOutputFilter):
         # Allow lines containing specific keywords (in addition to base filter)
         if any(keyword in line.upper() for keyword in ['WARNING', 'ERROR', 'RAISED']):
             return True
-        # Suppress everything else by default
-        return False
+        # Fall back to base class for everything else
+        return None
 
 
 class PhgsFilter(BaseOutputFilter):
@@ -151,25 +154,32 @@ class PhgsFilter(BaseOutputFilter):
     # Note: Regex patterns are constructed dynamically in __init__
     _PHGS_ACCEPTED_TIME_RE = re.compile(r'Accepted\s+solution\s+at\s+time:\s+([\d.E+-]+)')
 
-    def __init__(self, prefix, filtering_on=True):
+    def __init__(self, prefix, print_interval=0.0, filtering_on=True):
         """
         Parameters
         ----------
         prefix : str
             The simulation's file prefix (e.g., 'module1b'), used to construct
             the dynamic regular expression for step capture.
+        print_interval : float
+            Minimum wall-clock seconds between printing timestep summaries.
+            If 0.0, every accepted timestep is printed.
         filtering_on : bool, optional
             If False, all output is passed through without filtering,
             by default True.
         """
         super().__init__(filtering_on=filtering_on)
         self._prefix = prefix
+        self.print_interval = print_interval
+        self._last_print_time = None
         self._step_data = {}  # Tracks data for the current step
         self._last_wall_time = None
         self._in_time_report = False # State flag for Time Report processing
 
-        # Dynamic Regex construction using the simulation prefix
-        # Matches lines like: "----------------------module1b Step: 4566------------------------"
+        # State for warning capture
+        self._capture_warning_content = False
+
+        # Dynamic regex for step capture: "-------[prefix] Step: [num]-------"
         self._PHGS_STEP_RE = re.compile(
                 rf'^-+\s*{re.escape(self._prefix)}\s+Step:\s*(\d+)\s*-+\s*$', flags=re.I)
 
@@ -177,7 +187,7 @@ class PhgsFilter(BaseOutputFilter):
         self._PHGS_DT_RE = re.compile(r'([\d.E+-]+)\s+[\d.E+-]+\s+Accept\s+timestep')
 
     def _format_summary(self):
-        """Generates the single summary string for an accepted timestep."""
+        """Generates the performance summary string for an accepted timestep."""
         step = self._step_data.get('step', 'N/A')
         sim_time = self._step_data.get('time', 0.0)
         dt_sim = self._step_data.get('dt', 0.0)
@@ -209,21 +219,33 @@ class PhgsFilter(BaseOutputFilter):
     def _tool_specific_rules(self, line_str):
         line = line_str.strip()
 
-        # 1. State check for SIMULATION TIME REPORT block
+        # 1. State: Capturing the content of a warning
+        if self._capture_warning_content:
+            if not line or line.startswith('*'):
+                return False # Still waiting for the actual message or skipping the closing asterisks
+            self._capture_warning_content = False
+            return f"WARNING: {line}"
+
+        # 2. Detecting the Warning Banner
+        if "WARNING MESSAGE" in line.upper() and line.startswith('***'):
+            self._capture_warning_content = True
+            return False # Suppress the "WARNING MESSAGE" banner itself
+
+        # 3. Time Report Block
         if self._in_time_report:
             # If we hit the final dashed line, end the report state.
             if line.startswith('----------------'):
                 self._in_time_report = False
             return True # Print all content inside the report block
 
-        # 2. State trigger for SIMULATION TIME REPORT block
+        # 4. State trigger for SIMULATION TIME REPORT block
         if 'SIMULATION TIME REPORT' in line:
             self._in_time_report = True
             return True # Print the header
 
         # --- Transient Simulation Logic (only runs if NOT in time report) ---
 
-        # 3. New Timestep (Start of state tracking)
+        # 5. New Timestep (Start of state tracking)
         # Matches the dynamic separator line, e.g., "----------------------module1b Step: 4566------------------------"
         match_step = self._PHGS_STEP_RE.search(line)
         if match_step:
@@ -231,30 +253,41 @@ class PhgsFilter(BaseOutputFilter):
             self._step_data = {'step': int(match_step.group(1)), 'failures': 0}
             return False # Suppress the raw step line
 
-        # 4. Timestep Redo (Track failures)
+        # 6. Timestep Redo (Track failures)
         if 'redo timestep' in line:
             self._step_data['failures'] = self._step_data.get('failures', 0) + 1
             return False # Suppress the redo message
 
-        # 5. Timestep Size (dt) Capture
+        # 7. Timestep Size (dt) Capture
         # Matches the line containing the simulation delta_t and "Accept timestep"
         match_dt = self._PHGS_DT_RE.search(line)
         if match_dt and 'Accept timestep' in line:
             self._step_data['dt'] = float(match_dt.group(1))
             return False # Suppress the raw dt line
 
-        # 6. Accepted Time (End of state tracking and summary generation)
+        # 8. Accepted Time (The logic where we decide whether to print)
         match_time = self._PHGS_ACCEPTED_TIME_RE.search(line)
         if match_time:
             self._step_data['time'] = float(match_time.group(1))
-            return self._format_summary() # Print custom summary string and suppress raw line
+            summary = self._format_summary()
 
-        # 7. Keep steady-state calculation line
-        if line.startswith('Calculating steady-state flow solution'):
+            now = datetime.datetime.now()
+
+            # Logic: Always print the first step, then respect the interval
+            if (self._last_print_time is None or
+                (now - self._last_print_time).total_seconds() >= self.print_interval):
+
+                self._last_print_time = now
+                return summary
+            return False # Suppress summary if interval hasn't passed
+
+        # 9. Keep steady-state calculation line
+        #if line.startswith('Calculating steady-state flow solution'):
+        if 'flow solution' in line:
             return True
 
-        # 8. Suppress everything else
-        return False
+        # 10. Let the base filter process anything else
+        return None
 
 
 class Hgs2VtuFilter(BaseOutputFilter):
@@ -265,7 +298,9 @@ class Hgs2VtuFilter(BaseOutputFilter):
     def _tool_specific_rules(self, line_str):
         # If a line is not empty and not suppressed by base rules, print it.
         # This keeps the general parsing/writing info.
-        return bool(line_str.strip())
+        if line_str.strip():
+            return True
+        return None
 
 # --- Tool Runner Classes ---
 
@@ -491,7 +526,7 @@ class BaseRunner():
         default_cat : obj or None
             If `None`, return any uncategorized files in the return set.
             Otherwise, add all uncategorized to this category.
-            
+
         Returns
         -------
         tuple of (dict, set)
@@ -800,11 +835,11 @@ class HGSToolChainRun(BaseRunner):
         for i, tool_list in enumerate(self._tool_chain):
 
             if self._tool_name_equal(tool_list, default_tool):
-                # Replace the entire tool entry (path and arguments)
-                # uhoh - what if the optional tool is a python script (not an
-                        # exe on the path) and hence should be prefixed with
-                # python.exe <script> ??
-                self._tool_chain[i] = [opt_tool_path]
+                # Check if the replacement tool is a Python script
+                if opt_tool_path.lower().endswith('.py'):
+                    self._tool_chain[i] = [sys.executable, opt_tool_path]
+                else:
+                    self._tool_chain[i] = [opt_tool_path]
                 return # Assumes only one instance needs to be replaced
 
     def _check_write_access(self):
@@ -982,14 +1017,14 @@ class HGSToolChainRun(BaseRunner):
         # adopt end+1 convention
         self._t_end = iend+1
 
-    def run(self):
+    def run(self, print_interval=0.0):
         """Run the toolchain and return the exit code."""
 
         # The access check is done here, right before execution
         self._check_write_access()
-        return asyncio.run(self._run())
+        return asyncio.run(self._run(print_interval=print_interval))
 
-    async def _run(self):
+    async def _run(self, print_interval):
         """Run the toolchain core logic asynchronously.
 
         All console output is passed through a filtered stream, and a bounded
@@ -1008,10 +1043,10 @@ class HGSToolChainRun(BaseRunner):
         start_time = datetime.datetime.now()
         wall_time_format = '%Y-%m-%d %H:%M:%S'
 
-        # Initialize the filters dynamically
+        # Initialize the filters dynamically with the interval
         filters = {
             'grok': GrokFilter(filtering_on=True),
-            'phgs': PhgsFilter(prefix=self.prefix, filtering_on=True),
+            'phgs': PhgsFilter(prefix=self.prefix, print_interval=print_interval, filtering_on=True),
             'hgs2vtu': Hgs2VtuFilter(filtering_on=True),
         }
 

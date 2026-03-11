@@ -43,6 +43,12 @@ def main():
     )
 
     argp.add_argument(
+        '-n', '--interval',
+        type=float, default=5.0,
+        help='Minimum seconds between PHGS status updates (default: 5 seconds; use 0 for all updates)'
+    )
+
+    argp.add_argument(
         '--dry-run',
         action='store_true',
         help=(
@@ -99,7 +105,7 @@ def main():
             )
         sys.exit(returncode)
 
-    returncode = tc.run()
+    returncode = tc.run(print_interval=args.interval)
 
     # The final exit is clean and simple.
     sys.exit(returncode)
