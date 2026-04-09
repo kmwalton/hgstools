@@ -189,6 +189,15 @@ if __name__ == '__main__':
         logger.info(f'Action {"Category":{cw}} File\n'+s)
         exit(0)
 
+    # write excerpts of .eco/.lst before they may be deleted
+    if args.make_snippits:
+        for runner in runners:
+            excerpts = runner.write_excerpts()
+            for p in excerpts:
+                logger.info(f'Wrote excerpt: {p}')
+                # ensure the excerpt itself is not deleted
+                keepmaskfiles[p.name] = True
+
     # do the deletion
     errors = []
     for fn,keep in filterfalse(itemgetter(1), keepmaskfiles.items()):
