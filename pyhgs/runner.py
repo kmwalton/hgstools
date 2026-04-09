@@ -27,6 +27,7 @@ from pathlib import Path
 
 from hgstools.pyhgs.cli import parse_path_to_prefix
 from hgstools.pyhgs.parser.grok import parse as grok_parse
+from hgstools.pyhgs.utils import excerpt_large_file
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -154,6 +155,13 @@ class PhgsFilter(BaseOutputFilter):
     # Note: Regex patterns are constructed dynamically in __init__
     _PHGS_ACCEPTED_TIME_RE = re.compile(r'Accepted\s+solution\s+at\s+time:\s+([\d.E+-]+)')
 
+    # Warning messages that are expected/non-actionable and should be suppressed
+    # after the first occurrence per step. Match against the full stripped line
+    # as it appears in raw PHGS output (with the 'WARNING: ' prefix).
+    _SUPPRESSED_WARNINGS = frozenset({
+        'WARNING: No more mass stored in the system.',
+    })
+
     def __init__(self, prefix, print_interval=0.0, filtering_on=True):
         """
         Parameters
@@ -178,6 +186,10 @@ class PhgsFilter(BaseOutputFilter):
 
         # State for warning capture
         self._capture_warning_content = False
+        # Tracks which suppressed warnings have already fired since the last
+        # PHGS Step summary; resets on each summary so the first occurrence
+        # per step is still printed.
+        self._suppressed_warnings_seen = set()
 
         # Dynamic regex for step capture: "-------[prefix] Step: [num]-------"
         self._PHGS_STEP_RE = re.compile(
@@ -219,14 +231,28 @@ class PhgsFilter(BaseOutputFilter):
     def _tool_specific_rules(self, line_str):
         line = line_str.strip()
 
-        # 1. State: Capturing the content of a warning
+        # 1. State: Capturing the content of a warning (via *** banner)
         if self._capture_warning_content:
             if not line or line.startswith('*'):
                 return False # Still waiting for the actual message or skipping the closing asterisks
             self._capture_warning_content = False
-            return f"WARNING: {line}"
+            formatted = f"WARNING: {line}"
+            if formatted in self._SUPPRESSED_WARNINGS:
+                if formatted in self._suppressed_warnings_seen:
+                    return False # Suppress repeated occurrences within this step
+                self._suppressed_warnings_seen.add(formatted)
+            return formatted
 
-        # 2. Detecting the Warning Banner
+        # 2. Direct WARNING: lines (not via the *** banner state machine).
+        #    Check known-suppress list with per-step dedup before the base
+        #    class can pass them through unconditionally.
+        if line in self._SUPPRESSED_WARNINGS:
+            if line in self._suppressed_warnings_seen:
+                return False
+            self._suppressed_warnings_seen.add(line)
+            return True  # Print the first occurrence, then suppress
+
+        # 3. Detecting the Warning Banner
         if "WARNING MESSAGE" in line.upper() and line.startswith('***'):
             self._capture_warning_content = True
             return False # Suppress the "WARNING MESSAGE" banner itself
@@ -278,13 +304,15 @@ class PhgsFilter(BaseOutputFilter):
                 (now - self._last_print_time).total_seconds() >= self.print_interval):
 
                 self._last_print_time = now
+                self._suppressed_warnings_seen = set() # Reset only when summary is printed
                 return summary
             return False # Suppress summary if interval hasn't passed
 
-        # 9. Keep steady-state calculation line
-        #if line.startswith('Calculating steady-state flow solution'):
-        if 'flow solution' in line:
+        # 9. Keep steady-state calculation line; suppress transient (too frequent)
+        if 'steady-state flow solution' in line:
             return True
+        if 'transient flow solution' in line:
+            return False
 
         # 10. Let the base filter process anything else
         return None
@@ -623,7 +651,7 @@ class BaseRunner():
 
         if default_cat is not None:
             if default_cat in cat:
-                cat[default_cat].append(uncategorized_files)
+                cat[default_cat].update(uncategorized_files)
             else:
                 cat[default_cat] = uncategorized_files
             uncategorized_files = set()
@@ -720,7 +748,8 @@ def _list_pprocessing(
     """
     EXTENSION_RUNNER_HINTS = {
         '.ps1': [shutil.which('powershell'),'-NonInteractive','-File',],
-        '.py': [shutil.which('python'),],
+        #'.py': [shutil.which('python'),],
+        '.py': [sys.executable,],
     }
 
     if fpfx not in ('pre','post'):
