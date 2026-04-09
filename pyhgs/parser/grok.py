@@ -27,6 +27,30 @@ from more_itertools import grouper
 
 _NUM_RE = r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?'
 
+# Maps the full unit names (as written in a grok file) to their abbreviations.
+# Valid HGS unit combinations per the Hydrogeosphere manual:
+#   Kilogram-metre-{hour,day,year}
+#   Kilogram-centimetre-{second,minute,hour,day,year}
+_unit_abbr = {
+    'kilogram': 'kg', 'kg': 'kg',
+    'metre': 'm', 'meter': 'm', 'm': 'm',
+    'centimetre': 'cm', 'centimeter': 'cm', 'cm': 'cm',
+    'seconds': 's', 'second': 's', 's': 's',
+    'minutes': 'min', 'minute': 'min', 'min': 'min',
+    'hours': 'hr', 'hour': 'hr', 'hr': 'hr',
+    'days': 'd', 'day': 'd', 'd': 'd',
+    'years': 'yr', 'year': 'yr', 'yr': 'yr',
+}
+
+# Conversion from HGS time unit abbreviations to SI seconds.
+TIME_UNIT_SECONDS = {
+    's':   1.0,
+    'min': 60.0,
+    'hr':  3600.0,
+    'd':   86400.0,
+    'yr':  31557600.0,  # Julian year: 365.25 days
+}
+
 _tags = {
     'files_mprops':(lambda txt:
         list( re.findall(
@@ -61,6 +85,12 @@ _tags = {
             r'^\s*initial.*?from.*?file(?:\s*!.*\n|\s*)*(\S*?)\s*\n',
             txt, flags=re.M|re.I)
         )),
+    'units':(lambda txt:
+        [_unit_abbr.get(u.lower(), u.lower())
+         for u in re.search(
+             r'^units:\s*(\w+)-(\w+)-(\w+)',
+             txt, flags=re.M|re.I).groups()]
+        ),
 }
 
 def _parse_solute(txt):

@@ -26,7 +26,7 @@ from itertools import chain
 from pathlib import Path
 
 from hgstools.pyhgs.cli import parse_path_to_prefix
-from hgstools.pyhgs.parser.grok import parse as grok_parse
+from hgstools.pyhgs.parser.grok import parse as grok_parse, TIME_UNIT_SECONDS
 from hgstools.pyhgs.utils import excerpt_large_file
 
 logger = logging.getLogger(__name__)
@@ -162,7 +162,7 @@ class PhgsFilter(BaseOutputFilter):
         'WARNING: No more mass stored in the system.',
     })
 
-    def __init__(self, prefix, print_interval=0.0, filtering_on=True):
+    def __init__(self, prefix, print_interval=0.0, filtering_on=True, time_unit='s'):
         """
         Parameters
         ----------
@@ -175,10 +175,16 @@ class PhgsFilter(BaseOutputFilter):
         filtering_on : bool, optional
             If False, all output is passed through without filtering,
             by default True.
+        time_unit : str, optional
+            Abbreviated HGS time unit of the simulation (e.g. 'd', 'yr').
+            Used to convert simulated dt to seconds for a dimensionless speed.
+            By default 's' (no conversion needed).
         """
         super().__init__(filtering_on=filtering_on)
         self._prefix = prefix
         self.print_interval = print_interval
+        self._sim_time_to_seconds = TIME_UNIT_SECONDS.get(time_unit, 1.0)
+        self._time_unit = time_unit
         self._last_print_time = None
         self._step_data = {}  # Tracks data for the current step
         self._last_wall_time = None
@@ -213,7 +219,7 @@ class PhgsFilter(BaseOutputFilter):
             wall_interval = current_wall_time - self._last_wall_time
             wall_interval_sec = wall_interval.total_seconds()
             if wall_interval_sec > 0:
-                speed = dt_sim / wall_interval_sec
+                speed = (dt_sim * self._sim_time_to_seconds) / wall_interval_sec
 
         self._last_wall_time = current_wall_time
         self._step_data = {} # Clear step data after summary is generated
@@ -1072,10 +1078,19 @@ class HGSToolChainRun(BaseRunner):
         start_time = datetime.datetime.now()
         wall_time_format = '%Y-%m-%d %H:%M:%S'
 
+        # Read simulation time unit from the grok file for dimensionless speed.
+        _sim_time_unit = 's'
+        try:
+            _grok_data = grok_parse(os.path.join(self.simdir, self.prefix + '.grok'))
+            _sim_time_unit = _grok_data.get('units', ['kg', 'm', 's'])[2]
+        except Exception:
+            pass  # fall back to seconds if unavailable
+
         # Initialize the filters dynamically with the interval
         filters = {
             'grok': GrokFilter(filtering_on=True),
-            'phgs': PhgsFilter(prefix=self.prefix, print_interval=print_interval, filtering_on=True),
+            'phgs': PhgsFilter(prefix=self.prefix, print_interval=print_interval,
+                               filtering_on=True, time_unit=_sim_time_unit),
             'hgs2vtu': Hgs2VtuFilter(filtering_on=True),
         }
 
