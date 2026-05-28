@@ -388,6 +388,8 @@ def parse_1D_real8(fn, **kwargs):
     - *o.head_pm.NNNN*
     - *o.head_well.NNNN*
     - *o.iconc_pm.species.NNNN*
+    - *o.mass_sorbed_pm.NNNN*
+    - *o.mass_sorbed_frac.NNNN*
     - *o.pet_olf.NNNN*
     - *o.rain_olf.NNNN*
 
@@ -577,6 +579,8 @@ _file_info = {
     'o.hen'                  :  (parse_1D_real8_nots,     HGS_DATATYPE.NODAL,  ),
     'o.head_well'            :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.iconc_pm'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.mass_sorbed_pm'       :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
+    'o.mass_sorbed_frac'     :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.pet_olf'              :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.rain_olf'             :  (parse_1D_real8,          HGS_DATATYPE.UNSPEC,  ),
     'o.ExchFlux_chan'        :  (parse_1D_real4,          HGS_DATATYPE.UNSPEC,  ),
