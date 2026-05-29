@@ -21,6 +21,12 @@ Example:
 Specification of binary file structure provided by Killian Miller
 <kmiller@aquanty.com> to Ken Walton <kmwalton@g360group.org> by email on Feb.
 24, 2021, and July 26, 2021.
+Specification changed significantly in 2025 regarding the arrangements of array fields.
+Updated Jan. 29, 2026, to parse the new header format.
+
+TODO:
+    Must re-factor array read operations for the legacy and 2025 data layouts
+
 
 Notes
 -----
@@ -155,6 +161,37 @@ def _decode_new_header(ver_token):
         'n_components': int(ver_token[13:15]),
         'n_values':     int(ver_token[15:25]),
     }
+
+# Map new-format (r2853+) header ``data_type`` codes to numpy dtypes.
+_HEADER_DTYPE_MAP = {
+    'I04': np.int32,    # 4-byte integer
+    'R04': np.float32,  # 4-byte real
+    'R08': np.float64,  # 8-byte real
+}
+
+def _dtype_from_header(header_info, default):
+    """Select the numpy dtype for a file's data record.
+
+    For new-format (HGS r2853+) files the ``data_type`` code in the header is
+    authoritative and is used to choose the dtype.  For legacy files
+    (``header_info is None``) or unrecognized type codes, fall back to
+    *default* — the dtype the caller selected based on the file name.
+
+    Parameters
+    ----------
+    header_info : dict or None
+        The structured header fields from `_decode_new_header`, or ``None``
+        for legacy files.
+    default : numpy.dtype
+        The dtype to use when the header does not specify a known type.
+
+    Returns
+    -------
+    numpy.dtype
+    """
+    if not header_info:
+        return default
+    return _HEADER_DTYPE_MAP.get(header_info.get('data_type'), default)
 
 def parse_coordinates_pm(fn):
     """Parse `o.coordinates_pm` file and return a dict.
@@ -366,7 +403,9 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
         filename to open
 
     dtype : numpy.datatype
-        interperet the data as this type
+        interperet the data as this type. For new-format (HGS r2853+) files
+        this is only a fallback: the ``data_type`` field in the header is
+        authoritative and overrides this value.
 
     shape : tuple
         resize the data to a numpy.ndarray of this size, if provided
@@ -375,17 +414,18 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
         Optionally, read a time stamp preceding the data. Default True. This
         **must** match the presence of a timestamp in the datafile.
     """
-    ts, ver, d = None, None, None
+    ts, ver = None, None
+    header_info = None
 
     with FortranFile(fn,'r') as fin:
         if with_timestamp:
             ts, ver = _decode_header_str(fin.read_ints(dtype=np.byte))
-        d = fin.read_reals(dtype=dtype)
+            header_info = _decode_new_header(ver)
+        d = fin.read_reals(dtype=_dtype_from_header(header_info, dtype))
 
     if shape:
         d = d.reshape(shape)
 
-    header_info = _decode_new_header(ver)
     ret = OrderedDict([('ts', ts), ('ver', ver)])
     if header_info:
         ret.update(header_info)
@@ -411,7 +451,9 @@ def _parse_nd(fn, dtype, shape=None):
         The data file name.
 
     dtype : `numpy.dtype`
-        The numeric type of the data in the array.
+        The numeric type of the data in the array. For new-format (HGS r2853+)
+        files this is only a fallback: the ``data_type`` field in the header
+        is authoritative and overrides this value.
 
     shape : tuple (n_fields, n_components), optional
         A hint at the shape of the output data, e.g. ``(n_elements, 3)`` for
@@ -423,7 +465,7 @@ def _parse_nd(fn, dtype, shape=None):
         `numpy.ndarray` with shape (n_fields, n_components)
     """
 
-    def _read_shape_unknown(fin):
+    def _read_shape_unknown(fin, dtype):
         _d = fin.read_reals(dtype=dtype)
         while True:
             try:
@@ -435,16 +477,11 @@ def _parse_nd(fn, dtype, shape=None):
 
         return _d
 
-    ts = None
-    ver = None
-    d = None
-
     if shape is None:
         with FortranFile(fn,'r') as fin:
-            ts_raw = fin.read_ints(dtype=np.byte)
-            d = _read_shape_unknown(fin)
-
-        ts, ver = _decode_header_str(ts_raw)
+            ts, ver = _decode_header_str(fin.read_ints(dtype=np.byte))
+            header_info = _decode_new_header(ver)
+            d = _read_shape_unknown(fin, _dtype_from_header(header_info, dtype))
 
         # SOA (modern): _read_shape_unknown built (n_components, n_fields);
         # AOS (legacy): it built (n_fields, n_components) — no transpose needed.
@@ -454,29 +491,31 @@ def _parse_nd(fn, dtype, shape=None):
     else:
         # Assumes HGS-"standard" offset of 80-character fortran array at the
         # beginning of the file.  Read the header first so the format (SOA vs
-        # AOS) can be determined before reading the data records.
+        # AOS) and the data type can be determined before reading the data
+        # records.
         with open(fn,'rb') as fin:
             ts_raw = np.fromfile(fin,
                     dtype=[('','i4'), ('time_str','a80',), ('','i4'), ],
                     count=1,)['time_str']
 
             ts, ver = _decode_header_str(ts_raw)
+            header_info = _decode_new_header(ver)
+            ddtype = _dtype_from_header(header_info, dtype)
             is_soa = ver is not None
             if is_soa:
                 # SOA: shape[1] records, each containing shape[0] values
                 d = np.fromfile(fin,
-                        dtype=[('','i4'), ('data', dtype, shape[0],), ('','i4',),],
+                        dtype=[('','i4'), ('data', ddtype, shape[0],), ('','i4',),],
                         count=shape[1])['data']
                 ret_d = d.T
             else:
                 # AOS: shape[0] records, each containing shape[1] values
                 d = np.fromfile(fin,
-                        dtype=[('','i4'), ('data', dtype, shape[1],), ('','i4',),],
+                        dtype=[('','i4'), ('data', ddtype, shape[1],), ('','i4',),],
                         count=shape[0])['data']
                 ret_d = d
             logger.debug(f'Read {fin.tell()} bytes')
 
-    header_info = _decode_new_header(ver)
     ret = OrderedDict([('ts', ts), ('ver', ver)])
     if header_info:
         ret.update(header_info)
