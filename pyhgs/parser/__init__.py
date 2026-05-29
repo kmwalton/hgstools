@@ -83,6 +83,33 @@ logger.addHandler(_console)
 
 _NEW_HEADER_MAGIC = '#!HGS'
 
+def _decode_header_str(raw):
+    """Decode a raw 80-byte Fortran header record into ``(ts, ver)``.
+
+    Parameters
+    ----------
+    raw : bytes-like
+        The 80 raw bytes of the header record — either a ``numpy`` array
+        (e.g. from ``FortranFile.read_ints(dtype=np.byte)`` or
+        ``np.fromfile(..., dtype=[..., ('time_str','a80'), ...])[...]``) or a
+        plain ``bytes`` object.
+
+    Returns
+    -------
+    ts : str
+        The simulation timestamp token, stripped of surrounding whitespace.
+    ver : str or None
+        The version/magic token (e.g. ``'#!HGS001LER08010000001600'``) when
+        present (HGS r2853+), otherwise ``None``.
+    """
+    if hasattr(raw, 'tobytes'):
+        raw = raw.tobytes()
+    text = raw.decode('UTF-8', errors='replace').strip()
+    tokens = text.split()
+    if len(tokens) == 2 and tokens[1].startswith(_NEW_HEADER_MAGIC):
+        return tokens[0], tokens[1]
+    return text, None
+
 def _decode_new_header(ver_token):
     """Decode structured sub-fields from a new-format (r2853+) ``ver`` token.
 
@@ -352,15 +379,11 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
 
     with FortranFile(fn,'r') as fin:
         if with_timestamp:
-            ts = fin.read_ints(dtype=np.byte)
-            ts = ts.tobytes().decode('UTF-8').strip()
+            ts, ver = _decode_header_str(fin.read_ints(dtype=np.byte))
         d = fin.read_reals(dtype=dtype)
 
     if shape:
         d = d.reshape(shape)
-
-    if ts is not None and len(ts.strip().split())==2:
-        ts, ver = ts.strip().split()
 
     header_info = _decode_new_header(ver)
     ret = OrderedDict([('ts', ts), ('ver', ver)])
@@ -375,9 +398,12 @@ def _parse_nd(fn, dtype, shape=None):
     E.g., This will read 3-tuple velocity vectors, (vx,vy,vz), for an
     unknown-length sequence of elemental values.
 
-    This function is _much_ more efficient if the shape of the data is know a
+    This function is _much_ more efficient if the shape of the data is known a
     priori. Array copying for unknown-length final data is avoided in this case.
 
+    Handles both the legacy AOS (Array of Structures) layout used by HGS prior
+    to r2853 (July 2025) and the new SOA (Structure of Arrays) layout.  The
+    format is detected from the ``#!HGS`` magic token in the file header.
 
     Parameters
     ---
@@ -387,12 +413,14 @@ def _parse_nd(fn, dtype, shape=None):
     dtype : `numpy.dtype`
         The numeric type of the data in the array.
 
-    shape : tuple, optional
-        The shape of the output data.
+    shape : tuple (n_fields, n_components), optional
+        A hint at the shape of the output data, e.g. ``(n_elements, 3)`` for
+        velocity.  Required for the fast path; if omitted the function reads
+        until EOF (slower).
 
     Returns
     -------
-        `numpy.ndarray` with shape (-1, len(*n-tuple*))
+        `numpy.ndarray` with shape (n_fields, n_components)
     """
 
     def _read_shape_unknown(fin):
@@ -413,30 +441,46 @@ def _parse_nd(fn, dtype, shape=None):
 
     if shape is None:
         with FortranFile(fn,'r') as fin:
-            ts = fin.read_ints(dtype=np.byte)
+            ts_raw = fin.read_ints(dtype=np.byte)
             d = _read_shape_unknown(fin)
+
+        ts, ver = _decode_header_str(ts_raw)
+
+        # SOA (modern): _read_shape_unknown built (n_components, n_fields);
+        # AOS (legacy): it built (n_fields, n_components) — no transpose needed.
+        is_soa = ver is not None
+        ret_d = d.T if is_soa else d
 
     else:
         # Assumes HGS-"standard" offset of 80-character fortran array at the
-        # beginning of the file
+        # beginning of the file.  Read the header first so the format (SOA vs
+        # AOS) can be determined before reading the data records.
         with open(fn,'rb') as fin:
-            ts = np.fromfile(fin,
+            ts_raw = np.fromfile(fin,
                     dtype=[('','i4'), ('time_str','a80',), ('','i4'), ],
                     count=1,)['time_str']
-            d = np.fromfile(fin,
-                    dtype=[('','i4'), ('data', dtype, shape[0],), ('','i4',),],
-                    count=shape[1])['data']
-            logger.debug(f'Read {fin.tell()} bytes')
 
-    ts = ts.tobytes().decode('UTF-8').strip()
-    if len(ts.strip().split()) == 2:
-        ts, ver = ts.strip().split()
+            ts, ver = _decode_header_str(ts_raw)
+            is_soa = ver is not None
+            if is_soa:
+                # SOA: shape[1] records, each containing shape[0] values
+                d = np.fromfile(fin,
+                        dtype=[('','i4'), ('data', dtype, shape[0],), ('','i4',),],
+                        count=shape[1])['data']
+                ret_d = d.T
+            else:
+                # AOS: shape[0] records, each containing shape[1] values
+                d = np.fromfile(fin,
+                        dtype=[('','i4'), ('data', dtype, shape[1],), ('','i4',),],
+                        count=shape[0])['data']
+                ret_d = d
+            logger.debug(f'Read {fin.tell()} bytes')
 
     header_info = _decode_new_header(ver)
     ret = OrderedDict([('ts', ts), ('ver', ver)])
     if header_info:
         ret.update(header_info)
-    ret['data'] = d.T
+    ret['data'] = ret_d
     return ret
 
 def parse_1D_real8(fn, **kwargs):
@@ -760,23 +804,14 @@ def peek_NNNN_time(file_path):
 
         # Open the file in binary read mode ('rb')
         with open(file_path, 'rb') as f:
-            # Read the first 88 bytes into a bytes object
             time_as_bytes = f.read(88)
 
-            # Check if we read enough bytes
             if len(time_as_bytes) < 88:
                 print("Error: File is too small to read 88 bytes.")
                 return None
 
-            # Slice the bytes from index 4 to 84 (inclusive of 4, exclusive of 84)
-            data_slice = time_as_bytes[4:84]
-
-            # Decode the sliced bytes as UTF-8 characters
-            decoded_string = data_slice.decode('utf-8', errors='ignore')
-
-            # return the first segment of the time info line
-            # a version code may occupy a second segment in this data
-            return decoded_string.strip().split()[0]
+            ts, _ver = _decode_header_str(time_as_bytes[4:84])
+            return ts
 
     except Exception as e:
         print(f"An error occurred: {e}")
