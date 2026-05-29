@@ -29,6 +29,32 @@ dimensions of each datum, **not** the spatial dimensions of the HGS domain.
 E.g. concentration files must be parsed with the `1D` reader, and velocity
 files must be parsed with the `3D` reader.
 
+Binary file header format
+-------------------------
+All HGS binary output (.NNNN) files begin with a Fortran record containing an
+80-character header string.  Two layouts exist:
+
+**Legacy format** (prior to HGS r2853, July 2025)::
+
+    Bytes  1–80  simulation timestamp, space-padded on the right
+
+**New format** (HGS r2853+, July 2025)::
+
+    Bytes  1–55  simulation timestamp, space ' ', metadata
+    Bytes 56–60  file magic number ``#!HGS``
+    Bytes 61–63  file format version number (e.g. ``001``)
+    Bytes 64–65  endianness: ``LE``, ``BE``, or ``UK`` (unknown)
+    Bytes 66–68  data type: ``I04``, ``R04``, ``R08``, or ``UNK``
+    Bytes 69–70  number of components per value, zero-padded (e.g. ``01``)
+    Bytes 71–80  number of values in the data record, zero-padded
+
+Parsers that return a ``dict`` expose these fields when the new header is
+detected: ``hgs_file_ver``, ``endian``, ``data_type``, ``n_components``,
+``n_values``.  For legacy files all five fields are ``None``.
+
+Source: Aquanty HGS r2853 release notes (aquanty.com/updates, July 2025) and
+Aquanty webinar, January 2026.
+
 """
 import os
 import tempfile
@@ -54,6 +80,54 @@ _console.setLevel(logging.WARN)
 _console.setFormatter(
     logging.Formatter(f'pyhgs.parser %(levelname)s - %(message)s'))
 logger.addHandler(_console)
+
+_NEW_HEADER_MAGIC = '#!HGS'
+
+def _decode_new_header(ver_token):
+    """Decode structured sub-fields from a new-format (r2853+) ``ver`` token.
+
+    Parameters
+    ----------
+    ver_token : str or None
+        The second whitespace-delimited token from the 80-char header record,
+        as extracted by ``_parse`` / ``_parse_nd``.  Expected to start with
+        ``#!HGS`` for new-format files.
+
+    Returns
+    -------
+    dict or None
+        ``None`` when *ver_token* is absent or not a new-format token.
+        Otherwise a dict with keys:
+
+        hgs_file_ver : str
+            Three-character file format version (e.g. ``'001'``).
+        endian : str
+            Two-character endianness code: ``'LE'``, ``'BE'``, or ``'UK'``.
+        data_type : str
+            Three-character numeric type: ``'I04'``, ``'R04'``, ``'R08'``,
+            or ``'UNK'``.
+        n_components : int
+            Number of scalar components per data value (e.g. 1 for scalars,
+            3 for velocity vectors).
+        n_values : int
+            Total number of data values in the file's data record.
+    """
+    if not ver_token or not ver_token.startswith(_NEW_HEADER_MAGIC):
+        return None
+    # Token layout (0-based within the token string):
+    #  [0:5]  '#!HGS'  magic
+    #  [5:8]  file format version (3 chars)
+    #  [8:10] endianness (2 chars)
+    # [10:13] data type (3 chars)
+    # [13:15] number of components, zero-padded (2 chars)
+    # [15:25] number of values, zero-padded (10 chars)
+    return {
+        'hgs_file_ver': ver_token[5:8],
+        'endian':       ver_token[8:10],
+        'data_type':    ver_token[10:13],
+        'n_components': int(ver_token[13:15]),
+        'n_values':     int(ver_token[15:25]),
+    }
 
 def parse_coordinates_pm(fn):
     """Parse `o.coordinates_pm` file and return a dict.
@@ -285,10 +359,15 @@ def _parse(fn, dtype, shape=None, with_timestamp=True):
     if shape:
         d = d.reshape(shape)
 
-    if len(ts.strip().split())==2:
+    if ts is not None and len(ts.strip().split())==2:
         ts, ver = ts.strip().split()
 
-    return OrderedDict( [('ts',ts), ('ver',ver), ('data',d),] )
+    header_info = _decode_new_header(ver)
+    ret = OrderedDict([('ts', ts), ('ver', ver)])
+    if header_info:
+        ret.update(header_info)
+    ret['data'] = d
+    return ret
 
 def _parse_nd(fn, dtype, shape=None):
     """Read a number of *n-tuple* data points from file
@@ -353,11 +432,12 @@ def _parse_nd(fn, dtype, shape=None):
     if len(ts.strip().split()) == 2:
         ts, ver = ts.strip().split()
 
-    return OrderedDict( [
-            ('ts',ts),
-            ('ver',ver),
-            ('data',d.T),
-    ] )
+    header_info = _decode_new_header(ver)
+    ret = OrderedDict([('ts', ts), ('ver', ver)])
+    if header_info:
+        ret.update(header_info)
+    ret['data'] = d.T
+    return ret
 
 def parse_1D_real8(fn, **kwargs):
     """(a) 1D real8 fields
