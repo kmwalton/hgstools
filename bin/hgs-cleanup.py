@@ -47,6 +47,61 @@ def ravel_merge_nested(nested, flat_dest, sep='.', _depth=0):
     # else
     return ret
 
+KEEP_FILE_HEADER = """\
+# keep_file.txt --- lists the simulation files that hgs-cleanup.py will RETAIN.
+# Any file in this directory that does NOT match a rule below is deleted.
+#
+# Syntax (one rule per line):
+#   - Blank lines and lines beginning with '#' are ignored.
+#   - A bare filename or glob keeps matching files, e.g.:
+#         prefixo.lst
+#         *.[mf]props
+#   - A line prefixed with 'cat=' (or 'category=') keeps a whole category of
+#     files; the category name may itself be a glob, e.g.:
+#         cat=input
+#         cat=output.tecplot*
+#   - Only the first whitespace-delimited token on a line is used; a trailing
+#     '# ...' comment is allowed.
+"""
+
+def make_keep_file_content(catfiles):
+    """Build the text for a skeleton keep file.
+
+    If `catfiles` (a {filename: category} dict) is non-empty, the categories
+    actually detected in the current directory are listed (commented out, with
+    a count and example filename). Otherwise a static, generic skeleton is
+    emitted as a fallback.
+    """
+    lines = [KEEP_FILE_HEADER]
+
+    if catfiles:
+        counts = {}
+        examples = {}
+        for fn, cat in catfiles.items():
+            counts[cat] = counts.get(cat, 0) + 1
+            examples.setdefault(cat, str(fn))
+        cw = max(map(len, counts))
+        lines.append('# Categories detected in the current directory '
+            '(uncomment a line to keep it):\n#')
+        for cat in sorted(counts):
+            n = counts[cat]
+            lines.append(
+                f'#cat={cat:{cw}}   # {n} file{"" if n == 1 else "s"}, '
+                f'e.g. {examples[cat]}')
+    else:
+        lines.append('# (No simulation files were categorized here; the lines '
+            'below just show the\n#  available rule forms.)\n#')
+        lines.append('#cat=input')
+        lines.append('#cat=output.tecplot*')
+
+    lines.append('#')
+    lines.append('# Example filename / glob rules (uncomment and edit as needed):')
+    lines.append('#prefixo.lst')
+    lines.append('#*.[mf]props')
+    lines.append('')
+
+    return '\n'.join(lines)
+
 def _key_by_lst_mtime(runner):
 
     lst = Path(runner.simdir)/(runner.prefix+'o.lst')
@@ -63,7 +118,7 @@ if __name__ == '__main__':
         in the keep file's list''',
     )
 
-    ap.add_argument( '--keep-file',
+    ap.add_argument( '-k', '--keep-file',
         type=str,
         default=None,
         metavar='path/to/KEEP_FILE',
@@ -77,6 +132,16 @@ if __name__ == '__main__':
             --dry-run; they can be specified in plain text, e.g., "cat=input", or as
             a glob-style pattern, e.g., "cat=output.tecplot*".
         '''
+        )
+
+    ap.add_argument('--make-keep-file',
+        nargs='?', const='keep_file.txt', default=None,
+        dest='make_keep_file',
+        metavar='KEEP_FILE',
+        help='''Generate a skeleton keep file (pre-populated with the file
+        categories detected in the current directory) and exit without deleting
+        anything. Writes to KEEP_FILE if given, otherwise './keep_file.txt'.
+        Errors if the target file already exists.''',
         )
 
     ap.add_argument('--dry-run', action='store_true', default=False,
@@ -124,6 +189,11 @@ if __name__ == '__main__':
     # check for keep file
     if args.keepfile_name and not os.path.isfile(args.keepfile_name):
         ap.error(f'Could not find keep file {args.keepfile_name}')
+
+    # fail fast before scanning if the skeleton target already exists
+    if args.make_keep_file and os.path.exists(args.make_keep_file):
+        ap.error(f"'{args.make_keep_file}' already exists; "
+            "refusing to overwrite it.")
 
     keep_cats, keep_files = BaseRunner.read_keep_file(args.keepfile_name)
     if args.keep_inputs:
@@ -187,6 +257,13 @@ if __name__ == '__main__':
             s += f'{"keep" if keep else "delete":6} {cat:{cw}} {fn!s}\n'
 
         logger.info(f'Action {"Category":{cw}} File\n'+s)
+        exit(0)
+
+    # generate a skeleton keep file and exit, without deleting anything
+    if args.make_keep_file:
+        with open(args.make_keep_file, 'w') as fout:
+            fout.write(make_keep_file_content(catfiles))
+        logger.info(f"Wrote skeleton keep file: {args.make_keep_file}")
         exit(0)
 
     # write excerpts of .eco/.lst before they may be deleted
