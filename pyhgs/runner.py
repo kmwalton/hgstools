@@ -584,44 +584,67 @@ class BaseRunner():
             logger.warning(f'Problem reading {grokfn}. Error:\n{e}')
             _input_grok = []
 
+        def _re_match(pat, p):
+            """``re.match`` wrapper that names the offending pattern on failure.
+
+            The categorization patterns are assembled from ``self.prefix`` and
+            grok-derived file names, so a malformed one surfaces as a bare
+            ``re.error`` with no hint at which pattern (or which prefix) caused
+            it.  Re-raise with the pattern and subject identified.  This is the
+            single choke point all categorization matching flows through.
+            """
+            try:
+                return re.match(pat, p)
+            except re.error as e:
+                raise ValueError(
+                    f'Invalid file-categorization pattern {pat!r} '
+                    f'(prefix {self.prefix!r}, matching {p!r}): {e}') from e
+
         def _match(pats, p):
             # any is short-circuiting; exits on first successful match
-            return any( re.match(pat,p) for pat in pats )
-            #for pat in pats:
-            #    #if 'props' in pat: breakpoint()
-            #    if re.match(pat, str(p)):
-            #        return True
-            #return False
+            return any( _re_match(pat, p) for pat in pats )
 
         def _match_scratch(p):
-            _pats = ['scratch_grok',
-                'scratch_[cmfod]props',
-                'scratch_etprops',
-                'scratch_wellprops',
-                'scratch_tileprops',
+            # 'scratch_[cmfod]props' is an intentional character class; the rest
+            # are literal names.  All anchored at both ends ('$' here, start via
+            # re.match) so e.g. 'scratch_grok.bak' is not mistaken for scratch.
+            _pats = [
+                r'scratch_grok$',
+                r'scratch_[cmfod]props$',
+                r'scratch_etprops$',
+                r'scratch_wellprops$',
+                r'scratch_tileprops$',
             ]
             return _match(_pats, p)
 
         def _match_input(p):
-            '''Return True if Path p matches any known input file name pattern'''
+            '''Return True if file name p matches any known input file pattern'''
 
-            _input_pats = [
+            # Exact file names: plain membership is clearer than a regex and
+            # anchors implicitly (no unescaped '.' matching any character).
+            _input_literals = {
                 'batch.pfx',
                 grokfn,
-                self.prefix+r'.*\.control',
-                r'.*\.[mf]props',
                 'debug.control',
                 'parallelindx.dat',
                 'array_sizes.default',
                 'restart_file_info.dat',
                 'restart_state.dat',
-            ] + _input_grok
+            }
+            if p in _input_literals:
+                return True
+
+            # Genuine patterns: escape the prefix, anchor the end.  _input_grok
+            # entries are already re.escape()d exact names, so anchor them too.
+            _input_pats = [
+                re.escape(self.prefix) + r'.*\.control$',
+                r'.*\.[mf]props$',
+            ] + [g + r'$' for g in _input_grok]
 
             return _match(_input_pats, p)
 
         def _match_dbg(p):
-            _pats = ['hs.dbg', 'grok.dbg','hsplot.dbg', ]
-            return _match(_pats, p)
+            return p in {'hs.dbg', 'grok.dbg', 'hsplot.dbg'}
 
         if files is None:
             files = set(Path(self.simdir).iterdir())
@@ -637,17 +660,17 @@ class BaseRunner():
                 'scratch':_match_scratch,
                 'dbg':_match_dbg,
                 'node_set':(lambda p:
-                    re.match(self.prefix+r'o\.node_set\..*$', str(p))),
+                    _re_match(re.escape(self.prefix)+r'o\.node_set\..*$', str(p))),
                 'intermediate':(lambda p:
-                    re.match(self.prefix+r'o\..*\.\d+$', str(p))),
+                    _re_match(re.escape(self.prefix)+r'o\..*\.\d+$', str(p))),
                 'tecplot':(lambda p:
-                    re.match(self.prefix+r'o\..*dat$', str(p))),
+                    _re_match(re.escape(self.prefix)+r'o\..*dat$', str(p))),
                 'listing':(lambda p:
-                    re.match(self.prefix+r'o.*?\.(?:eco|lst)$', str(p))),
+                    _re_match(re.escape(self.prefix)+r'o.*?\.(?:eco|lst)$', str(p))),
                 'restart':(lambda p:
-                    re.match(r'restart_.*\.dat', str(p))),
+                    _re_match(r'restart_.*\.dat$', str(p))),
                 'other':(lambda p:
-                    re.match(self.prefix+r'o\..*', str(p))),
+                    _re_match(re.escape(self.prefix)+r'o\..*', str(p))),
             },
         }
 
