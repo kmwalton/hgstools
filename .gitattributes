@@ -1,0 +1,6 @@
+# Keep Python source LF in the repo, regardless of contributors' core.autocrlf
+*.py text eol=lf
+
+# HGS output fixtures are captured real-world artifacts (CRLF on Windows).
+# Treat them as binary so git never renormalizes their line endings.
+*.eco -text
