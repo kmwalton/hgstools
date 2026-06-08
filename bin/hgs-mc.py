@@ -271,7 +271,16 @@ class HGS_MCRunner():
         mylogger.verbose1(f'Running {d}')
         inst_status[ii] = InstanceStatusEnum.RUNNING.value
 
-        cp = subprocess.run(shlex.split(tc_command),cwd=d,)
+        try:
+            cp = subprocess.run(
+                    shlex.split(tc_command),
+                    cwd=d,
+                    env=os.environ.copy(),
+                    )
+        except Exception as e:
+            print(f'Failed to launch subprocess:\n\t{shlex.split(tc_command)}\n in working directory:\n\t{d}\nwith error:\n{e}',
+                    file=sys.stderr)
+            return 1
 
         if cp.returncode == 0:
             cp = subprocess.run(shlex.split(cu_command),cwd=d,)
@@ -462,16 +471,23 @@ if __name__ == '__main__':
     def _fixup_user_command(f):
         f_args = shlex.split(f)
         exe = f_args[0]
-        if os.access(exe,os.X_OK):
+        pexe = Path(exe)
+        if shutil.which(exe):
             pass
-        elif shutil.which(exe):
+        elif pexe.is_absolute() and os.access(exe,os.X_OK):
             pass
+        elif pexe.parts[0]=='..' and os.access(Path(*pexe.parts[1:]),os.X_OK):
+            pexe = Path(*pexe.parts[1:]).absolute()
+            f_args[0] = str(pexe)
         else:
             print(f'Could not find {exe}.', file=sys.stderr)
             sys.exit(-1)
 
-        if Path(exe).suffix.lower() == '.py':
+        if pexe.suffix.lower() == '.py':
             f_args = [ sys.executable, shutil.which(exe), ] + f_args[1:]
+        elif pexe.suffix.lower() == '.ps1':
+            f_args = [ 'powershell.exe', ] + f_args
+
 
         return shlex.join(f_args)
 
