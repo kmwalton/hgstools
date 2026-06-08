@@ -1,3 +1,5 @@
+__docformat__ = 'numpy'
+
 from . import cli
 from . import mesh
 from . import runner

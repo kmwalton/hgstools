@@ -11,6 +11,8 @@ a python pickle file.
 
 """
 
+__docformat__ = 'numpy'
+
 import sys
 import os
 import re

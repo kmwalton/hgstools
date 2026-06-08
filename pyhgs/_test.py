@@ -1,5 +1,7 @@
 """Supports testing of pyhgs by unittest and/or with HGS simulation data"""
 
+__docformat__ = 'numpy'
+
 import os
 
 def skip_if_no_sim_output(prefix, suffixes=['o.eco','o.lst',]):

@@ -161,34 +161,40 @@ retarr /= self.sim.get_elements_data(dom)['nln']
         ----------
         blockspec : str
             A string representing the block of elements (inclusive of elements
-            bordering this block.
+            bordering this block).
         data : `list`, array, or `str`
             The 1D or 3D data array, string representing a HGS binary
             concentration file name, or a floating point value indicating the
-            desired simulation time (the closest time will be used).<br>
-            __What if there is different data for different domains?__
+            desired simulation time (the closest time will be used).
+
+            **TODO:** support different data for different domains.
         weight : `list`, array, or `str`
-            The weighting scheme, by keyword string or an array|`str` that is
-            interpreted in the same way as the `data` parameter:<br>
-            - `arith_nd`: arithmetic mean of the nodes within blockspec
-            - `arith_el': arithmetic mean of the elements within blockspec
-            - 'vol_el': weight by element volume 
-            - 'porvol_el': weight by element pore volume (V * phi). In the case
-            of concentration, this assumes fully saturated conditions
-            list
-            - `list`, array, or `str`: interpret arrays or strings in the same way
-            as the `data` parameter is iterpreted, or pass a `list` where entries
-            in the list are 1) in the same sequence as the simulation's
-            `domain()`s, and 2) arrays of weight values for every element in the
-            domain. This allows a very flexible specificaion of weights, so the
-            caller can pre-calculate flux magnitude, horizontal flux magnitude,
-            etc., to be used as weight values. The data in passed weight arrays
-            will be multiplied with the "inherent weight" of an element, which
-            is the number of incident nodes it has within `blockspec`.
+            The weighting scheme. Either one of the keyword strings below, or an
+            array/`str` that is interpreted in the same way as the `data`
+            parameter:
+
+            - `arith_nd`: arithmetic mean of the nodes within `blockspec`
+            - `arith_el`: arithmetic mean of the elements within `blockspec`
+            - `vol_el`: weight by element volume
+            - `porvol_el`: weight by element pore volume (`V * phi`). In the
+              case of concentration, this assumes fully saturated conditions.
+
+            Alternatively, pass a `list`, array, or `str`:
+
+            - an array or `str` is interpreted in the same way as the `data`
+              parameter; or
+            - a `list` whose entries are (1) in the same sequence as the
+              simulation's `domain()`s, and (2) arrays of weight values for
+              every element in the domain. This allows a very flexible
+              specification of weights, so the caller can pre-calculate flux
+              magnitude, horizontal flux magnitude, etc., to be used as weight
+              values. The data in passed weight arrays will be multiplied with
+              the "inherent weight" of an element, which is the number of
+              incident nodes it has within `blockspec`.
         doms : `str`, `list`, `pyhgs.mesh.Domain`
             A list of `pyhgs.mesh.Domain` objects, or a single `Domain`, or a
-            string representing a single `Domain`, or the keyword 'all' (for all
-            domains)
+            string representing a single `Domain`, or the keyword `'all'` (for
+            all domains).
 
         """
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+__docformat__ = 'numpy'
+
 import os
 import warnings
 import regex as re

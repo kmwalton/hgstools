@@ -8,6 +8,8 @@ working. As a stop-gap, this is a helper module to transparently find things
 within the ofrac.ofracs module and give warnings when the environment needs to
 be updated.
 """
+
+__docformat__ = 'numpy'
 import sys
 import importlib
 import warnings

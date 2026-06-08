@@ -1,5 +1,7 @@
 """General-purpose utility functions for the pyhgs package."""
 
+__docformat__ = 'numpy'
+
 import os
 import sys
 import io

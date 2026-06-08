@@ -1,5 +1,7 @@
 """A parser for RFGen grids from RFGen text output"""
 
+__docformat__ = 'numpy'
+
 import sys
 import re
 import copy

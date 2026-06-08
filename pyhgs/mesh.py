@@ -1066,7 +1066,7 @@ class HGSGrid():
             values are `list`s of fracture element indices. The dictionary does not
             hold entries for PM elements that have no neighbouring fractures; when
             such an element is requested, an empty `list` is returned as the value.
-            <br><br>
+
             PM element indices can be a 0-based integer index, or a `tuple` of
             0-based element grid indices.
         """

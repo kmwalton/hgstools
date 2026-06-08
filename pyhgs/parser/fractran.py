@@ -18,6 +18,8 @@ filename or prefix to the returned objects -- those objects will auto-detect the
 required files.
 """
 
+__docformat__ = 'numpy'
+
 VERBOSE = False
 
 import sys,os,io,itertools,re

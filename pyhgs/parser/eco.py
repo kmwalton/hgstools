@@ -6,6 +6,8 @@
 
 """
 
+__docformat__ = 'numpy'
+
 import os
 import re
 import copy

@@ -19,6 +19,8 @@ Stream handlers with custom formats may be attached to these loggers:
 
 """
 
+__docformat__ = 'numpy'
+
 from .aabbox import (AABBox,)
 __all__ = ['AABBox',]
 

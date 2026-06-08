@@ -2,6 +2,8 @@
 
 This implementation will be removed when the pyhgsrunner is operational
 """
+
+__docformat__ = 'numpy'
 import sys
 import os
 import re

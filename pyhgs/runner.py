@@ -10,6 +10,8 @@ The module uses modular filter classes (e.g., `PhgsFilter`) to suppress verbose
 solver output and display crucial status updates and performance metrics (like
 simulation speed and timestep failures).
 """
+
+__docformat__ = 'numpy'
 import sys
 import os
 import glob

@@ -5,6 +5,8 @@ Originally written for ssfl, 1D, unsaturated zone column simulations
 Thu, Feb  4, 2016  4:56:22 PM
 
 """
+
+__docformat__ = 'numpy'
 import sys,os,datetime,argparse
 from math import log10,floor
 from itertools import zip_longest

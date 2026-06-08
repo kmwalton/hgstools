@@ -1,3 +1,5 @@
+__docformat__ = 'numpy'
+
 
 import warnings
 from .eco import EcoFile

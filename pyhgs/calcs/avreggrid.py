@@ -21,17 +21,18 @@ class AvRegGrid:
 
         This includes the process of mapping all HGS grid elements to the new
         regular grid, which can be expensive:
-            - elements intersecting each new grid block are determined using
-            `choose_elements_block` with partial matches.
 
+        - elements intersecting each new grid block are determined using
+          `choose_elements_block` with partial matches.
 
-        Arguments
-        ---------
-            grid : HGSGrid
-            reggrid_d, reggrid_o, reggrid_s : 3 floats
-                The regular grid domain discretization, origin, and size. Origin
-                and size will be taken from the HGSGrid's domain if they are
-                specified as `None`.
+        Parameters
+        ----------
+        grid : HGSGrid
+            The subject HGS grid.
+        reggrid_d, reggrid_o, reggrid_s : 3 floats
+            The regular grid domain discretization, origin, and size. Origin
+            and size will be taken from the HGSGrid's domain if they are
+            specified as `None`.
         """
         if not isinstance(grid, HGSGrid):
             raise ValueError('HGS mesh must be a rectilinear grid')
