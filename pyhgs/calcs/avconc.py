@@ -50,12 +50,14 @@ class AvCalc(_BaseCalc):
 
 
     This class has a memory of *blocks*, groups of nodes and elements, as
-    specified in `blockspec` parameters in various methods. Specifically,
-    these groupings are keyed by the exact `blockspec` string, so the caller
-    should take care with these strings such that the groups of nodes and
-    elements are not redundant, like a `blockspec` location value of '0.'
-    and '0' will produce an identical block node/element set, but will have
-    distinct (duplicately stored) *blocks* in this object.
+    specified in `blockspec` parameters in various methods (anything
+    interpretable as an `pyhgs.aabbox.AABBox`). Specifically, these groupings
+    are keyed by the exact `blockspec` value as given, so the caller should
+    take care that equivalent specifications are not redundant: a `blockspec`
+    location value of '0.' and '0', or the string '0 ...' and the tuple
+    '(0, ...)', produce an identical block node/element set but are stored as
+    distinct (duplicated) *blocks* in this object, thereby foregoing the
+    efficiency of reusing a previously determined set of nodes/elements.
     """
 
     def __init__(self, *args, **kwargs):
@@ -159,9 +161,10 @@ retarr /= self.sim.get_elements_data(dom)['nln']
 
         Parameters
         ----------
-        blockspec : str
-            A string representing the block of elements (inclusive of elements
-            bordering this block).
+        blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
+            The block of elements (inclusive of elements bordering this block),
+            as an `AABBox`, a ``"x0 x1 y0 y1 z0 z1"`` string, or a sequence of
+            six bounds. See `pyhgs.aabbox.AABBox.from_blockspec`.
         data : `list`, array, or `str`
             The 1D or 3D data array, string representing a HGS binary
             concentration file name, or a floating point value indicating the

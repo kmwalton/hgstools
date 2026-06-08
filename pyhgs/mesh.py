@@ -68,6 +68,7 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.sparse import lil_array
 
+from .aabbox import AABBox
 from .cli import parse_path_to_prefix
 
 from .parser import (
@@ -132,7 +133,14 @@ def D_AP(v):
     return D(v,N_APERT_DIG)
 
 def toDTuple(s):
-    """Return a tuple of coordinate precision Decimals
+    """Return a tuple of coordinate-precision `Decimal`\\ s.
+
+    .. deprecated::
+        Block specifications are now interpreted by
+        `pyhgs.aabbox.AABBox.from_blockspec`, which works in `float64` and
+        carries no millimetre quantization. This function is retained only as
+        a compatibility shim for callers that relied on the quantized
+        `Decimal` tuple; prefer `AABBox.from_blockspec` in new code.
 
     Parameters
     ----------
@@ -141,6 +149,12 @@ def toDTuple(s):
         'x y z', 'x,y z', or '[u, v, w x y z'
         list-likes must be a sequence of number-like things.
     """
+
+    warnings.warn(
+        'toDTuple is deprecated; use pyhgs.aabbox.AABBox.from_blockspec',
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     ivals = iter([0,0,0,])
 
@@ -153,9 +167,6 @@ def toDTuple(s):
                 '{type(s)}.')
 
     return tuple( D_CO(v) for v in ivals )
-
-# helpful type
-_BoundingBox = namedtuple('_BoundingBox', 'x1 x2 y1 y2 z1 z2'.split(), )
 
 class Domain(IntEnum):
     """Types of domains in Hydrogeosphere"""
@@ -1242,7 +1253,16 @@ class HGSGrid():
 
 
     def choose_nodes_block(self, blockspec, dom=Domain.PM):
-        """Return a list of nodes contained in a 3D block"""
+        """Return a list of nodes contained in a 3D block
+
+        Parameters
+        ----------
+        blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
+            The 3D block, as an `AABBox`, a ``"x1 x2 y1 y2 z1 z2"`` string, or
+            a sequence of six bounds. See
+            `pyhgs.aabbox.AABBox.from_blockspec`.
+        dom : {`Domain.PM`, `Domain.FRAC`, 'pm', 'frac'}
+        """
 
         _plq.push()
 
@@ -1251,8 +1271,8 @@ class HGSGrid():
         if dom not in [Domain.PM, Domain.FRAC]:
             raise NotImplementedError()
 
-        # zone 3D block bounds
-        bb = _BoundingBox(*toDTuple(blockspec))
+        # zone 3D block bounds, in interleaved (x1 x2 y1 y2 z1 z2) order
+        bb = AABBox.from_blockspec(blockspec).to_bounds()
 
         gl = self.get_grid_lines()
 
@@ -1387,9 +1407,10 @@ class HGSGrid():
 
         Parameters
         ----------
-        blockspec : str
-            Some specification of a 3D block: 1) As a string, "x1 x2 y1 y2 z1
-            z2".
+        blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
+            The 3D block, as an `AABBox`, a ``"x1 x2 y1 y2 z1 z2"`` string, or
+            a sequence of six bounds. See
+            `pyhgs.aabbox.AABBox.from_blockspec`.
         allow_partial : bool
             If False, the element must be fully contained within the block. If
             True, interseciton of an element's corner, edge, face, or some

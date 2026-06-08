@@ -11,6 +11,7 @@ import numpy as np
 
 from hgstools.pyhgs._test import skip_if_no_sim_output
 from hgstools.pyhgs.mesh import make_supersample_distance_groups, HGSGrid, Domain
+from hgstools.pyhgs.aabbox import AABBox
 
 TESTP = os.path.dirname(__file__)+os.sep
 'Path to this testing file'
@@ -333,6 +334,101 @@ class Test_HGSGrid(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             g.choose_elements_block('10,20,0,1,20,20', True, 'FRAC')
+
+    @unittest.skipIf(
+        skip_if_no_sim_output(
+            TESTP+'test_sims/04b_very_coarse_mesh/module4b'),
+        'HGS output missing')
+    def test_choose_block_alt_specs(self):
+        """A blockspec may be given as any form `AABBox.from_blockspec` accepts.
+
+        All forms of the *same* block (x0 x1 y0 y1 z0 z1 = 0 10 0 1 0 6) must
+        select an identical set of nodes/elements.
+        """
+        g = HGSGrid(TESTP+'test_sims/04b_very_coarse_mesh/module4b')
+
+        # equivalent renderings of the block "0 10 0 1 0 6"
+        specs = {
+            'comma str':  '0,10,0,1,0,6',
+            'space str':  '0 10 0 1 0 6',
+            'paren str':  '(0,10, 0,1, 0,6)',
+            'tuple':      (0, 10, 0, 1, 0, 6),
+            'list':       [0, 10, 0, 1, 0, 6],
+            'np.array':   np.array([0, 10, 0, 1, 0, 6]),
+            'float tuple': (0.0, 10.0, 0.0, 1.0, 0.0, 6.0),
+            'AABBox':     AABBox.from_blockspec('0,10,0,1,0,6'),
+        }
+
+        expected_nodes = [0, 1, 6, 7, 12, 13, 18, 19]
+        for name, spec in specs.items():
+            with self.subTest(f'choose_nodes_block via {name}'):
+                self.assertEqual(
+                    g.choose_nodes_block(spec), expected_nodes)
+
+        # a strict-inside element capture, "9 21 0 1 11 21" -> [11]
+        elem_specs = {
+            'comma str': '9,21,0,1,11,21',
+            'space str': '9 21 0 1 11 21',
+            'tuple':     (9, 21, 0, 1, 11, 21),
+            'list':      [9, 21, 0, 1, 11, 21],
+            'AABBox':    AABBox.from_blockspec('9 21 0 1 11 21'),
+        }
+        for name, spec in elem_specs.items():
+            with self.subTest(f'choose_elements_block via {name}'):
+                self.assertEqual(g.choose_elements_block(spec), [11,])
+
+
+class Test_AABBox_blockspec(unittest.TestCase):
+    """Coercion of *blockspec* forms by `AABBox.from_blockspec`.
+
+    These run independently of any HGS simulation output.
+    """
+
+    # canonical interleaved bounds: x0 x1 y0 y1 z0 z1
+    BOUNDS = [0.0, 10.0, 0.0, 5.0, 0.0, 1.0]
+
+    def _assert_bounds(self, box):
+        self.assertIsInstance(box, AABBox)
+        np.testing.assert_array_equal(box.to_bounds(), self.BOUNDS)
+
+    def test_equivalent_specs(self):
+        for name, spec in {
+            'comma str':   '0,10,0,5,0,1',
+            'space str':   '0 10 0 5 0 1',
+            'paren str':   '(0,10, 0,5, 0,1)',
+            'mixed str':   '0, 10 0,5 0 1',
+            'tuple':       (0, 10, 0, 5, 0, 1),
+            'list':        [0, 10, 0, 5, 0, 1],
+            'np.array':    np.array([0, 10, 0, 5, 0, 1]),
+        }.items():
+            with self.subTest(name):
+                self._assert_bounds(AABBox.from_blockspec(spec))
+
+    def test_passthrough_returns_equal_copy(self):
+        src = AABBox.from_blockspec(self.BOUNDS)
+        out = AABBox.from_blockspec(src)
+        self._assert_bounds(out)
+        # a copy, not the same object, so mutating one must not affect the other
+        self.assertIsNot(out, src)
+        out[0] = 99.0
+        self.assertEqual(src.x0, 0.0)
+
+    def test_to_bounds_is_interleaved(self):
+        # _data is grouped (x0 y0 z0 x1 y1 z1); to_bounds interleaves it
+        box = AABBox(0, 1, 2, 10, 11, 12)
+        np.testing.assert_array_equal(
+            box.to_bounds(), [0, 10, 1, 11, 2, 12])
+
+    def test_roundtrip_via_to_blockspec(self):
+        box = AABBox.from_blockspec(self.BOUNDS)
+        self._assert_bounds(AABBox.from_blockspec(box.to_blockspec()))
+
+    def test_wrong_count_raises(self):
+        for bad in ['0 1 2', (0, 1, 2, 3, 4), [0, 1, 2, 3, 4, 5, 6]]:
+            with self.subTest(repr(bad)):
+                with self.assertRaises(ValueError):
+                    AABBox.from_blockspec(bad)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -49,6 +49,9 @@ class _BaseCalc():
 
         Parameters
         ----------
+        bs : anything interpretable as an `pyhgs.aabbox.AABBox`
+            A *blockspec*: an `AABBox`, a ``"x0 x1 y0 y1 z0 z1"`` string, or a
+            sequence of six bounds. See `pyhgs.aabbox.AABBox.from_blockspec`.
 
         kwargs
         ------
@@ -58,7 +61,9 @@ class _BaseCalc():
 
         """
 
-        _key = (bs,)+tuple(kwargs.items())
+        # normalise to a hashable cache key (non-str sequences -> tuple)
+        _bskey = bs if isinstance(bs, str) else tuple(bs)
+        _key = (_bskey,)+tuple(kwargs.items())
 
         if _key not in self.blocks:
 
