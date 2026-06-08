@@ -568,20 +568,24 @@ class BaseRunner():
             - set: Set of uncategorized files.
         """
 
-        grokfn=self.prefix+'.grok'
+        # grokfn is the bare file name, matched against file basenames below;
+        # grokpath is where it actually lives on disk (categorize_files may be
+        # invoked without cd-ing into simdir).
+        grokfn = self.prefix + '.grok'
+        grokpath = os.path.join(self.simdir, grokfn)
         try:
             # Assuming grok_parse returns a dict-like object where keys starting
             # with 'files_' contain lists of filenames/patterns.
             # Assume that we may encounter entries with file paths containing
             # '\', so add escapes here so '\' are preserved as literals when these are
             # interpreted as regular expression patterns later
-            grok = grok_parse(grokfn)
+            grok = grok_parse(grokpath)
             _input_grok = list( re.escape(fn) for fn in
                 chain.from_iterable( grok[a] for a in [
                     k for k in grok.keys() if k.startswith('files_') ])
             )
         except BaseException as e:
-            logger.warning(f'Problem reading {grokfn}. Error:\n{e}')
+            logger.warning(f'Problem reading {grokpath}. Error:\n{e}')
             _input_grok = []
 
         def _re_match(pat, p):
