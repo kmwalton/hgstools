@@ -2,6 +2,7 @@
 """Python unittests involving 04b_Saturated_Fracture_Transport"""
 
 import unittest
+from unittest import mock
 import os
 from itertools import product
 from math import prod
@@ -423,6 +424,118 @@ class Test_Module04bCoarse(unittest.TestCase):
 
         nptest.assert_allclose(pm_vol[:,0,:], exp)
 
+    def test_volume_cache_identity(self):
+        """Repeated calls return the very same cached array, per domain."""
+        for dom in (Domain.PM, Domain.FRAC):
+            with self.subTest(domain=dom):
+                first = self.g.get_element_volumes(dom)
+                second = self.g.get_element_volumes(dom)
+                self.assertIs(first, second,
+                    'expected the cached array object to be reused')
+
+        # PM and FRAC must not collide in the cache
+        self.assertIsNot(
+            self.g.get_element_volumes(Domain.PM),
+            self.g.get_element_volumes(Domain.FRAC))
+
+    def test_volume_cache_readonly(self):
+        """The cached array is read-only, protecting the cache from mutation."""
+        for dom in (Domain.PM, Domain.FRAC):
+            with self.subTest(domain=dom):
+                v = self.g.get_element_volumes(dom)
+                self.assertFalse(v.flags.writeable,
+                    'cached volume array should be read-only')
+                with self.assertRaises(ValueError):
+                    v[0] = 0.0
+
+    def test_volume_cache_avoids_recompute(self):
+        """`_pm_V`/`_fx_V` run at most once regardless of call count."""
+        cases = [(Domain.PM, '_pm_V'), (Domain.FRAC, '_fx_V')]
+        for dom, meth in cases:
+            with self.subTest(domain=dom):
+                with mock.patch.object(self.g, meth,
+                        wraps=getattr(self.g, meth)) as spy:
+                    for _ in range(5):
+                        self.g.get_element_volumes(dom)
+                    self.assertEqual(spy.call_count, 1,
+                        f'{meth} should be computed exactly once, then cached')
+
+    def test_volume_cache_string_domain_hits_cache(self):
+        """String and `Domain` spellings share one cache entry."""
+        with mock.patch.object(self.g, '_fx_V',
+                wraps=self.g._fx_V) as spy:
+            a = self.g.get_element_volumes('frac')
+            b = self.g.get_element_volumes(Domain.FRAC)
+            self.assertIs(a, b)
+            self.assertEqual(spy.call_count, 1)
+
+    def test_volume_cache_preserves_values(self):
+        """Caching does not alter the computed volumes (vs. fresh compute)."""
+        # FRAC: cached result equals a direct, uncached recompute and the
+        # known-correct expected values from test_fx_elem_volume.
+        ap = 100e-6
+        fx_exp = ap * np.array(
+            [10., 10., 5., 5., 6., 6., 8., 5., 5., 5., 20.])
+        fx_cached = self.g.get_element_volumes(Domain.FRAC)
+        nptest.assert_allclose(fx_cached, self.g._fx_V())
+        nptest.assert_allclose(fx_cached, fx_exp)
+
+        # PM: same checks against test_pm_elem_volume's expected values.
+        pm_exp = np.array(
+            [[60., 60., 30., 30., 120.],
+             [60., 60., 30., 30., 120.],
+             [80., 80., 40., 40., 160.],
+             [50., 50., 25., 25., 100.]]).T
+        pm_cached = self.g.get_element_volumes(Domain.PM)
+        nptest.assert_allclose(pm_cached, self.g._pm_V())
+        nptest.assert_allclose(pm_cached[:, 0, :], pm_exp)
+
+    def test_fx_node_avg_vectorized_matches_loop(self):
+        """Vectorized `_fx_node_avg`/`_fx_node_avg_from_pm` == loop reference.
+
+        Drives the public `get_element_vals` FRAC paths and compares against an
+        independent, per-element loop implementation matching the original
+        (pre-vectorization) algorithm.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            finc = self.g.hgs_fx_elems['inc']        # (nfe, nln), frac-node idx
+            f2p = self.g.hgs_fx_nodes['link_frac2pm']  # frac-node -> pm-node
+        nln = self.g.hgs_fx_elems['nln']
+
+        def ref_from_frac(a):
+            ret = np.zeros((self.g.nfe,) + a.shape[1:])
+            for i, fx_inc in enumerate(finc):
+                ret[i] = np.sum(a[fx_inc], axis=0)
+            return ret / nln
+
+        def ref_from_pm(a_flat):
+            ret = np.zeros(self.g.nfe)
+            for i, fx_inc in enumerate(finc):
+                ret[i] = np.sum(a_flat[f2p[fx_inc]])
+            return ret / nln
+
+        # FRAC nodal scalar (the hot concentration-averaging path)
+        with self.subTest(path='frac nodal scalar'):
+            a = self.g.get_nodal_vals(
+                f'{SIM_PREFIX}o.conc_pm.salt.0010', Domain.FRAC)
+            self.assertEqual(a.ndim, 1)
+            act = self.g.get_element_vals(a, Domain.FRAC)
+            nptest.assert_allclose(act, ref_from_frac(a), rtol=1e-12)
+
+        # FRAC nodal vector (exercises the ndim == 2 branch)
+        with self.subTest(path='frac nodal vector'):
+            av = np.arange(self.g.nfn * 3, dtype=float).reshape(self.g.nfn, 3)
+            act = self.g.get_element_vals(av, Domain.FRAC)
+            self.assertEqual(act.shape, (self.g.nfe, 3))
+            nptest.assert_allclose(act, ref_from_frac(av), rtol=1e-12)
+
+        # PM nodal scalar -> FRAC (the `_fx_node_avg_from_pm` path)
+        with self.subTest(path='pm nodal scalar to frac'):
+            apm = self.g.get_nodal_vals(f'{SIM_PREFIX}o.conc_pm.salt.0010')
+            act = self.g.get_element_vals(apm, Domain.FRAC)
+            nptest.assert_allclose(
+                act, ref_from_pm(apm.flatten(order='F')), rtol=1e-12)
 
     def test_coords(self):
         """Spot-check a few element coordinates"""

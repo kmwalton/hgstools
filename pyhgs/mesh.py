@@ -309,6 +309,12 @@ class HGSGrid():
         self._n2e = dict()
         """dict with eapping of node index to element index for each domain"""
 
+        self._vol_cache = dict()
+        """Cache of computed element volumes, keyed by `Domain`. Volumes are a
+        property of the (immutable) mesh geometry, so they are computed once per
+        domain on first request by `get_element_volumes` and reused thereafter.
+        """
+
         logger.debug(f'Initialized HGSGrid with {self.shape} PM nodes')
 
     @property
@@ -745,34 +751,30 @@ class HGSGrid():
                 _finc = self.hgs_fx_elems['inc']
 
             # helper methods
+            #
+            # Both gather the incident-node values for every fracture element
+            # (`_finc` is the (nfe, nln) element-incidence array) and average
+            # them. The gather+reduce is fully vectorised via fancy indexing:
+            # `a[idx]` with a 2D index array yields a (nfe, nln, ...) array that
+            # is summed over the node axis (axis=1). Accumulating in float64
+            # preserves the dtype of the previous loop-based implementation.
             def _fx_node_avg_from_pm(a):
                 """a is flattened PM nodal data"""
-                ret = np.zeros(self.nfe)
-
-                for i,fx_inc in enumerate(_finc):
-                    ret[i] = np.sum(a[_f2p[fx_inc]])
-
-                np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
-
-                return ret
+                # _f2p maps fracture-node indices to their PM-node indices
+                vals = a[_f2p[_finc]]               # (nfe, nln)
+                return np.sum(vals, axis=1, dtype=np.float64) \
+                    / self.hgs_fx_elems['nln']
 
             def _fx_node_avg(a):
                 """a is flattened FRAC nodal data, may have ndim = 1 or 2"""
-            
-                ret = None
-                if a.ndim == 1:
-                    ret = np.zeros(self.nfe)
-                elif a.ndim == 2:
-                    ret = np.zeros((self.nfe, a.shape[1]),)
-                else:
-                    raise NotImplementedError('Unexpected number of dimensions in "a"')
 
-                for i,fx_inc in enumerate(_finc):
-                    ret[i] = np.sum(a[fx_inc], axis=0)
+                if a.ndim not in (1, 2):
+                    raise NotImplementedError(
+                        'Unexpected number of dimensions in "a"')
 
-                np.multiply(ret,1.0/self.hgs_fx_elems['nln'], out=ret)
-
-                return ret
+                vals = a[_finc]                     # (nfe, nln[, ncol])
+                return np.sum(vals, axis=1, dtype=np.float64) \
+                    / self.hgs_fx_elems['nln']
 
             if self._is_PM_nodal_scalar(d):
                 # data seems to be PM nodal values
@@ -993,16 +995,34 @@ class HGSGrid():
         return ivol
 
     def get_element_volumes(self, dom=Domain.PM):
-        """Return element volumes for the requested domain"""
+        """Return element volumes for the requested domain.
+
+        Element volumes are a property of the (immutable) mesh geometry, so the
+        result of the relatively expensive `_pm_V`/`_fx_V` computation is cached
+        per domain on first request and reused on subsequent calls. This is the
+        dominant cost of repeated callers such as
+        `pyhgs.calcs.AvCalc.average`, which previously recomputed it on every
+        invocation.
+
+        The cached array is returned directly and is flagged read-only to
+        protect the cache; callers needing to mutate volumes should take a copy.
+        """
         dom = Domain.a2D(dom)
 
+        if dom in self._vol_cache:
+            return self._vol_cache[dom]
+
         if dom == Domain.PM:
-            return self._pm_V()
+            v = self._pm_V()
         elif dom == Domain.FRAC:
-            return self._fx_V()
+            v = self._fx_V()
         else:
             raise ValueError(
                 f'Cannot calculate volume for requested zone {dom}')
+
+        v.flags.writeable = False
+        self._vol_cache[dom] = v
+        return v
 
     def find_grid_index(self, *args):
         """Get a grid index (ix,iy,iz) given coordinate or node number
