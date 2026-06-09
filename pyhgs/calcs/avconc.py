@@ -117,7 +117,9 @@ class AvCalc(_BaseCalc):
                 "self.sim.get_elements_data(dom)['porosity'].ravel('F')[el]",)
 
     def _get_el_weights(self, blockspec, dom):
-        return self._get_weight(blockspec, dom,
+        _pl.push()
+        try:
+            return self._get_weight(blockspec, dom,
                 'w_el',
                 execstr="""
 with warnings.catch_warnings():
@@ -136,6 +138,8 @@ for i,iel in enumerate(el):
 retarr /= self.sim.get_elements_data(dom)['nln']
 """,
             )
+        finally:
+            _pl.pop('average: element weights (set-intersection loop)')
 
     def _get_data(self, dataspec, doms):
         """Return a list of data arrays corresponding to `doms`"""
@@ -203,11 +207,16 @@ retarr /= self.sim.get_elements_data(dom)['nln']
 
         _doms = self._doms_list(doms)
 
+        _pl.push()
         _bldata = self._get_block(blockspec)
+        _pl.pop('average: block selection')
 
+        _pl.push()
         _data = self._get_data(data, _doms) # interperet
+        _pl.pop('average: interpret data')
 
         # prepare for caller's weighting quantities
+        _pl.push()
         _has_weight_in = False
         _weight_in = [None, None] # dummy, will be inored
         if type(weight) == list:
@@ -217,7 +226,8 @@ retarr /= self.sim.get_elements_data(dom)['nln']
             # re-interperet to shape for element-wise lookup
             for i,ww in enumerate(_weight_in):
                 _weight_in[i] = ww.flatten('F')
-            
+        _pl.pop('average: interpret weights')
+
         # work arrays, allocate
         v = None
         w = None
@@ -234,6 +244,7 @@ retarr /= self.sim.get_elements_data(dom)['nln']
         _logging_intermediates = dict()
 
         # get data from domains
+        _pl.push()
         _iwork = 0 # index into work arrays
         for idom,(d,ddata,wdata) in enumerate(zip(_doms, _data, _weight_in)):
             _nv = 0
@@ -288,6 +299,7 @@ retarr /= self.sim.get_elements_data(dom)['nln']
                 raise ValueError(f'Unknown weighting {weight}')
 
             _iwork += _nv
+        _pl.pop('average: domain loop (gather + weights)')
 
         if logger.level <= logging.DEBUG:
 
