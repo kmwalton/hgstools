@@ -1,5 +1,10 @@
-"""Tool for calculating total discharge in a block of elements representing a face
+"""Calculate total Darcy discharge through a planar block of elements.
 
+Provides `DischargeCalc`, which integrates the simulated flux normal to an
+axis-aligned face (a thin `blockspec` block) to obtain the volumetric discharge
+``Q`` and the face area ``A``, reported separately for the porous-medium and
+fracture domains. Used e.g. by the ``hgs-calc-Kbulk.py`` tool to derive bulk
+hydraulic conductivity.
 """
 __docformat__ = 'numpy'
 
@@ -10,6 +15,7 @@ import tabulate
 from ._basecalc import _BaseCalc
 from ..mesh import (Domain, HGSGrid,)
 from ..aabbox import AABBox
+from ..parser import peek_NNNN_time
 
 # logging stuff
 import logging
@@ -20,22 +26,25 @@ _pl = _PerfLogStack(perf_logger.info)
 
 
 class DischargeCalc(_BaseCalc):
-    """Tool for calculating discharge at a point in time
+    """Calculate total discharge through a face at a single point in time.
 
-        import pyhgs.calcs
-        import pyhgs.parser.parse as hgs_parse
-        from pyhgs.mesh import HGSGrid
+    Integrates the element flux normal to an axis-aligned face to give the
+    volumetric discharge ``Q`` and the face area ``A``, reported separately for
+    the porous-medium (PM) and fracture domains. The face is specified as a
+    thin `blockspec` block; see `discharge_at`.
 
-        # get simulation and concentration data
+    Example
+    -------
+        from hgstools.pyhgs.mesh import HGSGrid
+        from hgstools.pyhgs.calcs import DischargeCalc
+
         g = HGSGrid('prefix')
-
-        # set up `DischargeCalc` object
         calc = DischargeCalc(g)
 
+        # discharge in x through the x=0 face, at output time index 1
+        time, A, Q = calc.discharge_at('0 0 0 1 0 1', axis=0, timeidx=1)
+        # A = [A_total, A_pm, A_frac];  Q = [Q_total, Q_pm, Q_frac]
 
-        ..todo..
-
- 
     This class has a memory of *blocks*, groups of nodes and elements, as
     specified in `blockspec` parameters in various methods (anything
     interpretable as an `pyhgs.aabbox.AABBox`). Specifically, these groupings
@@ -59,29 +68,51 @@ class DischargeCalc(_BaseCalc):
 
 
     def discharge_at(self, blockspec, axis, timeidx=1, with_counts=False):
-        """Calculate discharge over the face given by blockspec at given time
+        """Calculate total discharge through the face `blockspec` at a time.
 
+        The element flux component normal to `axis` is multiplied by each
+        element's face area (its volume divided by the grid spacing normal to
+        the face) and summed, separately for the porous-medium (PM) and
+        fracture domains. Inflow (``q >= 0``) and outflow contributions are
+        accumulated together into the net discharge.
 
         Parameters
         ----------
         blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
-            The block of elements (inclusive of elements bordering this block)
-            spanning the face, as an `AABBox`, a ``"x0 x1 y0 y1 z0 z1"``
-            string, or a sequence of six bounds. See
-            `pyhgs.aabbox.AABBox.from_blockspec`.
-        axis : int
-            An integer representing the desired axis parallel to the flux and
-            discharge: x, y, z are 0, 1 or 2.
-        timeidx : int
-            The time index of the dataset, used for loading
-            `o.flux_pm.00<timeidx>`-like files. Default 1.
-        with_counts : bool
-            returns the counts of pm and fracture elements used in the
-            calculation. Default False
+            The (thin) block of elements spanning the face, as an `AABBox`, a
+            ``"x0 x1 y0 y1 z0 z1"`` string, or a sequence of six bounds. See
+            `pyhgs.aabbox.AABBox.from_blockspec`. Elements bordering the block
+            are included.
+        axis : int or str
+            The axis normal to the face / parallel to the flux component being
+            integrated: ``0``, ``1``, ``2`` or ``'x'``, ``'y'``, ``'z'``.
+        timeidx : int, optional
+            Output time index, used to load the flux files
+            ``<prefix>o.q_pm.<timeidx>`` (PM) and
+            ``<prefix>o.v_frac.<timeidx>`` (fracture). Default 1.
+        with_counts : bool, optional
+            If True, also return the per-domain element counts as a fourth
+            value, ``counts`` (see Returns). Default False.
 
-        Returns a tuple with the simulation time, list of areas (total, then
-            one per domain), list of summed discharge values (total, then one
-            per domain).
+        Returns
+        -------
+        time : str or None
+            The simulation time recorded in the loaded flux file, decoded via
+            `pyhgs.parser.peek_NNNN_time`; None if no flux file was read.
+        A : numpy.ndarray, shape (3,)
+            Face areas ``[A_total, A_pm, A_frac]`` where
+            ``A_total = A_pm + A_frac``.
+        Q : numpy.ndarray, shape (3,)
+            Net discharge ``[Q_total, Q_pm, Q_frac]`` summed over the face,
+            where ``Q_total = Q_pm + Q_frac``.
+        counts : numpy.ndarray, shape (3,)
+            Per-domain element counts ``[n_total, n_pm, n_frac]``. Only
+            returned when `with_counts` is True.
+
+        Notes
+        -----
+        Only the PM and FRAC domains are included; any other domains present in
+        the simulation are skipped with a warning.
         """
 
         _pl.push('Started calcuting discharge')
@@ -128,9 +159,9 @@ class DischargeCalc(_BaseCalc):
         _doms = list(self.sim.domains())
         _ndom = len(_doms)
 
-        time = 0.
-        A = np.zeros(2) # assume only two matter.
-        nelem = 0
+        time = None
+        A = np.zeros(2) # per-domain face area: [PM, FRAC]
+        n = np.zeros(2, dtype=int) # per-domain element counts: [PM, FRAC]
         Qplus = np.zeros_like(A)
         Qminus = np.zeros_like(A)
 
@@ -149,7 +180,8 @@ class DischargeCalc(_BaseCalc):
             elems,nodes = blk[Domain.PM]
 
             # get data
-            flux_file = Path(f'{self.sim.prefix}o.q_pm.{timeidx:04d}')
+            flux_file = Path(f'{self.sim.ppfx}o.q_pm.{timeidx:04d}')
+            time = peek_NNNN_time(str(flux_file))
             q = self.sim.get_element_vals(flux_file,'pm')
 
             # filter to this face
@@ -163,14 +195,16 @@ class DischargeCalc(_BaseCalc):
             A[0] = np.sum(Ael)
             Qplus[0] = np.sum(q[mask]*Ael[mask])
             Qminus[0] = np.sum(q[~mask]*Ael[~mask])
-            nelem += len(q)
+            n[0] = len(q)
 
             # get some extra insight if debugging
             log_plus_minus(Domain.PM, Qplus[0], Qminus[0], len(q), A[0])
 
         if Domain.FRAC in _doms:
             elems,nodes = blk[Domain.FRAC]
-            flux_file = Path(f'{self.sim.prefix}o.v_frac.{timeidx:04d}')
+            flux_file = Path(f'{self.sim.ppfx}o.v_frac.{timeidx:04d}')
+            if time is None:
+                time = peek_NNNN_time(str(flux_file))
             q = self.sim.get_element_vals(str(flux_file), 'frac')
 
             q = q[:,ax][elems]+0.0
@@ -183,7 +217,7 @@ class DischargeCalc(_BaseCalc):
             A[1] = np.sum(Ael)
             Qplus[1] = np.sum(q[mask]*Ael[mask])
             Qminus[1] = np.sum(q[~mask]*Ael[~mask])
-            nelem += len(q)
+            n[1] = len(q)
 
             # get some extra insight if debugging
             log_plus_minus(Domain.FRAC, Qplus[1], Qminus[1], len(q), A[1])
@@ -195,17 +229,21 @@ class DischargeCalc(_BaseCalc):
             logger.log(logging.WARNING, 'Discharge calculation does not '
                 + 'include domains '
                 + ', '.join(str(dd) for dd in _unused_doms)
-                + f' at {blocspec!s}')
+                + f' at {blockspec!s}')
 
 
         _pl.pop('Done calcuting discharge')
 
-        # do sums
-        A = np.array([A[0], A[0], A[1],]) # A_PM, A_PM, A_Frac
+        # do sums; index 0 is the combined total, then one entry per domain
+        A = np.array([A[0]+A[1], A[0], A[1],]) # A_total, A_PM, A_Frac
         Q = np.array([sum(Qplus)+sum(Qminus), Qplus[0]+Qminus[0], Qplus[1]+Qminus[1],])
 
-        log_plus_minus('all', sum(Qplus), sum(Qminus), nelem, A[0])
+        log_plus_minus('all', sum(Qplus), sum(Qminus), n.sum(), A[0])
 
         logger.debug(f'  Calculated Q = {Q[0]:.4g} = PM:{Q[1]:.4g}+FX:{Q[2]:.4g}')
+
+        if with_counts:
+            counts = np.array([n[0]+n[1], n[0], n[1],]) # n_total, n_PM, n_Frac
+            return time, A, Q, counts
 
         return time, A, Q
