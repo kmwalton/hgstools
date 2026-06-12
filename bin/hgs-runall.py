@@ -21,11 +21,49 @@ import argparse
 from hgstools.pyhgs.runner import HGSToolChainRun
 
 
+def _disable_console_quick_edit():
+    """Turn off the Windows console 'QuickEdit' mode for this console.
+
+    When QuickEdit is active a stray click in the console window enters
+    text-selection mode, which blocks the foreground process on its next
+    write to stdout. Long-running children (notably phgs) then appear to
+    stall indefinitely. Clearing the flag avoids that whole class of hang.
+
+    Best-effort: silently does nothing if there is no console attached or
+    the console mode cannot be changed.
+    """
+    import ctypes
+
+    STD_INPUT_HANDLE = -10
+    ENABLE_EXTENDED_FLAGS = 0x0080
+    ENABLE_QUICK_EDIT_MODE = 0x0040
+    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.GetStdHandle(STD_INPUT_HANDLE)
+    if not handle or handle == INVALID_HANDLE_VALUE:
+        return False
+
+    mode = ctypes.c_uint()
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return False
+
+    # ENABLE_EXTENDED_FLAGS must be set for the QuickEdit bit to take effect.
+    new_mode = (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS
+    return bool(kernel32.SetConsoleMode(handle, new_mode))
+
+
 def main():
     """Main function to parse arguments and execute the toolchain."""
     argp = argparse.ArgumentParser(
         description='Launches the extended Hydrogeosphere toolchain (preprocess, grok, phgs, [hgs2vtu|hsplot], postprocess). hgs2vtu is used by default.',
-        formatter_class=argparse.RawTextHelpFormatter  # Allows custom formatting in help text
+        formatter_class=argparse.RawTextHelpFormatter,  # Allows custom formatting in help text
+        epilog=(
+            'Console note (Windows):\n'
+            "  'QuickEdit' mode is disabled automatically at startup.\n"
+            '  Ctrl-S, Pause, or Scroll Lock pause console output; press a key\n'
+            '  (e.g. Ctrl-Q or Enter) to resume a run that stalls with no output.'
+        )
     )
 
     argp.add_argument(
@@ -104,6 +142,13 @@ def main():
                 file=sys.stderr
             )
         sys.exit(returncode)
+
+    # Console QuickEdit mode (Windows) lets a stray click pause the
+    # foreground process on its next write, which makes long-running
+    # children such as phgs appear to hang. Disable it for any Windows
+    # console run; it is a property of the console host, not the shell.
+    if sys.platform == 'win32' and _disable_console_quick_edit():
+        print('Disabled console QuickEdit mode to prevent run stalls.')
 
     returncode = tc.run(print_interval=args.interval)
 

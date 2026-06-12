@@ -1123,24 +1123,49 @@ class HGSToolChainRun(BaseRunner):
             'hgs2vtu': Hgs2VtuFilter(filtering_on=True),
         }
 
+        def _emit(line_str, filter_instance, buffer):
+            """Buffer one reconstructed line and conditionally print it."""
+            buffer.append(line_str)
+            print_status = filter_instance.should_print(line_str)
+            if print_status is True:
+                sys.stdout.write(line_str)
+            elif isinstance(print_status, str):
+                # This is a custom summary line from the filter
+                sys.stdout.write(print_status + '\n')
+            sys.stdout.flush()
+
         async def stream_output(proc_stdout, filter_instance, buffer):
-            """Reads subprocess stdout line-by-line, buffers it, and applies filter."""
+            """Reads subprocess output in raw chunks, buffers it, applies filter.
+
+            Output is read in fixed-size chunks and split into lines on CR, LF,
+            or CRLF. This matters for two reasons:
+
+            1. Tools that redraw progress in place with a bare carriage return
+               ('iter 123\\r') would otherwise accumulate into a single
+               ever-growing "line" with no '\\n' for readline() to break on.
+            2. Reading raw chunks (instead of readline) means an arbitrarily
+               long line can never overrun the stream reader's buffer limit and
+               abort the drain. If the drain aborted, the child's stdout pipe
+               would fill and the child would block forever on its next write,
+               deadlocking `await proc.wait()`.
+            """
+            pending = ''
             try:
-                # Iterate over lines read from the pipe
-                async for line in proc_stdout:
-                    line_str = line.decode('ascii', errors='ignore')
-                    buffer.append(line_str)
+                while True:
+                    chunk = await proc_stdout.read(4096)
+                    if not chunk:
+                        break
+                    pending += chunk.decode('ascii', errors='ignore')
+                    # Split on any line terminator; the trailing element is the
+                    # incomplete remainder, held over until more data arrives.
+                    parts = re.split(r'\r\n|\r|\n', pending)
+                    pending = parts.pop()
+                    for part in parts:
+                        _emit(part + '\n', filter_instance, buffer)
 
-                    # Apply filter logic
-                    print_status = filter_instance.should_print(line_str)
-
-                    if print_status is True:
-                        sys.stdout.write(line_str)
-                    elif isinstance(print_status, str):
-                        # This is a custom summary line from the filter
-                        sys.stdout.write(print_status + '\n')
-
-                    sys.stdout.flush()
+                # Flush a final line that arrived without a trailing terminator.
+                if pending:
+                    _emit(pending + '\n', filter_instance, buffer)
 
             except Exception as e:
                 # Log streaming errors, but don't stop the whole process immediately
@@ -1183,9 +1208,12 @@ class HGSToolChainRun(BaseRunner):
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         *tool_args,
+                        # Tools are designed to be non-interactive; give them a
+                        # closed stdin so a stray prompt gets EOF instead of
+                        # blocking forever on the inherited console.
+                        stdin=asyncio.subprocess.DEVNULL,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.STDOUT, # Merge stderr into stdout pipe
-                        limit=4096, # Increased limit for larger pipes
                         env=os.environ
                     )
 
