@@ -235,10 +235,10 @@ def calc_q(grid, zones, dim_mask=3*(True,), timeidx=1):
 
         # do the calculations
         for ax,face0,face1 in face_specs:
-            t, f0A, f0Q = calc.discharge_at(face0, ax, 1)
+            t, f0A, f0Q = calc.discharge_at(face0, ax, timeidx)
             q[2*ax] = f0Q[0] / f0A[_Aidx]
 
-            t, f1A, f1Q = calc.discharge_at(face1, ax, 1)
+            t, f1A, f1Q = calc.discharge_at(face1, ax, timeidx)
             q[2*ax+1] = f1Q[0] / f1A[_Aidx]
 
             A[ax] = (f0A[_Aidx]+f1A[_Aidx])/2
@@ -291,6 +291,47 @@ def calc_Kbulk(zones, i, q, dim_mask=3*(True,)):
         ret.append(Kbulk)
 
     return ret
+
+def check_zones_on_grid_lines(parser, zones, grid_lines, tol=1e-4):
+    '''Reject any zone whose bounds do not fall on grid lines.
+
+    Each zone face is resolved to the whole element layer just inside the
+    bound (`AABBox.iter_layer_bbox`) and averaged over with
+    ``allow_partial=False``. A bound part-way through an element therefore
+    matches no whole element, and the failure only surfaces much later as a
+    divide-by-zero inside the averaging. Diagnose it here instead.
+
+    Parameters:
+        parser : the ArgumentParser to raise the error through
+        zones : list of AABBox
+        grid_lines : the (x, y, z) grid line arrays, from `HGSGrid.get_grid_lines`
+        tol : maximum distance from a grid line, in model length units
+    '''
+    for zn in zones:
+        for iv, v in enumerate(zn[:]):
+            ax = iv % 3
+            gl = np.asanyarray(grid_lines[ax])
+            nm = f'{"xyz"[ax]}{iv//3}'
+
+            if np.min(np.abs(gl - v)) <= tol:
+                continue
+
+            if v < gl[0] or v > gl[-1]:
+                where = (f'it lies outside the domain, which spans '
+                         f'{gl[0]:g} to {gl[-1]:g}')
+            else:
+                j = int(np.searchsorted(gl, v))
+                where = f'it falls between grid lines {gl[j-1]:g} and {gl[j]:g}'
+
+            parser.error(
+                f'zone bound {nm} = {v:g} of zone {zn} does not lie on a '
+                f'{"xyz"[ax]} grid line; {where}.\n'
+                f'  Zone bounds must coincide with grid lines. Each face is '
+                f'resolved to the element layer just inside the bound, so a '
+                f'bound inside an element selects nothing.\n'
+                f'  Note the half-element inset used for the bulk gradient is '
+                f'applied internally, so zones should NOT be pre-inset.'
+            )
 
 def as_dict(zones, A, Q, q, i, Kbulk, dim_mask=3*[True,]):
     '''Return the, zone-A-q-i-Kbulk data as a dictionary
@@ -367,8 +408,20 @@ def main():
     )
 
     parser.add_argument(
-        '-v', '--verbose', 
-        action='count', 
+        '-t', '--time-index',
+        default=1,
+        type=int,
+        metavar='N',
+        help='''The output time index to analyse, as the 1-based NNNN suffix of
+        the o.head_pm.NNNN and o.q_pm.NNNN files. Use "hgs-ls-times" or the
+        OUTPUT TIME entries in the o.eco file to map a simulation time to its
+        index. Default 1 (the first output time, which is typically near the
+        start of the simulation rather than at any settled state).''',
+    )
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='count',
         default=0,
         help="Increase output verbosity (e.g., -v, -vv, -vvv)"
     )
@@ -428,6 +481,20 @@ def main():
         def glgetter(j,i): return _gl[i][j]
         args.zones=[ AABBox(*starmap(glgetter, product([0,-1],[0,1,2]))), ]
 
+    check_zones_on_grid_lines(parser, args.zones, _gl)
+
+    # the raw simulation time string, as recorded in the data files read below.
+    # The gradient comes from the head file and the flux from the q file, so
+    # they must describe the same instant for Kbulk to mean anything.
+    sim_t_raw = peek_NNNN_time(f'{grid.ppfx}o.head_pm.{args.time_index:04d}')
+    _q_t_raw = peek_NNNN_time(f'{grid.ppfx}o.q_pm.{args.time_index:04d}')
+    if sim_t_raw != _q_t_raw:
+        raise RuntimeError(
+            f'output index {args.time_index:04d} is inconsistent across '
+            f'domains: head_pm records t={sim_t_raw} but q_pm records '
+            f't={_q_t_raw}'
+        )
+
     # create a mask for dimensions with bitwise operation and the dimensions of
     # the domain --- ignore any HGS domain dimensions that appear to be a plane
     dim_mask = list( (args.dims & v) and len(gla)>2 for v,gla in zip((1,2,4),_gl) )
@@ -458,7 +525,7 @@ def main():
     logger.info(f'Centroid-Centroid Distances ({_udx}):\n\t'+ '\n\t'.join(str(d) for d in distances))
     logger.info('\n'+80*'-'+'\n')
 
-    areas, fluxes = calc_q(grid, args.zones, dim_mask)
+    areas, fluxes = calc_q(grid, args.zones, dim_mask, args.time_index)
 
     _opt = np.get_printoptions()
     A = np.vstack(areas)
@@ -472,7 +539,7 @@ def main():
     np.set_printoptions(**_opt)
     del _opt
 
-    heads = calc_avg_heads(grid, args.zones, dim_mask)
+    heads = calc_avg_heads(grid, args.zones, dim_mask, args.time_index)
     logger.info(f'Average heads (h at {_ux0x1}):\n'+_fmtlistarr(heads,'\t'))
     logger.info('\n'+80*'-'+'\n')
 
@@ -493,6 +560,7 @@ def main():
 
     if args.json is None:
         pr('\n'+imprint)
+        pr(f'\nOutput time index {args.time_index:04d}, simulation time {sim_t_raw} ({unitt})')
         pr(f'\nKbulk results in {" ".join(v for v in compress("xyz",dim_mask))} ({unitL}/{unitt}):')
         for zn,Kb in zip(args.zones, Kbulk):
             pr(f'{str(Kb[dim_mask]):32} {zn}')
@@ -503,7 +571,11 @@ def main():
                 for zn,Kb in zip(args.zones, Kbulk)))
 
     else:
-        _d = { 'meta':imprint, 'units':eco.get_units(), }
+        _d = { 'meta':imprint,
+               'units':eco.get_units(),
+               'time_index':args.time_index,
+               'time':sim_t_raw,
+             }
         _d.update(as_dict(args.zones, A, Q, fluxes, gradients, Kbulk, dim_mask))
         json_txt = json.dumps(_d, indent=2)
 
