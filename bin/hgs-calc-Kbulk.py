@@ -259,6 +259,37 @@ def calc_q(grid, zones, dim_mask=3*(True,), timeidx=1):
 
     return retA, retq
 
+def calc_A(grid, zones, dim_mask=3*(True,)):
+    '''Return the average face area over each pair of faces of each zone.
+
+    The same quantity `calc_q` returns as its first value, but derived from the
+    mesh alone: no flux output is read (see `DischargeCalc.area_at`). The
+    geometry does not vary with time, so one call serves every output time.
+    '''
+    retA = []
+
+    calc = DischargeCalc(grid)
+    _gl = grid.get_grid_lines()
+
+    _wid = _max_f_width(_gl[a][i] for a,i in product([0,1,2],[0,-1]))
+
+    # Area index, 0=total, 1=PM only, 2=Fx only
+    _Aidx = 1
+
+    for zn in zones:
+        A = np.zeros(3)
+
+        for ax,(_f0, _f1) in zip(np.arange(3)[dim_mask], zn.iter_layer_bbox(_gl, dim_mask)):
+            face0 = ' '.join(f'{v:{_wid+5}.4f}' for v in _f0.reshape((2,3)).T.ravel())
+            face1 = ' '.join(f'{v:{_wid+5}.4f}' for v in _f1.reshape((2,3)).T.ravel())
+
+            A[ax] = (calc.area_at(face0, ax)[_Aidx]
+                     + calc.area_at(face1, ax)[_Aidx])/2
+
+        retA.append(A)
+
+    return retA
+
 def calc_Kbulk(zones, i, q, dim_mask=3*(True,)):
     '''Return the Darcy bulk conductivity vector for each zone.
 
@@ -333,12 +364,37 @@ def check_zones_on_grid_lines(parser, zones, grid_lines, tol=1e-4):
                 f'applied internally, so zones should NOT be pre-inset.'
             )
 
+def read_time(ppfx, timeidx, check_flux=True):
+    '''Return the raw simulation time string recorded for output `timeidx`.
+
+    The gradient is read from the head file and the flux from the q file, so
+    they must describe the same instant for Kbulk to mean anything. Raises
+    RuntimeError if they disagree.
+
+    Pass ``check_flux=False`` when the flux is not used (see ``--i-only``):
+    only the head file is consulted, and no q_pm file need exist.
+    '''
+    h = peek_NNNN_time(f'{ppfx}o.head_pm.{timeidx:04d}')
+    if not check_flux:
+        return h
+    q = peek_NNNN_time(f'{ppfx}o.q_pm.{timeidx:04d}')
+    if h != q:
+        raise RuntimeError(
+            f'output index {timeidx:04d} is inconsistent across domains: '
+            f'head_pm records t={h} but q_pm records t={q}'
+        )
+    return h
+
 def as_dict(zones, A, Q, q, i, Kbulk, dim_mask=3*[True,]):
     '''Return the, zone-A-q-i-Kbulk data as a dictionary
 
     Parameters:
         Array of x, y, z values, per zone
         Q has x0 x1, y0, y1, z0, z1
+
+    `Q`, `q` and `Kbulk` may each be None, in which case that entry is omitted;
+    the zone, its area and the gradient are still reported. See the ``--i-only``
+    flag, under which nothing flux-derived is calculated.
 
     This is intended to be a convient format for exporting as json
 
@@ -352,15 +408,18 @@ def as_dict(zones, A, Q, q, i, Kbulk, dim_mask=3*[True,]):
     ret = dict()
     for iz,z in enumerate(zones):
         _d = { 'zone':z[:].tolist(), }
-        _q = (q[iz][::2] + q[iz][1::2])/2
+        _q = None if q is None else (q[iz][::2] + q[iz][1::2])/2
         for iax, ax in [(i, name) for i, (mask, name) in enumerate(zip(dim_mask, 'xyz')) if mask]:
             _d[ax] = dict()
             _d[ax]['A'] = A[iz][iax]
-            _d[ax]['Q0'] = Q[iz][2*iax]
-            _d[ax]['Q1'] = Q[iz][2*iax+1]
-            _d[ax]['q'] = _q[iax]
+            if Q is not None:
+                _d[ax]['Q0'] = Q[iz][2*iax]
+                _d[ax]['Q1'] = Q[iz][2*iax+1]
+            if _q is not None:
+                _d[ax]['q'] = _q[iax]
             _d[ax]['i'] = i[iz][iax]
-            _d[ax]['Kbulk'] = Kbulk[iz][iax]
+            if Kbulk is not None:
+                _d[ax]['Kbulk'] = Kbulk[iz][iax]
         ret[iz] = _d
     return ret
 
@@ -409,14 +468,30 @@ def main():
 
     parser.add_argument(
         '-t', '--time-index',
-        default=1,
+        default=[1],
         type=int,
+        nargs='+',
         metavar='N',
-        help='''The output time index to analyse, as the 1-based NNNN suffix of
-        the o.head_pm.NNNN and o.q_pm.NNNN files. Use "hgs-ls-times" or the
-        OUTPUT TIME entries in the o.eco file to map a simulation time to its
-        index. Default 1 (the first output time, which is typically near the
-        start of the simulation rather than at any settled state).''',
+        dest='time_indices',
+        help='''One or more output time indices to analyse, as the 1-based NNNN
+        suffix of the o.head_pm.NNNN and o.q_pm.NNNN files. Give several (e.g.
+        "-t 9 10") to analyse each in turn, reusing a single grid load and zone
+        parse. Use "hgs-ls-times" or the OUTPUT TIME entries in the o.eco file
+        to map a simulation time to its index. Default 1 (the first output
+        time, which is typically near the start of the simulation rather than
+        at any settled state).''',
+    )
+
+    parser.add_argument(
+        '--i-only',
+        action='store_true',
+        dest='i_only',
+        help='''Calculate only the bulk hydraulic gradient i, skipping
+        everything derived from the simulated flux: no o.q_pm/o.v_frac file is
+        read, and Q, q and Kbulk are omitted from the output. Each zone, its
+        face area (which is mesh geometry) and i are still reported. Also
+        silences the net-discharge warning, which a zone with other inflows
+        (infiltration through its top, say) necessarily trips.''',
     )
 
     parser.add_argument(
@@ -483,17 +558,11 @@ def main():
 
     check_zones_on_grid_lines(parser, args.zones, _gl)
 
-    # the raw simulation time string, as recorded in the data files read below.
-    # The gradient comes from the head file and the flux from the q file, so
-    # they must describe the same instant for Kbulk to mean anything.
-    sim_t_raw = peek_NNNN_time(f'{grid.ppfx}o.head_pm.{args.time_index:04d}')
-    _q_t_raw = peek_NNNN_time(f'{grid.ppfx}o.q_pm.{args.time_index:04d}')
-    if sim_t_raw != _q_t_raw:
-        raise RuntimeError(
-            f'output index {args.time_index:04d} is inconsistent across '
-            f'domains: head_pm records t={sim_t_raw} but q_pm records '
-            f't={_q_t_raw}'
-        )
+    # the raw simulation time string of each requested output, as recorded in
+    # the data files read below. Checked up front so a bad index fails before
+    # any of the per-time work.
+    sim_t_raw = dict((ti, read_time(grid.ppfx, ti, check_flux=not args.i_only))
+                     for ti in args.time_indices)
 
     # create a mask for dimensions with bitwise operation and the dimensions of
     # the domain --- ignore any HGS domain dimensions that appear to be a plane
@@ -521,35 +590,64 @@ def main():
         logger.info('Using zones:\n\t'+ '\n\t'.join(str(zn) for zn in args.zones))
         logger.info('\n'+80*'-'+'\n')
 
+    # the zone geometry does not vary with time, so this is done once for all
+    # of the requested output times
     distances = calc_distances(grid, args.zones)
     logger.info(f'Centroid-Centroid Distances ({_udx}):\n\t'+ '\n\t'.join(str(d) for d in distances))
     logger.info('\n'+80*'-'+'\n')
 
-    areas, fluxes = calc_q(grid, args.zones, dim_mask, args.time_index)
+    # with --i-only the areas are mesh geometry alone, so they too are the same
+    # at every output time
+    static_areas = calc_A(grid, args.zones, dim_mask) if args.i_only else None
+    if static_areas is not None:
+        _opt = np.get_printoptions()
+        np.set_printoptions(precision=3,floatmode='fixed')
+        logger.info(f'Plane areas ({_uyz}):\n'+_fmtlistarr(static_areas,'\t'))
+        logger.info('\n'+80*'-'+'\n')
+        np.set_printoptions(**_opt)
+        del _opt
 
-    _opt = np.get_printoptions()
-    A = np.vstack(areas)
-    Q = np.stack((A,A),axis=-1).reshape(A.shape[0],-1) * np.vstack(fluxes)
-    np.set_printoptions(precision=3,floatmode='fixed')
-    logger.info(f'Plane areas ({_uyz}):\n'+_fmtlistarr(areas,'\t'))
-    np.set_printoptions(sign=' ', precision=3, floatmode='fixed')
-    logger.info(f'Average discharge (Q at planes {_ux0x1}):\n'+_fmtlistarr(Q,'\t'))
-    logger.info(f'Average fluxes (q at planes {_ux0x1}):\n'+_fmtlistarr(fluxes,'\t'))
-    logger.info('\n'+80*'-'+'\n')
-    np.set_printoptions(**_opt)
-    del _opt
+    results = []
 
-    heads = calc_avg_heads(grid, args.zones, dim_mask, args.time_index)
-    logger.info(f'Average heads (h at {_ux0x1}):\n'+_fmtlistarr(heads,'\t'))
-    logger.info('\n'+80*'-'+'\n')
+    for timeidx in args.time_indices:
+        logger.info(f'Output index {timeidx:04d}, simulation time '
+                    f'{sim_t_raw[timeidx]} ({unitt})')
 
-    gradients = calc_i(args.zones, distances, heads, dim_mask)
-    logger.info(f'Average gradients (i_ {_ux}):\n'+_fmtlistarr(gradients,'\t'))
-    logger.info('\n'+80*'-'+'\n')
+        if args.i_only:
+            areas, fluxes, Q = static_areas, None, None
+            A = np.vstack(areas)
+        else:
+            areas, fluxes = calc_q(grid, args.zones, dim_mask, timeidx)
 
-    Kbulk = calc_Kbulk(args.zones, gradients, fluxes, dim_mask)
-    logger.info(f'\nKbulk results ({unitL}/{unitt}):\n'+_fmtlistarr(Kbulk, '\t'))
-    logger.info('\n'+80*'-'+'\n')
+            _opt = np.get_printoptions()
+            A = np.vstack(areas)
+            Q = np.stack((A,A),axis=-1).reshape(A.shape[0],-1) * np.vstack(fluxes)
+            np.set_printoptions(precision=3,floatmode='fixed')
+            logger.info(f'Plane areas ({_uyz}):\n'+_fmtlistarr(areas,'\t'))
+            np.set_printoptions(sign=' ', precision=3, floatmode='fixed')
+            logger.info(f'Average discharge (Q at planes {_ux0x1}):\n'+_fmtlistarr(Q,'\t'))
+            logger.info(f'Average fluxes (q at planes {_ux0x1}):\n'+_fmtlistarr(fluxes,'\t'))
+            logger.info('\n'+80*'-'+'\n')
+            np.set_printoptions(**_opt)
+            del _opt
+
+        heads = calc_avg_heads(grid, args.zones, dim_mask, timeidx)
+        logger.info(f'Average heads (h at {_ux0x1}):\n'+_fmtlistarr(heads,'\t'))
+        logger.info('\n'+80*'-'+'\n')
+
+        gradients = calc_i(args.zones, distances, heads, dim_mask)
+        logger.info(f'Average gradients (i_ {_ux}):\n'+_fmtlistarr(gradients,'\t'))
+        logger.info('\n'+80*'-'+'\n')
+
+        Kbulk = None
+        if not args.i_only:
+            Kbulk = calc_Kbulk(args.zones, gradients, fluxes, dim_mask)
+            logger.info(f'\nKbulk results ({unitL}/{unitt}):\n'+_fmtlistarr(Kbulk, '\t'))
+            logger.info('\n'+80*'-'+'\n')
+
+        results.append(dict(time_index=timeidx, time=sim_t_raw[timeidx],
+                            A=A, Q=Q, fluxes=fluxes, gradients=gradients,
+                            Kbulk=Kbulk))
 
     # do final printouts
     pr = partial(print, file=sys.stdout)
@@ -560,23 +658,36 @@ def main():
 
     if args.json is None:
         pr('\n'+imprint)
-        pr(f'\nOutput time index {args.time_index:04d}, simulation time {sim_t_raw} ({unitt})')
-        pr(f'\nKbulk results in {" ".join(v for v in compress("xyz",dim_mask))} ({unitL}/{unitt}):')
-        for zn,Kb in zip(args.zones, Kbulk):
-            pr(f'{str(Kb[dim_mask]):32} {zn}')
+        _axes = " ".join(v for v in compress("xyz",dim_mask))
+        for r in results:
+            pr(f'\nOutput time index {r["time_index"]:04d}, simulation time '
+               f'{r["time"]} ({unitt})')
 
-        if unitt != 's':
-            pr(f'\nKbulk ({unitL}/s):')
-            pr('\n'.join(f'{str(Kb[dim_mask]/convt2s[unitt]):32}'
-                for zn,Kb in zip(args.zones, Kbulk)))
+            if args.i_only:
+                pr(f'\nBulk gradient i in {_axes} (-):')
+                for zn,ii in zip(args.zones, r['gradients']):
+                    pr(f'{str(ii[dim_mask]):32} {zn}')
+                continue
+
+            pr(f'\nKbulk results in {_axes} ({unitL}/{unitt}):')
+            for zn,Kb in zip(args.zones, r['Kbulk']):
+                pr(f'{str(Kb[dim_mask]):32} {zn}')
+
+            if unitt != 's':
+                pr(f'\nKbulk ({unitL}/s):')
+                pr('\n'.join(f'{str(Kb[dim_mask]/convt2s[unitt]):32}'
+                    for Kb in r['Kbulk']))
 
     else:
         _d = { 'meta':imprint,
                'units':eco.get_units(),
-               'time_index':args.time_index,
-               'time':sim_t_raw,
+               'times':[
+                   { 'time_index':r['time_index'],
+                     'time':r['time'],
+                     'zones':as_dict(args.zones, r['A'], r['Q'], r['fluxes'],
+                                     r['gradients'], r['Kbulk'], dim_mask),
+                   } for r in results ],
              }
-        _d.update(as_dict(args.zones, A, Q, fluxes, gradients, Kbulk, dim_mask))
         json_txt = json.dumps(_d, indent=2)
 
         # 1. Determine our context manager
