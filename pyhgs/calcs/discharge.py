@@ -67,6 +67,124 @@ class DischargeCalc(_BaseCalc):
         super().__init__(sim)
 
 
+    @staticmethod
+    def _resolve_axis(axis):
+        """Return the integer index of `axis`, given as 0/1/2 or 'x'/'y'/'z'."""
+        if axis in (0,1,2):
+            return axis
+        if axis in ('x','y','z'):
+            return 'xyz'.index(axis)
+        raise ValueError('Invalid axis')
+
+    def elem_face_areas_at(self, blockspec, axis):
+        """Return the per-element face areas of a planar block, by domain.
+
+        An element's area on the face is its volume divided by the grid
+        spacing normal to `axis`. This is pure mesh geometry: no simulated
+        output is read, so it may be called when only the mesh exists. It is
+        the shared basis of `area_at`, which sums these, and `discharge_at`,
+        which weights the flux by them.
+
+        Parameters
+        ----------
+        blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
+            The (thin) block of elements spanning the face. Elements bordering
+            the block are included.
+        axis : int or str
+            The axis normal to the face: ``0``, ``1``, ``2`` or ``'x'``,
+            ``'y'``, ``'z'``.
+
+        Returns
+        -------
+        ax : int
+            The resolved axis index.
+        elem_length : float
+            The grid spacing normal to the face.
+        per_dom : dict
+            ``{Domain: (elems, Ael)}`` for each of the PM/FRAC domains present,
+            where ``elems`` are element indices and ``Ael`` their face areas.
+
+        Notes
+        -----
+        Only the PM and FRAC domains are included; any other domains present in
+        the simulation are skipped with a warning.
+        """
+        ax = self._resolve_axis(axis)
+        axs = 'xyz'[ax]
+
+        _gl = self.sim.get_grid_lines()
+        _gla = _gl[ax]
+
+        bbox = AABBox.from_blockspec(blockspec)
+        glidx = np.array(bbox.find_inner_grid_indices(*_gl),
+            dtype=np.int32).reshape((3,2))
+
+        # grid spacing normal to the block
+        igl = glidx[ax][0]
+        if igl == len(_gla)-1:
+            elem_length = _gla[-1] - _gla[-2]
+        else:
+            elem_length = _gla[igl+1] - _gla[igl]
+
+        logger.info(f'Using elements at grid[{axs}][{igl:4d}]={_gla[igl]:8.3f} with d{axs}={elem_length:.3f} ')
+
+        # TODO - this seems to grab fractures on the outside faces of the volume
+        # I suppose the criteion is whether all four fracture nodes are also
+        # among the PM nodes, which is true ...
+        # An additional check would need to be done to see if the centroid of
+        # the fracture is within the volume, or on its face
+        blk = self._get_block(blockspec, allow_partial=False)
+        _doms = list(self.sim.domains())
+
+        per_dom = dict()
+        for dom, domkey in ((Domain.PM, 'pm'), (Domain.FRAC, 'frac')):
+            if dom not in _doms:
+                continue
+            elems, _nodes = blk[dom]
+            vols = self.sim.get_element_volumes(domkey)
+            if dom is Domain.PM:
+                # the PM element grid is stored column-major
+                vols = vols.ravel(order='F')
+            per_dom[dom] = (elems, vols[elems]/elem_length)
+
+        # provide warning for unused domains
+        _unused_doms = set(_doms) - {Domain.PM, Domain.FRAC}
+        if _unused_doms:
+            logger.log(logging.WARNING, 'Area/discharge calculation does not '
+                + 'include domains '
+                + ', '.join(str(dd) for dd in _unused_doms)
+                + f' at {blockspec!s}')
+
+        return ax, elem_length, per_dom
+
+    def area_at(self, blockspec, axis):
+        """Calculate the area of the face `blockspec`, without reading output.
+
+        Sums the per-element face areas from `elem_face_areas_at`. Unlike
+        `discharge_at` this touches no simulated output, so it works on a run
+        for which no flux files exist (or when they are simply not wanted).
+
+        Parameters
+        ----------
+        blockspec : anything interpretable as an `pyhgs.aabbox.AABBox`
+        axis : int or str
+            The axis normal to the face.
+
+        Returns
+        -------
+        A : numpy.ndarray, shape (3,)
+            Face areas ``[A_total, A_pm, A_frac]`` where
+            ``A_total = A_pm + A_frac``, matching `discharge_at`.
+        """
+        _ax, _elem_length, per_dom = self.elem_face_areas_at(blockspec, axis)
+
+        A = np.zeros(2)
+        for i, dom in enumerate((Domain.PM, Domain.FRAC)):
+            if dom in per_dom:
+                A[i] = np.sum(per_dom[dom][1])
+
+        return np.array([A[0]+A[1], A[0], A[1],]) # A_total, A_PM, A_Frac
+
     def discharge_at(self, blockspec, axis, timeidx=1, with_counts=False):
         """Calculate total discharge through the face `blockspec` at a time.
 
@@ -117,47 +235,14 @@ class DischargeCalc(_BaseCalc):
 
         _pl.push('Started calcuting discharge')
 
-        _gl= self.sim.get_grid_lines()
-
-        # make sure that we're dealing with a plane
-        bbox = AABBox.from_blockspec(blockspec)
-        glidx = np.array(bbox.find_inner_grid_indices(*_gl),
-            dtype=np.int32).reshape((3,2))
-        #is_plane = (glidx[:,1]-glidx[:,0])<=1
-        #if np.sum(is_plane) != 1:
-        #    breakpoint()
-        #    raise ValueError(f'Not a plane: {blockspec}')
-        # normal axis
-        #ax = np.argmax(is_plane) ; del is_plane
-        
-        ax = None
-        if axis in (0,1,2):
-            ax = axis
-        elif axis in ('x','y','z'):
-            ax = 'xyz'.index(axis)
-        else:
-            raise ValueError('Invalid axis')
-
+        # face geometry (and the unused-domain warning) is shared with area_at
+        ax, elem_length, per_dom = self.elem_face_areas_at(blockspec, axis)
         axs = 'xyz'[ax]
-        _gla = _gl[ax]
-
-        # grid spacing normal to the block
-        elem_length = 0.
-        igl = glidx[ax][0]
-        if igl == len(_gla)-1:
-            elem_length = _gla[-1] - _gla[-2]
-        else:
-            elem_length = _gla[igl+1] - _gla[igl]
-
-        logger.info(f'Using elements at grid[{axs}][{igl:4d}]={_gla[igl]:8.3f} with d{axs}={elem_length:.3f} ')
 
         def log_plus_minus(dom,Qplus,Qminus,n,A):
             if logger.getEffectiveLevel() <= logging.INFO:
                 Qnet = Qplus+Qminus
                 logger.info(f'  {str(dom).title():4}({n:3} elems; {A:7.2f} m2) Q{axs}= +{Qplus:.4g} + {Qminus:.4g} = {Qnet:.4g}')
-
-        _doms = list(self.sim.domains())
-        _ndom = len(_doms)
 
         time = None
         A = np.zeros(2) # per-domain face area: [PM, FRAC]
@@ -165,19 +250,10 @@ class DischargeCalc(_BaseCalc):
         Qplus = np.zeros_like(A)
         Qminus = np.zeros_like(A)
 
-        # TODO - this seems to grab fractures on the outside faces of the volume
-        # I suppose the criteion is whether all four fracture nodes are also
-        # among the PM nodes, which is true ...
-        # An additional check would need to be done to see if the centroid of
-        # the fracture is within the volume, or on its face
-        blk = self._get_block(blockspec, allow_partial=False)
-
-        # get the size of the elements at the face
-
-        if Domain.PM in _doms:
+        if Domain.PM in per_dom:
 
             # aliases
-            elems,nodes = blk[Domain.PM]
+            elems, Ael = per_dom[Domain.PM]
 
             # get data
             flux_file = Path(f'{self.sim.ppfx}o.q_pm.{timeidx:04d}')
@@ -186,7 +262,6 @@ class DischargeCalc(_BaseCalc):
 
             # filter to this face
             q = q.reshape((-1,3), order='F')[elems,ax]+0.0
-            Ael = self.sim.get_element_volumes('pm').ravel(order='F')[elems]/elem_length
 
             logger.debug(tabulate.tabulate(zip(elems,q,Ael),headers=['PM Elem',f'q{axs}','A']))
 
@@ -200,15 +275,14 @@ class DischargeCalc(_BaseCalc):
             # get some extra insight if debugging
             log_plus_minus(Domain.PM, Qplus[0], Qminus[0], len(q), A[0])
 
-        if Domain.FRAC in _doms:
-            elems,nodes = blk[Domain.FRAC]
+        if Domain.FRAC in per_dom:
+            elems, Ael = per_dom[Domain.FRAC]
             flux_file = Path(f'{self.sim.ppfx}o.v_frac.{timeidx:04d}')
             if time is None:
                 time = peek_NNNN_time(str(flux_file))
             q = self.sim.get_element_vals(str(flux_file), 'frac')
 
             q = q[:,ax][elems]+0.0
-            Ael = self.sim.get_element_volumes('frac')[elems]/elem_length
 
             logger.debug(tabulate.tabulate(zip(elems,q,Ael),headers=['Fx Elem',f'q{axs}','A']))
 
@@ -221,15 +295,6 @@ class DischargeCalc(_BaseCalc):
 
             # get some extra insight if debugging
             log_plus_minus(Domain.FRAC, Qplus[1], Qminus[1], len(q), A[1])
-
-
-        # provide warning for unused domains
-        _unused_doms = set(_doms) - {Domain.PM, Domain.FRAC}
-        if _unused_doms:
-            logger.log(logging.WARNING, 'Discharge calculation does not '
-                + 'include domains '
-                + ', '.join(str(dd) for dd in _unused_doms)
-                + f' at {blockspec!s}')
 
 
         _pl.pop('Done calcuting discharge')

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-"""Unittests for `DischargeCalc.discharge_at`, run against two 04b datasets."""
+"""Unittests for `DischargeCalc.discharge_at` and `.area_at`, run against two
+04b datasets."""
 
 import unittest
+from unittest import mock
 import os
 import numpy as np
 import numpy.testing as nptest
@@ -16,6 +18,15 @@ TESTP = os.path.dirname(__file__)
 
 # flux output files required by discharge_at
 _REQ = ['o.q_pm.0001', 'o.v_frac.0001']
+
+# area_at needs the mesh alone, and must remain usable without the files in
+# _REQ; gate its tests on that weaker requirement
+_REQ_MESH = ['o.coordinates_pm', 'o.elements_pm',
+             'o.coordinates_frac', 'o.elements_frac']
+
+
+class _OutputWasRead(Exception):
+    """Raised by a patched reader to prove no simulated output was touched."""
 
 
 class _DischargeAtTests:
@@ -87,6 +98,83 @@ class _DischargeAtTests:
         nptest.assert_array_equal(Ai, As)
         nptest.assert_array_equal(Qi, Qs)
 
+    def test_area_at_matches_discharge_at(self):
+        """area_at reports exactly the A that discharge_at does."""
+        t, A, Q = self.calc.discharge_at(self.FACE, axis=0, timeidx=1)
+        nptest.assert_array_equal(self.calc.area_at(self.FACE, axis=0), A)
+
+
+class _AreaAtTests:
+    """Dataset-agnostic checks for `DischargeCalc.area_at`.
+
+    `area_at` is the flux-free half of `discharge_at`: it reports the same face
+    areas from the mesh alone. Subclasses set `SIM_PREFIX`, `FACE` and
+    `A_PM_EXP` as for `_DischargeAtTests`.
+    """
+
+    SIM_PREFIX = None
+    FACE = None
+    A_PM_EXP = None
+
+    def setUp(self):
+        self.g = HGSGrid(self.SIM_PREFIX)
+        self.calc = DischargeCalc(self.g)
+
+    def test_totals_reconcile(self):
+        """Index 0 is the PM+FRAC total."""
+        A = self.calc.area_at(self.FACE, axis=0)
+        self.assertEqual(len(A), 3)
+        nptest.assert_allclose(A[0], A[1] + A[2])
+
+    def test_pm_face_area(self):
+        """PM area equals the geometric y-z area of the face."""
+        A = self.calc.area_at(self.FACE, axis=0)
+        nptest.assert_allclose(A[1], self.A_PM_EXP, rtol=1e-6)
+
+    def test_fracture_area_small_positive(self):
+        """Aperture-scale fracture area is positive but << PM area."""
+        A = self.calc.area_at(self.FACE, axis=0)
+        self.assertGreater(A[2], 0.0)
+        self.assertLess(A[2], A[1])
+
+    def test_axis_str_int_equivalent(self):
+        """axis='x' and axis=0 give identical results."""
+        nptest.assert_array_equal(self.calc.area_at(self.FACE, axis=0),
+                                  self.calc.area_at(self.FACE, axis='x'))
+
+    def test_reads_no_simulated_output(self):
+        """area_at touches no output, where discharge_at must."""
+        with mock.patch.object(self.calc.sim, 'get_element_vals',
+                side_effect=_OutputWasRead('simulated output was read')):
+
+            A = self.calc.area_at(self.FACE, axis=0)
+            self.assertGreater(A[1], 0.0)
+
+            # the same patch must still trip discharge_at, or this proves
+            # nothing about which reader was avoided
+            with self.assertRaises(_OutputWasRead):
+                self.calc.discharge_at(self.FACE, axis=0, timeidx=1)
+
+    def test_elem_face_areas_sum_to_area(self):
+        """area_at is the sum of the per-element face areas, per domain."""
+        ax, elem_length, per_dom = self.calc.elem_face_areas_at(
+            self.FACE, axis=0)
+
+        self.assertEqual(ax, 0)
+        self.assertGreater(elem_length, 0.0)
+
+        A = self.calc.area_at(self.FACE, axis=0)
+        for i, dom in enumerate((Domain.PM, Domain.FRAC)):
+            self.assertIn(dom, per_dom)
+            elems, Ael = per_dom[dom]
+            self.assertEqual(len(elems), len(Ael))
+            nptest.assert_allclose(np.sum(Ael), A[i+1])
+
+    def test_invalid_axis_rejected(self):
+        """A bad axis raises rather than silently picking one."""
+        with self.assertRaises(ValueError):
+            self.calc.area_at(self.FACE, axis='w')
+
 
 @unittest.skipIf(skip_if_no_sim_output(
         os.path.join(TESTP, '04b_Saturated_Fracture_Transport', 'module4b'),
@@ -102,6 +190,25 @@ class Test_DischargeAt_Saturated(_DischargeAtTests, unittest.TestCase):
         os.path.join(TESTP, '04b_very_coarse_mesh', 'module4b'),
         _REQ), 'HGS output missing')
 class Test_DischargeAt_VeryCoarse(_DischargeAtTests, unittest.TestCase):
+    SIM_PREFIX = os.path.join(TESTP, '04b_very_coarse_mesh', 'module4b')
+    FACE = '0 10 0 1 0 25'    # first x-layer, full y-z face
+    A_PM_EXP = 1.0 * 25.0
+
+
+@unittest.skipIf(skip_if_no_sim_output(
+        os.path.join(TESTP, '04b_Saturated_Fracture_Transport', 'module4b'),
+        _REQ_MESH), 'HGS mesh missing')
+class Test_AreaAt_Saturated(_AreaAtTests, unittest.TestCase):
+    SIM_PREFIX = os.path.join(
+        TESTP, '04b_Saturated_Fracture_Transport', 'module4b')
+    FACE = '0 0.5 0 1 0 25'   # first x-layer, full y-z face
+    A_PM_EXP = 1.0 * 25.0
+
+
+@unittest.skipIf(skip_if_no_sim_output(
+        os.path.join(TESTP, '04b_very_coarse_mesh', 'module4b'),
+        _REQ_MESH), 'HGS mesh missing')
+class Test_AreaAt_VeryCoarse(_AreaAtTests, unittest.TestCase):
     SIM_PREFIX = os.path.join(TESTP, '04b_very_coarse_mesh', 'module4b')
     FACE = '0 10 0 1 0 25'    # first x-layer, full y-z face
     A_PM_EXP = 1.0 * 25.0
