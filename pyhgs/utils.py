@@ -25,51 +25,59 @@ def excerpt_large_file(input_filename, output_filename, num_head_lines, num_tail
         Number of lines to read from the end of the file.
     block_size : int, optional
         Size in bytes of chunks read from the end of the file, by default 4096.
+
+    Notes
+    -----
+    Files short enough that the head and tail would overlap are reproduced in
+    full; no line is ever emitted twice.
     """
+    num_head_lines = max(0, num_head_lines)
+    num_tail_lines = max(0, num_tail_lines)
+
     try:
-        # Step 1: Read the first num_head_lines from the beginning.
+        # Step 1: Read from the beginning, one line further than the excerpt
+        # needs. If the file ends within that many lines, the head and the tail
+        # would overlap (or abut), so the whole file is the excerpt.
         first_lines = []
         with open(input_filename, 'r', encoding='utf-8') as infile:
-            for i in range(num_head_lines):
+            for _ in range(num_head_lines + num_tail_lines + 1):
                 line = infile.readline()
                 if not line:
                     break
                 first_lines.append(line)
 
-        # Step 2: Read the last num_tail_lines from the end.
-        last_lines = []
-        with open(input_filename, 'rb') as infile:
-            infile.seek(0, os.SEEK_END)
-            file_size = infile.tell()
+        if len(first_lines) <= num_head_lines + num_tail_lines:
+            lines_to_write = first_lines
 
-            current_pos = file_size
-            lines_found = 0
-
-            while current_pos > 0 and lines_found < num_tail_lines:
-                read_size = min(block_size, current_pos)
-                current_pos -= read_size
-                infile.seek(current_pos)
-
-                chunk = infile.read(read_size)
-                lines_in_chunk = chunk.split(b'\n')
-
-                for line in reversed(lines_in_chunk):
-                    if lines_found < num_tail_lines:
-                        decoded_line = line.decode('utf-8').removesuffix('\r') + '\n'
-                        last_lines.insert(0, decoded_line)
-                        lines_found += 1
-                    else:
-                        break
-
-                if current_pos == 0:
-                    break
-
-        # Step 3: Combine head and tail.
-        lines_to_write = first_lines
-        if len(first_lines) >= num_head_lines and len(last_lines) >= num_tail_lines:
-            lines_to_write.append('\n...Content snipped...\n\n')
-            lines_to_write.extend(last_lines)
         else:
+            del first_lines[num_head_lines:]
+
+            # Step 2: Read the last num_tail_lines from the end, working
+            # backwards in blocks until one more line break than needed is
+            # buffered -- the extra break guarantees the earliest line kept is
+            # complete rather than a fragment of a longer line.
+            buf = b''
+            with open(input_filename, 'rb') as infile:
+                infile.seek(0, os.SEEK_END)
+                current_pos = infile.tell()
+
+                while current_pos > 0 and buf.count(b'\n') <= num_tail_lines:
+                    read_size = min(block_size, current_pos)
+                    current_pos -= read_size
+                    infile.seek(current_pos)
+                    buf = infile.read(read_size) + buf
+
+            # split on b'\n' only: str.splitlines() would also break on form
+            # feeds and other characters that occur in HGS listing files
+            tail = buf.decode('utf-8', errors='replace').split('\n')
+            if tail and tail[-1] == '':
+                tail.pop() # trailing newline; not a line of its own
+            last_lines = [ l.removesuffix('\r') + '\n'
+                for l in (tail[-num_tail_lines:] if num_tail_lines else []) ]
+
+            # Step 3: Combine head and tail.
+            lines_to_write = first_lines
+            lines_to_write.append('\n...Content snipped...\n\n')
             lines_to_write.extend(last_lines)
 
         # Step 4: Write to the specified output.
