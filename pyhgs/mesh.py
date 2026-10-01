@@ -1479,12 +1479,18 @@ class HGSGrid():
             _ret_els = _els
 
         else:
-            # cull out elements who's node set is not fully in the block
-            _ret_els = set()
-            for iel in _els:
-                _elinc = _inc[iel]
-                if _elinc.size == np.intersect1d(_elinc,_nodes,True).size:
-                    _ret_els.add(iel)
+            # cull out elements whose node set is not fully in the block.
+            # Look up each candidate's nodes in a boolean node mask; a
+            # per-element intersect1d against the block's nodes costs
+            # O(n_elems * n_nodes) and takes many minutes on large faces.
+            _nodearr = np.asarray(_nodes, dtype=np.int64).ravel()
+            _cand = np.fromiter(_els, dtype=np.int64, count=len(_els))
+            _cinc = _inc[_cand]
+            _in_blk = np.zeros(
+                max(_cinc.max(initial=-1), _nodearr.max(initial=-1)) + 1,
+                dtype=bool)
+            _in_blk[_nodearr] = True
+            _ret_els = set(_cand[_in_blk[_cinc].all(axis=1)].tolist())
 
         _plq.pop(f'choose_elements_block {dom.name} {blockspec}')
 
