@@ -66,7 +66,16 @@ _gl_list_re_str = \
 _gl_list_re = re.compile(_gl_list_re_str)
 
 def apQuantize(v,n_sig):
-    """Determine the aperture to n_sig significant figures."""
+    """Round aperture `v` (m) to the nearest multiple of 10**-n_sig m.
+
+    `n_sig` is a number of decimal places in metres, NOT significant figures:
+    n_sig=4 is a 100 um quantum, n_sig=6 a 1 um quantum. An aperture smaller
+    than one quantum is returned as half a quantum (e.g. n_sig=4 sends
+    0.000002 and 0.000099 to 0.00005), so no fracture is given zero aperture.
+    The result has the module's aperture precision (`D_AP`).
+
+    (The parameter name is historical.)
+    """
 
     #new_prec = Decimal('0.'+n_sig*'1')
     new_prec = Decimal(f'{10**(-n_sig):.{n_sig}f}')
@@ -264,8 +273,10 @@ class RFG:
 
             quantizeApertures : int or None
                 If not None...
-                Reduce the precision in each fracture's aperture to be only
-                'quantizeApertures' significant digits.
+                Round each fracture's aperture to the nearest multiple of
+                10**-quantizeApertures m -- decimal places in metres, not
+                significant digits; apertures below that quantum become half
+                of it. See `apQuantize`.
                 This aims to result in fewer "read properties" calls in the
                 fout because more fracture zones are grouped together with a
                 single "read properties" statement.
@@ -753,9 +764,12 @@ def make_arg_parser():
             default=None,
             metavar='S',
             type=int,
-            help='''Round fracture apertures to at most S significant figures
-            and assign all fracutres within that "aperture quantum" to the same
-            .fprops material type (where material types only define apertures).
+            help='''Round fracture apertures to the nearest multiple of 10^-S
+            metres (S is decimal places in metres, NOT significant figures:
+            S=4 is a 100 um quantum, S=6 a 1 um quantum; apertures smaller than
+            one quantum become half a quantum) and assign all fractures within
+            that "aperture quantum" to the same .fprops material type (where
+            material types only define apertures).
             This reduces the number of material zones and hence the number of
             .fprops file read-throughs that GROK will do. e.g., 20,000 fractures
             has been shown to take 1 hour to process!
