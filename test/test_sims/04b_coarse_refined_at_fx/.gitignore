@@ -5,6 +5,7 @@
 !batch.pfx
 !f_cd.fprops
 !module4b.grok
+!zflow4b.grok
 !module4b.mprops
 !fracs.rfd
 !preprocess-make-mesh.py

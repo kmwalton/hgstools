@@ -1,0 +1,137 @@
+!--------------------------  Problem description
+Very coarse discrete fractures and porous matrix mesh.
+Flow only, driven vertically: head 50 at z=0 and 40 at z=25.
+Based on Module04b by S.Berg, July 21, 2014.
+end title
+!--------------------------  Grid generation
+include gridinclude.grok
+
+
+!--------------------------  General simulation parameters
+units: kilogram-metre-second
+finite difference mode
+control volume
+!-------------------------- Porous Media Properties
+use domain type
+porous media
+
+properties file
+module4b.mprops
+
+clear chosen elements
+choose elements block
+   0.0   50.0
+   0.0    1.0
+   12.0  25.0
+new zone
+   1
+
+clear chosen zones
+choose zone number
+1
+read properties
+porous medium
+
+clear chosen elements
+choose elements block
+   0.0   50.0
+   0.0    1.0
+   0.0   12.0
+new zone
+   2
+
+clear chosen zones
+choose zone number
+2
+read properties
+porous medium 2
+
+!--------------------------  Fracture media properties
+use domain type
+fracture
+
+include fracinclude.grok
+
+properties file
+f_cd.fprops
+
+clear chosen zones
+choose zone number
+	1
+read properties
+	fracture1
+
+clear chosen zones
+choose zone number
+	2
+read properties
+	fracture2
+
+clear chosen zones
+choose zone number
+	3
+read properties
+	fracture3
+
+
+!--------------------------  Porous media flow
+use domain type
+porous media
+
+choose nodes all
+initial head
+45
+
+!--------------------------  h1 boundary condition assignment
+clear chosen nodes
+
+choose nodes z plane
+0.0
+1.e-5
+
+create node set
+h1
+
+boundary condition
+    type
+    head
+
+    node set
+    h1
+
+    time value table
+       0 50
+    end
+
+
+end ! new specified head
+
+
+!--------------------------  h2 boundary condition assignment
+clear chosen nodes
+
+choose nodes z plane
+25
+1.e-5
+
+create node set
+h2
+
+boundary condition
+    type
+    head
+
+    node set
+    h2
+
+    time value table
+       0 40
+    end
+
+end ! new specified head
+
+
+!-------------------------- Output
+output times
+86400
+end
