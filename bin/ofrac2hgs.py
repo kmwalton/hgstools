@@ -43,6 +43,45 @@ logger.verbose1 = partial(logger.log, logging.INFO)
 logger.verbose2 = partial(logger.log, logging.INFO-1)
 
 
+def nudge_arg(s):
+    """Parse a nudge increment: a scalar, or "X, Y, Z" for per-axis increments.
+
+    A zero increment leaves that axis un-nudged. Returns a Decimal for a
+    scalar, or a 3-tuple of Decimals.
+    """
+    try:
+        vals = [Decimal(v) for v in re.sub(r'[(),]', ' ', s).split()]
+    except decimal.InvalidOperation:
+        raise argparse.ArgumentTypeError(
+            f'nudge increments must be numbers; got "{s}"') from None
+    if any(not v.is_finite() or v < 0 for v in vals):
+        raise argparse.ArgumentTypeError(
+            f'nudge increments must be finite and non-negative; got "{s}"')
+    if len(vals) == 1:
+        return vals[0]
+    if len(vals) != 3:
+        raise argparse.ArgumentTypeError(
+            f'expected one nudge increment or three (X, Y, Z); got "{s}"')
+    return tuple(vals)
+
+def nudge_str(nudgeTo):
+    """Format a nudge increment, scalar or (X, Y, Z), for messages."""
+    if isinstance(nudgeTo, tuple):
+        return ', '.join(str(v) for v in nudgeTo)
+    return str(nudgeTo)
+
+def _check_axis_nudge_support():
+    """Raise if the loaded ofracs cannot nudge with per-axis increments.
+
+    Per-axis (X, Y, Z) nudging arrived in ofracs alongside `as_nudge_triple`;
+    older versions fail obscurely when handed a 3-tuple.
+    """
+    if not hasattr(ofracs_module, 'as_nudge_triple'):
+        raise RuntimeError(
+            'Per-axis nudge increments (X, Y, Z) need a newer ofracs than the '
+            f'one loaded from {ofracs_module.__file__}. Use a single nudge '
+            'increment, or put a newer ofrac first on PYTHONPATH.')
+
 
 
 WISHLIST="""
@@ -132,7 +171,9 @@ class RFG:
             logger.verbose2(f'\n...with forced domain size: {self.fxnet!s}')
 
         self.nudgeTo=nudgeTo
-        if nudgeTo > 0.0:
+        if self.isNudged():
+            if isinstance(nudgeTo, tuple):
+                _check_axis_nudge_support()
             self.fxnet.nudgeAll(nudgeTo)
             logger.verbose2(f'\n...with fracture nudging: {self.fxnet!s}')
 
@@ -168,6 +209,12 @@ class RFG:
     def _getGrid(fn):
         return ofracs_module.parse(fn)
 
+    def isNudged(self):
+        """Return True if any nudge increment is non-zero."""
+        if isinstance(self.nudgeTo, tuple):
+            return any(self.nudgeTo)
+        return bool(self.nudgeTo)
+
     def spewPreamble(self, moreMessages='', fout=sys.stdout):
         """Print a message about this grid and some of its parameters."""
 
@@ -175,10 +222,10 @@ class RFG:
         s.append(f'! {datetime.datetime.now()}')
         s.append('! Dump of grid and explicit fractures defined in {}'.format(
                     self.fnin) )
-        if self.nudgeTo:
+        if self.isNudged():
             s.append(
                 '! Fractures and gridlines "nudged" to {} increments.'.format(
-                    self.nudgeTo) )
+                    nudge_str(self.nudgeTo)) )
         if self.pmRefs:
             s.append(
                 '! PM refined near fractures at increments: {}'.format(
@@ -663,9 +710,11 @@ def make_arg_parser():
 
     parser.add_argument(
             '-n', '--nudge-fx-coordinates-to',
-            type=Decimal,
+            type=nudge_arg,
             default=Decimal('0'),
-            help='Nudge each fracture to the nearest interval' )
+            help='''Nudge each fracture to the nearest interval. Give one
+            value for all axes, or "X, Y, Z" for per-axis intervals, where a
+            zero leaves that axis alone (e.g., "10, 10, 0").''' )
 
     parser.add_argument( '-r', '--refine-near-fx-plane',
             nargs='+',
