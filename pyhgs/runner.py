@@ -752,6 +752,96 @@ class BaseRunner():
         return ret
 
 
+_PS_NAMES = ('pwsh', 'powershell')
+
+def _win_ancestor_exes():
+    """Yield full executable paths of this process's ancestors (Windows)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class PROCESSENTRY32W(ctypes.Structure):
+        _fields_ = [
+            ('dwSize', wintypes.DWORD),
+            ('cntUsage', wintypes.DWORD),
+            ('th32ProcessID', wintypes.DWORD),
+            ('th32DefaultHeapID', ctypes.c_size_t),
+            ('th32ModuleID', wintypes.DWORD),
+            ('cntThreads', wintypes.DWORD),
+            ('th32ParentProcessID', wintypes.DWORD),
+            ('pcPriClassBase', ctypes.c_long),
+            ('dwFlags', wintypes.DWORD),
+            ('szExeFile', wintypes.WCHAR * 260),
+        ]
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.OpenProcess.restype = wintypes.HANDLE
+    TH32CS_SNAPPROCESS = 0x2
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+    snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    if snap == INVALID_HANDLE_VALUE:
+        return
+    parent = {}
+    try:
+        pe = PROCESSENTRY32W()
+        pe.dwSize = ctypes.sizeof(pe)
+        ok = k32.Process32FirstW(snap, ctypes.byref(pe))
+        while ok:
+            parent[pe.th32ProcessID] = pe.th32ParentProcessID
+            ok = k32.Process32NextW(snap, ctypes.byref(pe))
+    finally:
+        k32.CloseHandle(snap)
+
+    pid, seen = parent.get(os.getpid()), set()
+    while pid and pid not in seen:
+        seen.add(pid)
+        h = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if h:
+            try:
+                buf = ctypes.create_unicode_buffer(32768)
+                n = wintypes.DWORD(len(buf))
+                if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(n)):
+                    yield buf.value
+            finally:
+                k32.CloseHandle(h)
+        pid = parent.get(pid)
+
+def _launching_powershell():
+    """Return the PowerShell executable that launched this process.
+
+    Walks up the process tree (Windows) for the nearest pwsh/powershell
+    ancestor so .ps1 scripts run under the same edition and version as the
+    user's shell. Falls back to the first of pwsh, powershell on PATH.
+    """
+    if sys.platform == 'win32':
+        try:
+            for exe in _win_ancestor_exes():
+                if Path(exe).stem.lower() in _PS_NAMES:
+                    return exe
+        except Exception as e:
+            logger.debug(f'Could not inspect parent processes: {e}')
+
+    for n in _PS_NAMES:
+        exe = shutil.which(n)
+        if exe:
+            return exe
+    return 'pwsh'
+
+def _ps1_command(script):
+    """Return -Command text that runs `script` and fails on any error.
+
+    Under -File, a PowerShell error such as a command not found on PATH does
+    not set $LASTEXITCODE, so the script carries on and exits 0. Here,
+    $ErrorActionPreference='Stop' (inherited by the script's scope) turns
+    such errors into a terminating error, which exits 1; an explicit
+    `exit N` in the script, or a failed last native command, is passed on.
+    """
+    s = script.replace("'", "''")
+    return (f"$ErrorActionPreference='Stop'; & '.\\{s}'; "
+            "exit $LASTEXITCODE")
+
 def _list_pprocessing(
             fpfx='pre',
             dpfx='.',
@@ -782,7 +872,11 @@ def _list_pprocessing(
         If `fpfx` is not 'pre' or 'post'.
     """
     EXTENSION_RUNNER_HINTS = {
-        '.ps1': [shutil.which('powershell'),'-NonInteractive','-File',],
+        # -NoProfile: the parent's environment is already inherited via
+        # os.environ; re-running $PROFILE is slow and can clobber it.
+        # -Command wrapper (see _ps1_command): fail on PowerShell errors too.
+        '.ps1': [_launching_powershell(),'-NoProfile','-NonInteractive',
+                 '-Command',],
         #'.py': [shutil.which('python'),],
         '.py': [sys.executable,],
     }
@@ -800,7 +894,9 @@ def _list_pprocessing(
     if use_extension_hints:
         for n in names:
             ext = os.path.splitext(n)[1].lower()
-            if ext in EXTENSION_RUNNER_HINTS:
+            if ext == '.ps1':
+                ret.append( EXTENSION_RUNNER_HINTS[ext] + [_ps1_command(n),] )
+            elif ext in EXTENSION_RUNNER_HINTS:
                 ret.append( EXTENSION_RUNNER_HINTS[ext] + [n,] )
             else:
                 ret.append( [ n, ] )
@@ -859,9 +955,13 @@ class HGSToolChainRun(BaseRunner):
             """Find tool as string"""
             _t = None
             if isinstance(t, list):
-                # assume the last entry in the list is the script name
-                if _ftas(t[0]) in ('powershell', 'python'):
+                # the script name is the last entry in the list, or (.ps1)
+                # is quoted inside the last entry's -Command text
+                if _ftas(t[0]) in _PS_NAMES + ('python',):
                     _t = t[-1]
+                    m = re.search(r"'\.\\(.+?\.ps1)'", _t)
+                    if m:
+                        _t = m.group(1).replace("''", "'")
                 # else, first
                 else:
                     _t = t[0]
