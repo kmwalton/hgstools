@@ -155,7 +155,14 @@ class PhgsFilter(BaseOutputFilter):
     suppressing verbose iteration details.
     """
     # Note: Regex patterns are constructed dynamically in __init__
-    _PHGS_ACCEPTED_TIME_RE = re.compile(r'Accepted\s+solution\s+at\s+time:\s+([\d.E+-]+)')
+
+    # One Fortran-formatted real. Fixed-width fields have no separating space
+    # before a negative value (e.g. "0.00-3.6525000000E+02" is 0.00 and
+    # -365.25), so numbers are found by pattern, not by splitting on spaces.
+    _NUM = r'[-+]?(?:\d+\.\d*|\.\d+)(?:[EeDd][-+]?\d+)?'
+    _NUM_RE = re.compile(_NUM)
+
+    _PHGS_ACCEPTED_TIME_RE = re.compile(rf'Accepted\s+solution\s+at\s+time:\s*({_NUM})')
 
     # Warning messages that are expected/non-actionable and should be suppressed
     # after the first occurrence per step. Match against the full stripped line
@@ -204,7 +211,9 @@ class PhgsFilter(BaseOutputFilter):
                 rf'^-+\s*{re.escape(self._prefix)}\s+Step:\s*(\d+)\s*-+\s*$', flags=re.I)
 
         # Matches lines like: " 1.9000598038E-05 1.0000843927E+01 Accept timestep"
-        self._PHGS_DT_RE = re.compile(r'([\d.E+-]+)\s+[\d.E+-]+\s+Accept\s+timestep')
+        # or, with columns %done, Time, delta_t, Tnext and negative times,
+        # "  0.00-3.6525000000E+02 1.0000000000E+00-3.6425000000E+02 Accept timestep"
+        self._PHGS_DT_RE = re.compile(r'^(.*?)\s*Accept\s+timestep')
 
     def _format_summary(self):
         """Generates the performance summary string for an accepted timestep."""
@@ -294,15 +303,18 @@ class PhgsFilter(BaseOutputFilter):
 
         # 7. Timestep Size (dt) Capture
         # Matches the line containing the simulation delta_t and "Accept timestep"
+        # delta_t is the second-last number before "Accept timestep".
         match_dt = self._PHGS_DT_RE.search(line)
-        if match_dt and 'Accept timestep' in line:
-            self._step_data['dt'] = float(match_dt.group(1))
-            return False # Suppress the raw dt line
+        if match_dt:
+            nums = self._NUM_RE.findall(match_dt.group(1))
+            if len(nums) >= 2:
+                self._step_data['dt'] = float(nums[-2].replace('D','E').replace('d','e'))
+                return False # Suppress the raw dt line
 
         # 8. Accepted Time (The logic where we decide whether to print)
         match_time = self._PHGS_ACCEPTED_TIME_RE.search(line)
         if match_time:
-            self._step_data['time'] = float(match_time.group(1))
+            self._step_data['time'] = float(match_time.group(1).replace('D','E').replace('d','e'))
             summary = self._format_summary()
 
             now = datetime.datetime.now()
