@@ -764,6 +764,101 @@ class BaseRunner():
         return ret
 
 
+# Console input mode found before the first change by
+# disable_console_quick_edit; restore_console_quick_edit puts it back.
+_original_console_mode = None
+
+def _console_input_handle():
+    """Return (kernel32, handle) for this console's input, or None."""
+    if sys.platform != 'win32':
+        return None
+
+    import ctypes
+
+    STD_INPUT_HANDLE = -10
+    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GetStdHandle.restype = ctypes.c_void_p
+    handle = kernel32.GetStdHandle(STD_INPUT_HANDLE)
+    if not handle or handle == INVALID_HANDLE_VALUE:
+        return None
+    return kernel32, ctypes.c_void_p(handle)
+
+def disable_console_quick_edit():
+    """Turn off the Windows console 'QuickEdit' mode for this console.
+
+    When QuickEdit is active a stray click in the console window enters
+    text-selection mode, which blocks the foreground process on its next
+    write to stdout. Long-running children (notably phgs) then appear to
+    stall indefinitely. Clearing the flag avoids that whole class of hang.
+
+    The mode belongs to the console, which is shared with every child, so a
+    child (e.g., a PowerShell host) can turn it back on; HGSToolChainRun
+    calls this again before launching each tool.
+
+    The mode found on the first call is remembered so that
+    `restore_console_quick_edit` can put it back when the run ends.
+
+    Best-effort: silently does nothing if there is no console attached or
+    the console mode cannot be changed.
+
+    Returns
+    -------
+    bool
+        True if QuickEdit is now off.
+    """
+    global _original_console_mode
+
+    con = _console_input_handle()
+    if con is None:
+        return False
+    kernel32, handle = con
+
+    import ctypes
+
+    ENABLE_EXTENDED_FLAGS = 0x0080
+    ENABLE_QUICK_EDIT_MODE = 0x0040
+
+    mode = ctypes.c_uint()
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return False
+
+    if _original_console_mode is None:
+        _original_console_mode = mode.value
+
+    # ENABLE_EXTENDED_FLAGS must be set for the QuickEdit bit to take effect.
+    new_mode = (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS
+    if new_mode == mode.value:
+        return True
+    return bool(kernel32.SetConsoleMode(handle, new_mode))
+
+def restore_console_quick_edit():
+    """Restore the console mode saved by `disable_console_quick_edit`.
+
+    Puts QuickEdit (and the rest of the console input mode) back as it was
+    before this process first changed it, so the calling shell (e.g., pwsh)
+    is left as the user had it.
+
+    Returns
+    -------
+    bool
+        True if a saved mode was restored.
+    """
+    global _original_console_mode
+
+    if _original_console_mode is None:
+        return False
+    con = _console_input_handle()
+    if con is None:
+        return False
+    kernel32, handle = con
+
+    ok = bool(kernel32.SetConsoleMode(handle, _original_console_mode))
+    if ok:
+        _original_console_mode = None
+    return ok
+
 _PS_NAMES = ('pwsh', 'powershell')
 
 def _win_ancestor_exes():
@@ -1316,6 +1411,9 @@ class HGSToolChainRun(BaseRunner):
                 sys.stdout.flush()
                 full_output_buffer.append(80*'='+f'\n{i}) {" ".join(tool_args)}\n')
 
+
+                # a previous tool may have turned QuickEdit back on
+                disable_console_quick_edit()
 
                 try:
                     proc = await asyncio.create_subprocess_exec(
