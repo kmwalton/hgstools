@@ -80,7 +80,18 @@ class Test_General_Parser(unittest.TestCase):
         self.assertEqual(grok['files_mprops'], ['bogus1.mprops',])
         self.assertEqual(grok['files_fprops'], ['bogus2.fprops',])
         self.assertEqual(grok['files_initial'], ['bogus.hen', 'bogus.cen', 'boguso.pm.hen',])
-    
+        self.assertEqual(grok['files_restart'], [])
+
+    def test_restart_files(self):
+        txt = ('Restart file for heads   ! from the previous run\n'
+            '\n    prev.hen   ! comment\n'
+            'restart file for concentrations\nprevo.cen')
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = Path(temp_dir)/'test2.grok'
+            _write_test_file(file_path, txt)
+            grok = grok_parse(file_path)
+        self.assertEqual(grok['files_restart'], ['prev.hen', 'prevo.cen'])
+
 
 if __name__ == '__main__':
     unittest.main()
