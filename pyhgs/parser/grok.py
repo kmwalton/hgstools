@@ -8,6 +8,8 @@ Keywords:
 - 'files_mprops'
 - 'files_fprops'
 - 'files_include'
+- 'files_initial' (files of 'Initial ... from ... file' instructions)
+- 'files_restart' (files of 'Restart file for heads|concentrations')
 - 'zoned distribution coefficient'
 - 'solute'
 
@@ -83,6 +85,14 @@ _tags = {
         list( re.findall(
             #r'^\s*initial.*?from.*?file.*?(?:!.*)?\n(.*?)(?:!.*)\n',
             r'^\s*initial.*?from.*?file(?:\s*!.*\n|\s*)*(\S*?)\s*\n',
+            txt, flags=re.M|re.I)
+        )),
+    # 'Restart file for heads' / 'Restart file for concentrations' (HGS
+    # reference manual, Sec. 2.6): initial conditions read from a previous
+    # solution, e.g., a renamed prefixo.hen or prefixo.cen.
+    'files_restart':(lambda txt:
+        list( re.findall(
+            r'^\s*restart file for (?:heads|concentrations)[ \t]*\n(\S+)',
             txt, flags=re.M|re.I)
         )),
     'units':(lambda txt:

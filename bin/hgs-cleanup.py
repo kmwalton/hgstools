@@ -60,9 +60,27 @@ KEEP_FILE_HEADER = """\
 #     files; the category name may itself be a glob, e.g.:
 #         cat=input
 #         cat=output.tecplot*
+#     A category rule also keeps its sub-categories, e.g., 'cat=input' keeps
+#     'input.restart' (restart files read by this run), and 'cat=output' keeps
+#     every 'output.*' category.
 #   - Only the first whitespace-delimited token on a line is used; a trailing
 #     '# ...' comment is allowed.
+#
+# Files categorized 'suspect.*' (e.g., 'suspect.restart': a restart file whose
+# modification time contradicts its role as input or output) are always kept.
 """
+
+SUSPECT_CAT = 'suspect'
+
+def category_matches(cat, pat):
+    """Return True if category `cat`, or any parent of it, matches `pat`.
+
+    Categories are dot-separated (e.g., 'output.tecplot'); `pat` is a
+    glob-style pattern, so 'input' matches 'input' and 'input.restart'.
+    """
+    parts = cat.split('.')
+    return any(fnmatch('.'.join(parts[:i]), pat)
+        for i in range(len(parts), 0, -1))
 
 def make_keep_file_content(catfiles):
     """Build the text for a skeleton keep file.
@@ -130,7 +148,13 @@ if __name__ == '__main__':
             name, a glob-style pattern, or a category of simulation file
             (prefixed by "cat="). Categories of files are identified in a
             --dry-run; they can be specified in plain text, e.g., "cat=input", or as
-            a glob-style pattern, e.g., "cat=output.tecplot*".
+            a glob-style pattern, e.g., "cat=output.tecplot*". A category also
+            matches its sub-categories, e.g., "cat=input" keeps "input.restart".
+            Restart files are split into "input.restart" (initial conditions
+            named in the grok file, older than the run) and "output.restart"
+            (restart_*.dat, PREFIXo.hen, PREFIXo.cen, written by the run);
+            those whose modification times contradict that role are
+            "suspect.restart" and are always kept.
         '''
         )
 
@@ -154,8 +178,9 @@ if __name__ == '__main__':
     keep_inputs_grp.add_argument('--keep-inputs', action='store_true',
         dest='keep_inputs',
         default=True,
-        help='''Keep files in the 'input' category (default behaviour).
-        Equivalent to a line with 'cat=input' in the KEEP_FILE.''',
+        help='''Keep files in the 'input' category and its sub-categories,
+        e.g., 'input.restart' (default behaviour). Equivalent to a line with
+        'cat=input' in the KEEP_FILE.''',
         )
     keep_inputs_grp.add_argument('--no-keep-inputs', action='store_false',
         dest='keep_inputs',
@@ -235,7 +260,8 @@ if __name__ == '__main__':
     keepmaskfiles = dict()
     for fn,cat in catfiles.items():
         _k = False # default, delete
-        _k |= any(fnmatch(cat, c) for c in keep_cats)
+        _k |= category_matches(cat, SUSPECT_CAT) # never delete suspect files
+        _k |= any(category_matches(cat, c) for c in keep_cats)
         _k |= any(fnmatch(fn, g) for g in keep_files)
         keepmaskfiles[fn] = _k
 

@@ -562,6 +562,164 @@ class BaseRunner():
 
         return ret, files
 
+    # grok parser keys that name initial-condition files read from a previous
+    # solution, i.e., the inputs of a restarted simulation (HGS reference
+    # manual, Sec. 2.6, e.g., 'Restart file for heads', 'Initial head from
+    # output file', 'Initial concentration from file').
+    RESTART_GROK_KEYS = ('files_restart', 'files_initial')
+
+    # HGS's built-in restart files (HGS reference manual, Sec. 2.5.9):
+    # restart_state.dat, restart_file_info.dat, and their *_prev.dat backups.
+    # phgs (re)writes these during and at the end of every run.
+    _RESTART_DAT_RE = re.compile(r'restart_.*\.dat$', re.I)
+
+    def simulation_restart_index(self):
+        """Return the '__Simulation_Restart' index in parallelindx.dat.
+
+        An index greater than 1 means phgs read restart_state.dat and
+        restart_file_info.dat at startup (HGS reference manual, Sec. 2.5.9).
+
+        Returns
+        -------
+        int or None
+            None if parallelindx.dat is absent or has no restart index.
+        """
+        try:
+            txt = (Path(self.simdir)/'parallelindx.dat').read_text()
+        except OSError:
+            return None
+        m = re.search(r'__Simulation_Restart\s+(\d+)', txt, re.I)
+        return int(m.group(1)) if m else None
+
+    def run_start_time(self, names=None):
+        """Estimate when this prefix's simulation run started.
+
+        The estimate is the earliest modification time among this prefix's
+        output files ('`prefix`o.*'), falling back to the modification time of
+        scratch_grok (written by grok just before phgs runs).
+
+        Note: stale outputs from an earlier, unrelated run of the same prefix
+        make this estimate too early.
+
+        Parameters
+        ----------
+        names : iterable of str, optional
+            Bare file names in the simulation directory to consider. By
+            default, all files in the simulation directory.
+
+        Returns
+        -------
+        float or None
+            Seconds since the epoch, or None if no reference file exists.
+        """
+        simdir = Path(self.simdir)
+        if names is None:
+            names = os.listdir(simdir)
+        pfx = os.path.normcase(self.prefix + 'o.')
+        mtimes = []
+        for n in names:
+            if os.path.normcase(n).startswith(pfx):
+                try:
+                    mtimes.append((simdir/n).stat().st_mtime)
+                except OSError:
+                    pass
+        if mtimes:
+            return min(mtimes)
+        try:
+            return (simdir/'scratch_grok').stat().st_mtime
+        except OSError:
+            return None
+
+    def _classify_restart_files(self, names, grok_restart_files=()):
+        """Categorize restart files as simulation inputs or outputs.
+
+        Restart *inputs* are the initial-condition files that this prefix's
+        grok file names (see `RESTART_GROK_KEYS`); they must predate the run.
+        Restart *outputs* are written by phgs for a potential subsequent
+        restart: the built-in restart files (restart_*.dat, which are
+        overwritten even when the run itself was a restart) and
+        `prefix`o.hen / `prefix`o.cen (final heads/concentrations); they must
+        not predate the run.
+
+        A file whose modification time contradicts its expected role (relative
+        to `run_start_time`) is categorized 'suspect.restart' and a warning is
+        logged.
+
+        Parameters
+        ----------
+        names : set of str
+            Bare file names in the simulation directory, yet to be categorized.
+        grok_restart_files : iterable of str
+            File names given in restart/initial-condition grok instructions.
+
+        Returns
+        -------
+        dict
+            {file name: 'input.restart' | 'output.restart' | 'suspect.restart'}
+        """
+        nc = os.path.normcase
+        simdir_nc = nc(os.path.abspath(self.simdir))
+        names_by_nc = {nc(n): n for n in names}
+
+        inputs = set()
+        for g in grok_restart_files:
+            g = os.path.normpath(g)
+            if os.path.dirname(g):
+                # only files directly in the simulation directory are here
+                gdir = os.path.join(self.simdir, os.path.dirname(g))
+                if nc(os.path.abspath(gdir)) != simdir_nc:
+                    continue
+                g = os.path.basename(g)
+            n = names_by_nc.get(nc(g))
+            if n is not None:
+                inputs.add(n)
+
+        pfx = self.prefix + 'o.'
+        out_nc = {nc(pfx+'hen'), nc(pfx+'cen')}
+        outputs = {n for n in names
+            if self._RESTART_DAT_RE.match(n) or nc(n) in out_nc} - inputs
+
+        if not (inputs or outputs):
+            return {}
+
+        builtin = sorted(n for n in outputs if self._RESTART_DAT_RE.match(n))
+        idx = self.simulation_restart_index()
+        if builtin and idx is not None and idx > 1:
+            logger.info(f'parallelindx.dat __Simulation_Restart is {idx}: '
+                f'this run of {self.prefix} restarted from the built-in '
+                'restart files, then overwrote them; categorizing '
+                f'{", ".join(builtin)} as output.restart')
+
+        t0 = self.run_start_time(names - inputs)
+        if t0 is None:
+            logger.debug(f'No run start time for {self.prefix}; restart '
+                'files are categorized without a timestamp check')
+
+        def _fmt(t):
+            return datetime.datetime.fromtimestamp(t).isoformat(
+                sep=' ', timespec='seconds')
+
+        ret = {}
+        for cat, group in (('input.restart', inputs),
+                           ('output.restart', outputs)):
+            for n in sorted(group):
+                ret[n] = cat
+                if t0 is None:
+                    continue
+                try:
+                    mt = (Path(self.simdir)/n).stat().st_mtime
+                except OSError:
+                    continue
+                is_input = (cat == 'input.restart')
+                if (mt < t0) != is_input:
+                    ret[n] = 'suspect.restart'
+                    logger.warning(
+                        f'{n}: expected {cat}, but it was modified '
+                        f'{_fmt(mt)}, {"at/after" if is_input else "before"} '
+                        f'the start of the {self.prefix} run ({_fmt(t0)}); '
+                        'categorizing as suspect.restart')
+
+        return ret
 
     def categorize_files(self, files=None, default_cat=None):
         """Categorize files in the simulation directory.
@@ -594,13 +752,20 @@ class BaseRunner():
             # '\', so add escapes here so '\' are preserved as literals when these are
             # interpreted as regular expression patterns later
             grok = grok_parse(grokpath)
+            # Initial-condition files from a previous solution are
+            # categorized separately ('input.restart'), not as plain inputs.
             _input_grok = list( re.escape(fn) for fn in
                 chain.from_iterable( grok[a] for a in [
-                    k for k in grok.keys() if k.startswith('files_') ])
+                    k for k in grok.keys() if k.startswith('files_')
+                    and k not in self.RESTART_GROK_KEYS ])
             )
+            _restart_in_grok = list(
+                chain.from_iterable( grok.get(k, [])
+                    for k in self.RESTART_GROK_KEYS ))
         except BaseException as e:
             logger.warning(f'Problem reading {grokpath}. Error:\n{e}')
             _input_grok = []
+            _restart_in_grok = []
 
         def _re_match(pat, p):
             """``re.match`` wrapper that names the offending pattern on failure.
@@ -646,8 +811,6 @@ class BaseRunner():
                 'debug.control',
                 'parallelindx.dat',
                 'array_sizes.default',
-                'restart_file_info.dat',
-                'restart_state.dat',
             }
             if p in _input_literals:
                 return True
@@ -667,14 +830,32 @@ class BaseRunner():
         if files is None:
             files = set(Path(self.simdir).iterdir())
 
-        # convert Path objects to strings for categorization logic
-        file_strings = {f.name for f in files}
+        # convert Path objects (or str, e.g., the uncategorized remainder
+        # returned by a previous call) to bare names for categorization logic
+        file_strings = {Path(f).name for f in files}
+
+        # restart files: input vs. output vs. suspect, by HGS semantics and
+        # verified against modification times
+        restart_cats = self._classify_restart_files(
+            file_strings, _restart_in_grok)
+
+        def _is_restart(c):
+            return (lambda p: restart_cats.get(p) == c)
 
         # final datastructure
+        # Restart categories come first so that they claim their files before
+        # the generic patterns below. 'input.restart' is a flat key (not
+        # nested under 'input') so that ordinary inputs keep the category
+        # 'input'; ravelled, it reads the same as a nested sub-category.
         categories = {
+            'suspect':{
+                'restart':_is_restart('suspect.restart'),
+            },
+            'input.restart':_is_restart('input.restart'),
             'input':(lambda p: _match_input(p)),
             'subdir':(lambda p: Path(self.simdir).joinpath(p).is_dir()),
             'output':{
+                'restart':_is_restart('output.restart'),
                 'scratch':_match_scratch,
                 'dbg':_match_dbg,
                 'node_set':(lambda p:
@@ -685,8 +866,6 @@ class BaseRunner():
                     _re_match(re.escape(self.prefix)+r'o\..*dat$', str(p))),
                 'listing':(lambda p:
                     _re_match(re.escape(self.prefix)+r'o.*?\.(?:eco|lst)$', str(p))),
-                'restart':(lambda p:
-                    _re_match(r'restart_.*\.dat$', str(p))),
                 'other':(lambda p:
                     _re_match(re.escape(self.prefix)+r'o\..*', str(p))),
             },
