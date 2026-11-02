@@ -7,7 +7,7 @@ Examples:
 
 Dependencies:
     - hgs-copy-inputs.py (for copying base_sim)
-    - hgs-runall.ps1 (for running an instance)
+    - hgs-runall.py (for running an instance)
     - pre- and post-processing scripts in base_sim to set up a new realization
 
 """
